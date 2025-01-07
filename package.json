@@ -1,0 +1,33 @@
+{
+	"name": "cascador",
+	"version": "0.0.1",
+	"description": "",
+	"keywords": [],
+	"author": "",
+	"license": "Apache License",
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"lint": "eslint src --ext .ts",
+		"typecheck": "tsc --noEmit",
+		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.17.0",
+		"eslint": "^9.17.0",
+		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.19.1"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
+}
