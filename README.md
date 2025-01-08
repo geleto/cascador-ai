@@ -1,8 +1,8 @@
 # Cascador – An AI Agent Framework
 
 Cascador is an experimental AI agent framework built on top of the [Vercel AI SDK](https://sdk.vercel.ai/) and [Cascada](https://github.com/geleto/cascada), a fork of [Nunjucks](https://mozilla.github.io/nunjucks/). It simplifies workflows involving text generation, streaming, and structured data using large language models (LLMs). Cascador enables complex AI workflows with minimal overhead by combining robust templating and standardized LLM integrations.
-
-**Note**: This is **basic initial documentation** for a project in the **experimental stage**. Many documented features are under development and may not yet be fully implemented.
+**
+**Note**: This documentation is for a project in the **experimental stage**. Cascador is in early development, with the codebase and architecture rapidly evolving. Many documented features are under development and may not be fully implemented yet. This documentation serves as an implementation reference and should not be considered production-ready.
 
 ## About the Framework
 
@@ -26,7 +26,7 @@ Cascador is built on two main technologies:
 
 ## Features
 
-1. **Asynchronous Templating**: Use [Cascada](https://github.com/geleto/cascada) for easy templating that can handle async operations and can be automatically parallelized - no constructs or special syntax is needed.
+1. **Parallelized Asynchronous Templating**: Use [Cascada](https://github.com/geleto/cascada) for easy templating that can handle async operations and can be automatically parallelized - no constructs or special syntax is needed.
 2. **Flexible Outputs**: Generate text, stream responses, and create structured objects (using schemas like Zod or JSON Schema).
 3. **Filter Support**: Transform text, extract data (e.g., code blocks), and handle streams with built-in or custom filters.
 4. **Hierarchical Context**: Share and extend context across generators using the `parent` property.
@@ -213,7 +213,8 @@ console.log(await agent());
 ```
 
 ## Roadmap
-
+The following tasks are not documented:
 - **Embeddings Support**: Add functionality for vector-based text embeddings.
 - **Image Generation**: Generate images using tools like DALL-E.
 - **`onStepFinish` Callback**: Handle intermediate steps during generation for more control.
+- **Error handling and recovery**: Auto-retry when it makes sense, provide a callback. Use future Cascada try/except for non-recoverable errors
