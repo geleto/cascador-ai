@@ -35,7 +35,11 @@ export default tseslint.config(
 				asyncArrow: 'always'
 			}],
 			'space-in-parens': ['error', 'never'],
-			'no-multi-spaces': 'error'
+			'no-multi-spaces': 'error',
+
+			"@typescript-eslint/no-explicit-any": ["error", {
+				"ignoreTypedefs": true
+			}],
 		}
 	}
 );
