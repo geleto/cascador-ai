@@ -1,35 +1,41 @@
-# Cascador – An AI Agent Framework
+# Cascador-AI – An AI Agent Framework
 
-Cascador is an experimental AI agent framework built on top of the [Vercel AI SDK](https://sdk.vercel.ai/) and [Cascada](https://github.com/geleto/cascada), a fork of [Nunjucks](https://mozilla.github.io/nunjucks/). It simplifies workflows involving text generation, streaming, and structured data using large language models (LLMs). Cascador enables complex AI workflows with minimal overhead by combining robust templating and standardized LLM integrations.
-**
+[Cascador-AI](https://github.com/geleto/cascador-ai) is an AI agent framework that combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). Its core strength is automatically parallelized asynchronous templating, letting you write simple templates to orchestrate multiple Large Language Model (LLM) operations without explicit async/await handling or special constructs.
+
+Here's an improved introduction for your document:
+
+---
+
+# Cascador-AI – A Framework for Simplified AI Orchestration
+
+With [Cascador-AI](https://github.com/geleto/cascador-ai), you can focus on defining what your AI agents should achieve, while the framework handles the intricate details of orchestration, concurrency, and dependency management. Using an intuitive templating approach, Cascador-AI makes it easy to describe workflows in a way that’s both simple and flexible - no need to deal with complex async code or specialized constructs. Cascador-AI delivers simplicity, flexibility and performance in one package.
+
 **Note**: This documentation is for a project in the **experimental stage**. Cascador is in early development, with the codebase and architecture rapidly evolving. Many documented features are under development and may not be fully implemented yet. This documentation serves as an implementation reference and should not be considered production-ready.
-
-## About the Framework
-
-Cascador is built on two main technologies:
-
-1. **Vercel AI SDK Core**
-
-   Provides standardized integration with various Large Language Model providers such as:
-   OpenAI, Azure, Anthropic, Amazon Bedrock, Google Generative AI, Google Vertex AI, Mistral, x.AI Grok.
-
-2. **Cascada**
-
-   [Cascada](https://github.com/geleto/cascada/) is a template engine (fork from [Nunjucks](https://mozilla.github.io/nunjucks/))  designed to handle asynchronous operations seamlessly.
-
-   It automatically parallelizes independent components during rendering while managing data dependencies, all without requiring special syntax or explicit async handling. Cascada is ideal for AI agent workflows where templates often involve long-running tasks like LLM calls, reasoning steps, or external API requests. Some key features are:
-	- Automatic parallelization of independent operations
-	- Seamless handling of async operations without special syntax
-	- Support for async iterators and generators
-	- Template inheritance and composition
-	- Full programming constructs: variables, expressions, loops, conditionals, functions, scoping rules...
 
 ## Features
 
-1. **Parallelized Asynchronous Templating**: Use [Cascada](https://github.com/geleto/cascada) for easy templating that can handle async operations and can be automatically parallelized - no constructs or special syntax is needed.
-2. **Flexible Outputs**: Generate text, stream responses, and create structured objects (using schemas like Zod or JSON Schema).
-3. **Filter Support**: Transform text, extract data (e.g., code blocks), and handle streams with built-in or custom filters.
-4. **Hierarchical Context**: Share and extend context across generators using the `parent` property.
+1. **Define Workflows with Automatically Parallelized Async Templating**
+
+	The [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)) provides seamless async templating with automatic parallelization - no special syntax or explicit promise handling required. It automatically parallelizes concurrent tasks like LLM calls, API requests, and data processing while intelligently managing dependencies.
+
+	[Cascada](https://github.com/geleto/cascada) offers a complete programming model that makes templates dynamic and reusable. Features include template inheritance and composition, properly scoped variables, expressions, loops, conditionals, and functions.
+
+2. **Standardized LLM Integrations**
+
+   Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/), which provides standardized integration with various Large Language Model providers such as:
+   OpenAI, Azure, Anthropic, Amazon Bedrock, Google Generative AI, Google Vertex AI, Mistral, x.AI Grok...
+
+3. **Rich Context Objects**
+
+	Context objects provide dynamic data and functionality to templates, supporting both static values and async sources like API calls or database queries. This makes it easy to integrate external services or encapsulate logic directly within templates for flexible and extensible workflows.
+
+4. **Flexible Outputs**
+
+   Generate or stream text and structured data (using [Zod](https://github.com/colinhacks/zod) or JSON Schema).
+
+5. **Hierarchical Context and Configurations**
+
+   Generators and streamers can inherit properties from a shared configuration or parent generator. This allows defining hierarchical setups such as a base configuration, individual prompts with different LLMs, orchestrating agents for complex workflows, or exposing distinct APIs and data to different agents and prompts.
 
 ## Installation
 
@@ -37,139 +43,180 @@ Cascador is built on two main technologies:
 TODO
 ```
 
-## Classes
+## Quick Start
 
-Cascador provides four generator classes and one configuration class:
+This example demonstrates how to:
+1. Define a base configuration that is shared across all generators.
+2. Read a synopsis in the template from a file.
+3. Expand the synopsis into a story.
+4. Critique it.
+4. Translate both the story and the critique into a specified language.
 
-| Class              | Vercel AI SDK Method                                                                                   | Return Type                           | Description                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------- |
-| **TextGenerator**   | [`generateText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext)                 | `Promise<string>`                     | Generates text from a prompt.                                               |
-| **TextStreamer**    | [`streamText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#streamtext)                     | `ReadableStream` (text chunks)        | Streams text in real-time for interactive use cases.                        |
-| **ObjectGenerator** | [`generateObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#generate-object) | `Promise<object | array>`            | Generates structured data based on a schema.                                |
-| **ObjectStreamer**  | [`streamObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#stream-object)     | `ReadableStream` (objects/arrays)     | Streams structured objects or arrays incrementally.                         |
-| **Config**          | -                                                                                                     | -                                    | Stores shared configurations for consistent generator behavior.             |
-
-## Common Properties
-
-### **model**
-
-Specifies the AI model to use, defined via the [Vercel AI SDK Provider](https://sdk.vercel.ai/providers/ai-sdk-providers).
+Generating the critique and translating the story will run in parallel, as these are two independent operations, but both must wait for the story generation to complete first.
 
 ```js
+import fs from 'fs/promises';
+import { openai } from '@ai-sdk/openai';
+import { Config, TextGenerator } from 'cascador-ai';
+import translate from 'translate';
+
+translate.engine = "google";
+
+// Base configuration
+const baseConfig = new Config({
+  model: openai('gpt-4'),
+  context: {
+    language: 'es', // Translation language
+  },
+  temperature: 0.7,
+});
+
+// Generators for story expansion and critique
+const storylineGen = new TextGenerator({
+  inherit: baseConfig,
+  prompt: 'Expand the following synopsis into a short story: {{ synopsis }}',
+});
+
+const critiqueGen = new TextGenerator({
+  inherit: baseConfig,
+  prompt: 'Provide a critical analysis of the following story: {{ story }}',
+});
+
+// Main generator (including a translation filter)
+const mainGenerator = new TemplateRenderer({
+  parent: baseConfig,
+  filters: {
+    translate: async (input, lang) => await translate(input, lang),
+  },
+  context: {
+    readFile: async (filePath) => await fs.readFile(filePath, 'utf-8'),
+    storylineGen,
+    critiqueGen,
+  },
+  prompt: `
+    {% set synopsis = readFile('./synopsis.txt') %}
+    {% set storyContent = storylineGen({ synopsis }) %}
+    {% set critiqueContent = critiqueGen({ story: storyContent }) %}
+
+    Story ({{ language }}): {{ storyContent | translate(language) }}
+    Critique ({{ language }}): {{ critiqueContent }}
+  `,
+});
+
+// Execute
+(async () => {
+  const result = await mainGenerator();
+  console.log(result);
+})();
+```
+
+## The Cascador-AI API Classes
+Generators and streamers are objects that can also be invoked like functions to produce or stream results. For instance, you can do `await someGenerator()` to get a result, or use `for await (const chunk of someStreamer()) { ... }` for streaming.
+
+I'll merge the tables and organize the classes with Config first, followed by Template and the other classes:
+
+## The Cascador-AI API Classes
+Generators and streamers are objects that can also be invoked like functions to produce or stream results. For instance, you can do `await someGenerator()` to get a result, or use `for await (const chunk of someStreamer()) { ... }` for streaming.
+
+| Class                      | [Vercel AI SDK Method](https://sdk.vercel.ai/docs/ai-sdk-core)                                             | Return Type                     | Description                                                                                                         |
+|---------------------------|------------------------------------------------------------------------------------------------------------|---------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| **Config**                | -                                                                                                          | -                               | A configuration store (e.g., model, context) that can be shared via the `parent` property in other generators.      |
+| **TemplateRenderer** | -                                                                                                          | `Promise<string>`               | Generates a template engine response using a template and context object.                                           |
+| **TextGenerator**         | [`generateText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext)                     | `Promise<string>`               | Generates a text response from a prompt (e.g., conversation or summary).                                            |
+| **TextStreamer**          | [`streamText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#streamtext)                         | `ReadableStream` (text chunks)  | Streams text in real-time for interactive or continuous output scenarios.                                          |
+| **ObjectGenerator**       | [`generateObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#generate-object)     | `Promise<object \| array>`      | Generates structured data, optionally validated with a schema (e.g., [Zod](https://github.com/colinhacks/zod)).     |
+| **ObjectStreamer**        | [`streamObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#stream-object)         | `ReadableStream` (objects)      | Streams structured objects or arrays incrementally.                                                                 |
+
+### **TemplateRenderer**
+This class renders a template with a given context.
+
+#### Example: Generating Text from Template and Context Object
+```js
+import { TemplateRenderer } from 'cascador-ai';
+
+const asyncTemplatedGen = new TemplateRenderer({
+ prompt: 'Hi {{ name }}! Today is {{ currentDay }}.',
+ context: {
+   name: async () => (await sql.query('SELECT name FROM users LIMIT 1')).rows[0].name,
+   currentDay: new Date().toLocaleDateString(),
+ },
+});
+
+(async () => {
+ const result = await asyncTemplatedGen();
+ console.log('Async templated output:', result);
+})();
+```
+
+### **TextGenerator**
+
+The `TextGenerator` class is used to generate text responses from prompts.
+
+#### Example: Generating Text using LLM
+
+```js
+import { TextGenerator } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
 const generator = new TextGenerator({
-  model: openai('gpt-4-turbo'),
-  prompt: 'Hello, world!',
-});
-```
-
-### **Vercel AI SDK Parameters**
-
-Supports standard configuration options, including:
-
-- **temperature**: Controls response randomness.
-- **maxTokens**: Limits the number of tokens in responses.
-- **frequencyPenalty** / **presencePenalty**: Adjust token repetition penalties.
-
-See the [Vercel AI SDK Settings](https://sdk.vercel.ai/docs/ai-sdk-core/settings) for a complete list.
-
-### **parent**
-
-Allows inheriting properties (e.g., `model`, `context`, `temperature`) from another generator. The child generator’s `context` automatically extends the parent’s `context`.
-
-```js
-const baseConfig = new Config({ temperature: 0.7 });
-
-const generator = new TextGenerator({
-  parent: baseConfig,
-  prompt: 'Hello, {{ userName }}!',
-});
-```
-
-### **context**
-
-Provides data and methods available in the prompt as a [Cascada template](https://github.com/geleto/cascada). Enables async capabilities like API calls or processing streams.
-
-```js
-const generator = new TextGenerator({
   model: openai('gpt-4'),
+  prompt: 'Describe "{{ topic }}" in 3 sentences.',
   context: {
-    fetchData: async () => {
-      const response = await fetch('https://api.example.com/data');
-      return response.json();
-    },
+	//The title of today's featured Wikipedia article:
+	topic: async () => {
+		const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+		const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`;
+		return (await (await fetch(url)).json()).tfa.normalizedtitle;
+	}
   },
-  prompt: 'The fetched data is: {{ fetchData() }}',
-});
-```
-
-### **filters**
-
-Filters can be used to:
-
-- Extract data (e.g., code blocks from text).
-- Process text or objects.
-- Handle streams, such as converting them into promises with the built-in `streamToPromise` filter.
-
-```js
-const filters = {
-  extractCode: async (input) => {
-    const match = input.match(/```([\s\S]*?)```/);
-    return match ? match[1].trim() : '';
-  },
-};
-
-const generator = new TextGenerator({
-  model: openai('gpt-4'),
-  filters,
-  prompt: 'Generate a simple game in JavaScript: {{ "```js" }}',
-});
-```
-
-### **prompt**
-
-The main template. When `context` is provided, the prompt becomes a [Cascada template](https://github.com/geleto/cascada), allowing for async logic, loops, and filters.
-
-### **loader**
-
-A [Nunjucks loader](https://mozilla.github.io/nunjucks/api.html#loader) for loading templates from external sources. Required for using `{% include %}`, `{% import %}`, or `{% extends %}`.
-
-### **promptName**
-
-If set, the prompt will be loaded via the `loader` using this name instead of being defined inline.
-
-## Examples
-
-### 1. **Text Generation**
-
-```js
-const generator = new TextGenerator({
-  model: openai('gpt-4'),
-  prompt: 'Describe {{ topic }} in 3 sentences.',
-  context: { topic: 'quantum mechanics' },
 });
 
-const result = await generator();
-console.log(result);
+(async () => {
+  const result = await generator();
+  console.log('Description:', result);
+})();
 ```
 
-### 2. **Streaming Text**
+This example demonstrates how to use a `TextGenerator` to produce a brief description of a topic by substituting the `{{ topic }}` placeholder in the template prompt.
+
+### **TextStreamer**
+
+The `TextStreamer` class streams text in real-time, making it ideal for use cases like chat interfaces, live updates, or progressive text rendering.
+
+#### Example: Streaming Text using LLM
 
 ```js
+import { TextStreamer } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+
 const streamer = new TextStreamer({
   model: openai('gpt-4'),
   prompt: 'Write a poem about the sea.',
 });
 
-for await (const chunk of streamer()) {
-  process.stdout.write(chunk);
-}
+(async () => {
+  for await (const chunk of streamer()) {
+    process.stdout.write(chunk);
+  }
+})();
 ```
 
-### 3. **Structured Data with Schema**
+This example demonstrates how to use `TextStreamer` to stream chunks of text from the LLM as they are generated.
+
+### **ObjectGenerator**
+
+The `ObjectGenerator` class is used to produce structured data that conforms to a schema. It is especially useful for scenarios where you need to ensure the output's validity or structure.
+
+You can specify how the data should be structured by setting output to:
+- object (default)
+- enum (for classification tasks with a discrete set of possible values)
+- no-schema (no schema validation)
+
+#### Example: Structured Data with Zod Schema using LLM
 
 ```js
+import { ObjectGenerator } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 const generator = new ObjectGenerator({
@@ -179,42 +226,230 @@ const generator = new ObjectGenerator({
     age: z.number(),
     hobbies: z.array(z.string()),
   }),
-  prompt: 'Generate a person profile in JSON format.',
+  prompt: 'Generate a random person profile in JSON format.',
 });
 
-const data = await generator();
-console.log(data); // { name: 'Alice', age: 25, hobbies: ['reading', 'hiking'] }
+(async () => {
+  const person = await generator();
+  console.log('Generated Person:', person);
+})();
 ```
+This example validates the LLM output against a Zod schema to ensure the generated data adheres to the specified structure.
 
-### 4. **Chained Generators**
+#### Example: Enum result using LLM
 
 ```js
-const writer = new TextGenerator({
-  model: openai('gpt-4'),
-  prompt: 'Write a short story about {{ topic }}.',
-  context: { topic: 'time travel' },
+import { ObjectGenerator } from 'cascador-ai';
+
+const generator = new ObjectGenerator({
+  model: yourModel,
+  output: 'enum',
+  enum: ['action', 'comedy', 'drama', 'horror', 'sci-fi'],
+  prompt:
+    'Classify the genre of this movie plot: ' +
+    '"A group of astronauts travel through a wormhole..."',
 });
 
-const critic = new TextGenerator({
+(async () => {
+  const classification = await generator();
+  console.log('Genre:', classification);
+})();
+```
+
+### **ObjectStreamer**
+
+The `ObjectStreamer` class streams structured array data incrementally. When combined with the `output: 'array'` option, it streams individual elements from an array.
+
+You can specify how the data should be structured by setting output to:
+- object (default)
+- array (for a stream of array elements)
+- no-schema (no schema validation)
+
+#### Example: Streaming Structured Array Data using LLM
+
+```js
+import { ObjectStreamer } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+const generator = new ObjectStreamer({
   model: openai('gpt-4'),
-  prompt: 'Critique the story: {{ story }}',
+  schema: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+  })),
+  output: 'array',
+  prompt: 'Generate 3 character descriptions.',
 });
 
-const agent = new TextGenerator({
-  context: { generateStory: writer, reviewStory: critic },
+(async () => {
+  for await (const character of generator) {
+    console.log(character);
+  }
+})();
+```
+This example demonstrates how to stream individual objects (e.g., character descriptions) one-by-one.
+
+#### Example: Streaming Structured Data using LLM
+
+```js
+import { openai } from '@ai-sdk/openai';
+import { streamObject } from 'ai';
+import { z } from 'zod';
+
+const { partialObjectStream } = streamObject({
+ model: openai('gpt-4-turbo'),
+ schema: z.object({
+   name: z.string(),
+   description: z.string(),
+   abilities: z.array(z.string())
+ }),
+ prompt: 'Generate a character description.'
+});
+
+(async () => {
+ for await (const partial of partialObjectStream) {
+   console.log(partial);
+ }
+})();
+```
+This example demonstrates streaming partial updates of an object containing character details.
+
+## Common Options for All Generators and Streamers
+
+### parent
+Enables hierarchical context and configuration settings. For example, you can define a base config with a default model, temperature and shared context. Then child generators can inherit, override or add to these settings or context properties as needed. You can arrange multiple levels of inheritance - some generators might use different LLMs, while several agents can orchestrate them, each exposing different APIs or context to their prompts.
+
+```js
+import { Config, TextGenerator } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+
+const baseConfig = new Config({
+  model: openai('gpt-4'),
+  temperature: 0.7,
+  context: {
+    async fetchData() => fetch('https://api.example.com/data').then(res => res.json()),
+  }
+});
+
+const childGenerator = new TextGenerator({
+  parent: baseConfig,
+  context: {
+    greeting: 'Hello from base config!',
+  },
+  prompt: '{{ greeting }}. Data: {{ fetchData() }}',
+});
+```
+
+### context
+The context contains data and methods utilized in templates. Both the data and the outputs of methods can be asynchronous (i.e., return promises).
+
+### prompt
+The [Cascador-AI](https://github.com/geleto/cascador-ai) template string to be rendered. For LLM generators and streamers, the rendered result will be fed to the LLM.
+
+### filters
+Filters can extract, process or transform data directly in templates.
+
+Below is an advanced filters example using two generators. The first generator creates an asteroids game in a ```js block, and the second extracts the code block:
+
+```js
+const asteroidsGen = new TextGenerator({
+  parent: baseConfig,
+  prompt: 'Create a simple asteroids-like game in a single file. Output the code in a ```js block.',
+});
+
+const extractCodeGen = new TemplateRenderer({
+  parent: baseConfig,
+  filters: {
+    extractCode: (text) => {
+      const match = text.match(/```js([\s\S]*?)```/);
+      return match ? match[1].trim() : 'No code found';
+    },
+  },
+  prompt:
+	`{% set original = asteroidsGen() %}
+	Original Output:
+	{{ original }}
+
+	Extracted Code:
+	{{ original | extractCode }}`,
+  context: { asteroidsGen },
+});
+
+(async () => {
+  const result = await extractCodeGen();
+  console.log(result);
+})();
+```
+
+This example uses a custom filter `extractCode` to extract JavaScript code blocks from the LLM's output.
+
+## loader
+Load external templates using a Nunjucks-compatible file loader. The below example uses the built-in FileSystemLoader:
+```js
+import { FileSystemLoader } from 'cascador-ai';
+const fileLoader = new FileSystemLoader('./templates');
+const generator = new TemplateRenderer ({
+  parent: baseConfig,
+  loader: fileLoader,
   prompt: `
-    {% set story = generateStory() %}
-    Story: {{ story }}
-    Review: {{ reviewStory({ story: story }) }}
+    {% include 'part1.njk' %}
+    {% include 'part2.njk' %}
   `,
 });
+```
+This example demonstrates how to use `fileLoader` to include multiple external templates within the main prompt.
 
-console.log(await agent());
+### promptName
+Load a template purely by name:
+```js
+const generator = new TemplateRenderer({
+  parent: baseConfig,
+  loader: fileLoader,
+  promptName: 'welcome.njk',
+});
+```
+This code references an external template (`welcome.njk`) by its name without defining the prompt inline.
+
+## Vercel AI SDK Parameters
+
+Configure standard LLM settings (e.g., temperature, maxTokens, frequencyPenalty). See [Vercel AI SDK Settings](https://sdk.vercel.ai/docs/ai-sdk-core/settings).
+
+For instance to specify the LLM model to use:
+```js
+import { openai } from '@ai-sdk/openai';
+import { TextGenerator } from 'cascador-ai';
+
+const generator = new TextGenerator({
+  model: openai('gpt-4'),
+  prompt: 'Hello, world!',
+});
+```
+For a list of supported models, see [Vercel AI SDK Providers](https://sdk.vercel.ai/providers/ai-sdk-providers).
+
+## Calling Generators/Streamers as Functions
+
+### Call with an object of overrides
+Update configuration for a single invocation:
+```js
+{% set greeting = myGenerator({ context: { userName: 'Bob' }, temperature: 0.9 }) %}
+```
+
+### Call with (prompt, context)
+Simplify a single call by providing a new prompt and optionally a context:
+```js
+{% set greeting = myGenerator('Hello, dear {{ userName }}', { userName: 'Carol' }) %}
 ```
 
 ## Roadmap
-The following tasks are not documented:
-- **Embeddings Support**: Add functionality for vector-based text embeddings.
-- **Image Generation**: Generate images using tools like DALL-E.
-- **`onStepFinish` Callback**: Handle intermediate steps during generation for more control.
-- **Error handling and recovery**: Auto-retry when it makes sense, provide a callback. Use future Cascada try/except for non-recoverable errors
+
+- **Embeddings Support**
+  Add functionality for vector-based text embeddings.
+- **Image Generation**
+  Integrate image generators (e.g., DALL-E) to produce images from prompts.
+- **`onStepFinish` Callback**
+  Provide hooks to capture intermediate steps or partial outputs.
+- **Error Handling & Recovery**
+  Implement robust retry mechanisms and upcoming Cascada try/except blocks for improved error handling.
+
+Cascador-AI aims to simplify complex AI workflows by letting you declare them in flexible, automatically parallelized templates — so you can focus on what you want the LLM to do instead of how to orchestrate it.
