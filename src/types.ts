@@ -1,34 +1,30 @@
 import { generateText, streamText, generateObject, streamObject } from 'ai';
 import { Provider } from 'ai';
-import { LoaderSource } from 'nunjucks';
+import { ILoaderPAsync, ILoaderAny } from 'cascada-tmpl';
+import { Config } from './Config';
 
-export interface Context {
-	[key: string]: any;
-}
+export type Context = Record<string, any>;
 
-export interface Filters {
-	[key: string]: (input: any, ...args: any[]) => Promise<any> | any;
-}
+export type Filters = Record<string, (input: any, ...args: any[]) => Promise<any> | any>;
 
-// Cascador-specific configuration
-export interface BaseConfig {
+export interface TemplateConfig {
 	context?: Context;
 	filters?: Filters;
-	parent?: BaseConfig;
-	loader?: LoaderSource;
+	parent?: Config;
+	loader?: ILoaderAny | ILoaderAny[] | null;
 	promptName?: string;
+	prompt?: string;
 }
 
-// Generator configurations
-export type TextGeneratorConfig = Parameters<typeof generateText>[0] & BaseConfig;
-export type TextStreamerConfig = Parameters<typeof streamText>[0] & BaseConfig;
-export type ObjectGeneratorConfig = Parameters<typeof generateObject>[0] & BaseConfig;
-export type ObjectStreamerConfig = Parameters<typeof streamObject>[0] & BaseConfig;
+// Generator configurations - extend TemplateConfig with respective tool configs
+export type TextGeneratorConfig = Parameters<typeof generateText>[0] & TemplateConfig;
+export type TextStreamerConfig = Parameters<typeof streamText>[0] & TemplateConfig;
+export type ObjectGeneratorConfig = Parameters<typeof generateObject>[0] & TemplateConfig;
+export type ObjectStreamerConfig = Parameters<typeof streamObject>[0] & TemplateConfig;
 
-// Combined configuration options from all generators
-export type CommonConfig = TextGeneratorConfig | TextStreamerConfig | ObjectGeneratorConfig | ObjectStreamerConfig;
-
-export type TextResponse = string;
-export type StreamResponse = ReadableStream<string>;
-export type ObjectResponse<T> = T;
-export type ObjectStreamResponse<T> = ReadableStream<T>;
+// Make all properties optional at the CommonConfig level
+export type CommonConfig = Partial<TextGeneratorConfig> |
+	Partial<TextStreamerConfig> |
+	Partial<ObjectGeneratorConfig> |
+	Partial<ObjectStreamerConfig> |
+	TemplateConfig;
