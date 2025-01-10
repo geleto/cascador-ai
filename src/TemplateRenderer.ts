@@ -11,7 +11,7 @@ import {
 
 import { Config } from './Config';
 
-export class TemplateRenderer<TConfig extends CommonConfig = CommonConfig, TResult = string> extends Config {
+export class TemplateRenderer<TConfig extends CommonConfig = CommonConfig, TResult = Promise<string>> extends Config {
 	protected env: PAsyncEnvironment;
 	protected template?: PAsyncTemplate;
 
@@ -64,9 +64,9 @@ export class TemplateRenderer<TConfig extends CommonConfig = CommonConfig, TResu
 		return this.template.render(context || {});
 	}
 
-	async(promptOrConfig?: string | Partial<TConfig>, context?: Context): Promise<TResult> {
+	async(promptOrConfig?: string | Partial<TConfig>, context?: Context): TResult {
 		if (typeof promptOrConfig === 'string') {
-			return this.render(promptOrConfig, context) as unknown as Promise<TResult>;
+			return this.render(promptOrConfig, context) as unknown as TResult;
 		}
 
 		if (promptOrConfig && typeof promptOrConfig === 'object') {
@@ -74,9 +74,9 @@ export class TemplateRenderer<TConfig extends CommonConfig = CommonConfig, TResu
 				...this.config,
 				...promptOrConfig,
 			} as TConfig);
-			return tempRenderer.render() as unknown as Promise<TResult>;
+			return tempRenderer.render() as unknown as TResult;
 		}
 
-		return this.render() as unknown as Promise<TResult>;
+		return this.render() as unknown as TResult;
 	}
 }

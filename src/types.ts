@@ -1,6 +1,7 @@
 import { generateText, streamText, generateObject, GenerateObjectResult, streamObject } from 'ai';
 import { ILoaderAny } from 'cascada-tmpl';
 import { Config } from './Config';
+import { z } from 'zod';
 
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => Promise<any> | any>;
