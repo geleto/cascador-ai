@@ -95,8 +95,8 @@ const mainGenerator = new TemplateRenderer({
   },
   prompt: `
     {% set synopsis = readFile('./synopsis.txt') %}
-    {% set storyContent = storylineGen({ synopsis }) %}
-    {% set critiqueContent = critiqueGen({ story: storyContent }) %}
+    {% set storyContent = (storylineGen({ synopsis })).text %}
+    {% set critiqueContent = (critiqueGen({ story: storyContent })).text %}
 
     Story ({{ language }}): {{ storyContent | translate(language) }}
     Critique ({{ language }}): {{ critiqueContent }}
@@ -164,17 +164,17 @@ const generator = new TextGenerator({
   prompt: 'Describe "{{ topic }}" in 3 sentences.',
   context: {
 	//The title of today's featured Wikipedia article:
-	topic: async () => {
-		const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
-		const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`;
-		return (await (await fetch(url)).json()).tfa.normalizedtitle;
-	}
+    topic: async () => {
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+      const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`;
+      return (await (await fetch(url)).json()).tfa.normalizedtitle;
+    }
   },
 });
 
 (async () => {
-  const result = await generator();
-  console.log('Description:', result);
+  const { text } = await generator();
+  console.log('Description:', text);
 })();
 ```
 
@@ -196,7 +196,8 @@ const streamer = new TextStreamer({
 });
 
 (async () => {
-  for await (const chunk of streamer()) {
+  const { textStream } = await streamer();
+  for await (const chunk of textStream) {
     process.stdout.write(chunk);
   }
 })();
@@ -231,7 +232,7 @@ const generator = new ObjectGenerator({
 });
 
 (async () => {
-  const person = await generator();
+  const person = (await generator()).object;
   console.log('Generated Person:', person);
 })();
 ```
@@ -252,7 +253,7 @@ const generator = new ObjectGenerator({
 });
 
 (async () => {
-  const classification = await generator();
+  const classification = (await generator()).object;
   console.log('Genre:', classification);
 })();
 ```
@@ -273,7 +274,7 @@ import { ObjectStreamer } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-const generator = new ObjectStreamer({
+const streamer = new ObjectStreamer({
   model: openai('gpt-4'),
   schema: z.array(z.object({
     name: z.string(),
@@ -284,7 +285,8 @@ const generator = new ObjectStreamer({
 });
 
 (async () => {
-  for await (const character of generator) {
+  const { elementStream } = await streamer();
+  for await (const character of elementStream) {
     console.log(character);
   }
 })();
@@ -295,23 +297,24 @@ This example demonstrates how to stream individual objects (e.g., character desc
 
 ```js
 import { openai } from '@ai-sdk/openai';
-import { streamObject } from 'ai';
+import { ObjectStreamer } from 'cascador-ai';
 import { z } from 'zod';
 
-const { partialObjectStream } = streamObject({
- model: openai('gpt-4-turbo'),
- schema: z.object({
-   name: z.string(),
-   description: z.string(),
-   abilities: z.array(z.string())
- }),
- prompt: 'Generate a character description.'
+const streamer = new ObjectStreamer({
+  model: openai('gpt-4'),
+  schema: z.object({
+    name: z.string(),
+    description: z.string(),
+    abilities: z.array(z.string())
+  }),
+  prompt: 'Generate a character description.'
 });
 
 (async () => {
- for await (const partial of partialObjectStream) {
-   console.log(partial);
- }
+  const { partialObjectStream } = await streamer();
+  for await (const partial of partialObjectStream) {
+    console.log(partial);
+  }
 })();
 ```
 This example demonstrates streaming partial updates of an object containing character details.
@@ -368,12 +371,12 @@ const extractCodeGen = new TemplateRenderer({
     },
   },
   prompt:
-	`{% set original = asteroidsGen() %}
-	Original Output:
-	{{ original }}
+    `{% set original = (asteroidsGen()).text %}
+    Original Output:
+    {{ original }}
 
-	Extracted Code:
-	{{ original | extractCode }}`,
+    Extracted Code:
+    {{ original | extractCode }}`,
   context: { asteroidsGen },
 });
 
@@ -428,18 +431,19 @@ const generator = new TextGenerator({
 ```
 For a list of supported models, see [Vercel AI SDK Providers](https://sdk.vercel.ai/providers/ai-sdk-providers).
 
-## Calling Generators/Streamers as Functions
+## Calling Generators/Streamers in Templates
 
-### Call with an object of overrides
+### Call with (config)
 Update configuration for a single invocation:
 ```js
-{% set greeting = myGenerator({ context: { userName: 'Bob' }, temperature: 0.9 }) %}
+{% set greeting = myGenerator({ context: { userName: 'Bob' }, temperature: 0.9 }).text %}
 ```
 
 ### Call with (prompt, context)
 Simplify a single call by providing a new prompt and optionally a context:
 ```js
-{% set greeting = myGenerator('Hello, dear {{ userName }}', { userName: 'Carol' }) %}
+{% set greeting = myGenerator('Hello, dear {{ userName }}', { userName: 'Carol' }).text %}
+
 ```
 
 ## Roadmap
