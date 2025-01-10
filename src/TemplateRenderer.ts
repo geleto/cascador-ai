@@ -6,10 +6,9 @@ import {
 
 import {
 	Context,
-	TemplateConfig,
+	CommonConfig,
 } from './types';
 
-import { CommonConfig } from './types';
 import { Config } from './Config';
 
 /**
@@ -19,70 +18,19 @@ import { Config } from './Config';
  *    await renderer('Hello {{ name }}', { name: 'World' })
  *
  * 2. With a config override object:
- *    await renderer({ context: { name: 'World' }, temperature: 0.7 })
+ *    await renderer({ context: { name: 'World' } })
  */
 export class TemplateRenderer extends Config {
-	private env?: PAsyncEnvironment;
-	private template?: PAsyncTemplate;
+	protected env: PAsyncEnvironment;
+	protected template?: PAsyncTemplate;
 
 	constructor(config: CommonConfig) {
-		// Only skip merging loaders and filters if parent is TemplateRenderer
-		const skipMerge = config.parent instanceof TemplateRenderer;
-		super(config, !skipMerge);
+		super(config);
 
 		// Initialize environment
-		this.initializeEnvironment();
+		this.env = new PAsyncEnvironment(this.config.loader || null);
 
-		// Compile template if prompt is provided
-		if (config.prompt) {
-			this.compileTemplate(config.prompt);
-		}
-
-		// Make the instance callable
-		return new Proxy(this, {
-			apply: (target, thisArg, args: [string | Partial<TemplateConfig>, Context?]) => {
-				const [promptOrConfig, context] = args;
-				if (typeof promptOrConfig === 'string') {
-					return target.render(promptOrConfig, context);
-				}
-
-				if (promptOrConfig && typeof promptOrConfig === 'object') {
-					const tempRenderer = new TemplateRenderer({
-						...target.config,
-						...promptOrConfig,
-					});
-					return tempRenderer.render();
-				}
-
-				return target.render();
-			}
-		}) as any;
-	}
-
-	private initializeEnvironment() {
-		const envConfig = {
-			autoescape: true,
-			throwOnUndefined: false,
-			trimBlocks: true,
-			lstripBlocks: true,
-		};
-
-		if (this.config.parent instanceof TemplateRenderer) {
-			// If parent is TemplateRenderer, use its env as parent
-			this.env = new PAsyncEnvironment(
-				this.config.loader || null,
-				envConfig,
-				this.config.parent.env
-			);
-		} else {
-			// Create new environment
-			this.env = new PAsyncEnvironment(
-				this.config.loader || null,
-				envConfig
-			);
-		}
-
-		// Add current filters
+		// Add filters
 		if (this.config.filters) {
 			for (const [name, filter] of Object.entries(this.config.filters)) {
 				if (filter.constructor.name === 'AsyncFunction') {
@@ -92,16 +40,14 @@ export class TemplateRenderer extends Config {
 				}
 			}
 		}
-	}
 
-	private async compileTemplate(src: string) {
-		if (!this.env) {
-			throw new Error('Environment not initialized');
+		// Compile template if prompt is provided
+		if (config.prompt) {
+			this.template = compilePAsync(config.prompt, this.env, '', true);
 		}
-		this.template = await compilePAsync(src, this.env, '', true);
 	}
 
-	private async render(
+	protected async render(
 		promptOverride?: string,
 		contextOverride?: Context
 	): Promise<string> {
@@ -111,14 +57,11 @@ export class TemplateRenderer extends Config {
 
 		// If prompt override provided, compile new template
 		if (promptOverride) {
-			await this.compileTemplate(promptOverride);
+			this.template = await compilePAsync(promptOverride, this.env, '', true);
 		}
 
 		// If we have a promptName, load and compile that template
 		if (this.config.promptName && !this.template) {
-			if (!this.env) {
-				throw new Error('Environment not initialized');
-			}
 			this.template = await this.env.getTemplate(this.config.promptName, true);
 		}
 
@@ -128,5 +71,21 @@ export class TemplateRenderer extends Config {
 
 		// Render template with context
 		return await this.template.render(context || {});
+	}
+
+	async(promptOrConfig?: string | Partial<CommonConfig>, context?: Context): Promise<string> {
+		if (typeof promptOrConfig === 'string') {
+			return this.render(promptOrConfig, context);
+		}
+
+		if (promptOrConfig && typeof promptOrConfig === 'object') {
+			const tempRenderer = new TemplateRenderer({
+				...this.config,
+				...promptOrConfig,
+			});
+			return tempRenderer.render();
+		}
+
+		return this.render();
 	}
 }
