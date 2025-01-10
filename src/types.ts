@@ -1,6 +1,5 @@
-import { generateText, streamText, generateObject, streamObject } from 'ai';
-import { Provider } from 'ai';
-import { ILoaderPAsync, ILoaderAny } from 'cascada-tmpl';
+import { generateText, streamText, generateObject, GenerateObjectResult, streamObject } from 'ai';
+import { ILoaderAny } from 'cascada-tmpl';
 import { Config } from './Config';
 
 export type Context = Record<string, any>;
@@ -14,6 +13,13 @@ export interface TemplateConfig {
 	promptName?: string;
 	prompt?: string;
 }
+
+// Vercel AI SDK return types - using ReturnType to get exact types
+export type GenerateTextReturn = ReturnType<typeof generateText>;
+export type StreamTextReturn = ReturnType<typeof streamText>;
+//export type GenerateObjectReturn<T> = ReturnType<typeof generateObject<T>>;
+export type GenerateObjectReturn<T> = GenerateObjectResult<T>;
+export type StreamObjectReturn<T> = ReturnType<typeof streamObject<T>>;
 
 // Vercel AI SDK configurations
 export type GenerateTextConfig = Parameters<typeof generateText>[0];

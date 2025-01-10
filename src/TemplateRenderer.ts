@@ -11,20 +11,11 @@ import {
 
 import { Config } from './Config';
 
-/**
- * TemplateRenderer class that can be called as a function in two ways:
- *
- * 1. With a string prompt and optional context:
- *    await renderer('Hello {{ name }}', { name: 'World' })
- *
- * 2. With a config override object:
- *    await renderer({ context: { name: 'World' } })
- */
-export class TemplateRenderer extends Config {
+export class TemplateRenderer<TConfig extends CommonConfig = CommonConfig, TResult = string> extends Config {
 	protected env: PAsyncEnvironment;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: CommonConfig) {
+	constructor(config: TConfig) {
 		super(config);
 
 		// Initialize environment
@@ -70,22 +61,22 @@ export class TemplateRenderer extends Config {
 		}
 
 		// Render template with context
-		return await this.template.render(context || {});
+		return this.template.render(context || {});
 	}
 
-	async(promptOrConfig?: string | Partial<CommonConfig>, context?: Context): Promise<string> {
+	async(promptOrConfig?: string | Partial<TConfig>, context?: Context): Promise<TResult> {
 		if (typeof promptOrConfig === 'string') {
-			return this.render(promptOrConfig, context);
+			return this.render(promptOrConfig, context) as unknown as Promise<TResult>;
 		}
 
 		if (promptOrConfig && typeof promptOrConfig === 'object') {
 			const tempRenderer = new TemplateRenderer({
 				...this.config,
 				...promptOrConfig,
-			});
-			return tempRenderer.render();
+			} as TConfig);
+			return tempRenderer.render() as unknown as Promise<TResult>;
 		}
 
-		return this.render();
+		return this.render() as unknown as Promise<TResult>;
 	}
 }
