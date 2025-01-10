@@ -1,55 +1,35 @@
-import { ILoaderAny } from 'cascada-tmpl';
 import { CommonConfig } from './types';
 
 export class Config {
 	protected config: CommonConfig;
 
-	constructor(config: CommonConfig = {}, mergeLoadersAndFilters: boolean = true) {
+	constructor(config: CommonConfig = {}) {
 		// Validate parent type
 		if (config.parent && !(config.parent instanceof Config)) {
 			throw new Error('Config parent must be an instance of Config');
 		}
 
-		const parentConfig = config.parent instanceof Config ? config.parent.getConfig() : {};
+		if (config.parent instanceof Config) {
+			const parentConfig = config.parent.config;
+			const parentLoaders = parentConfig.loader ? (Array.isArray(parentConfig.loader) ? parentConfig.loader : [parentConfig.loader]) : [];
+			const currentLoaders = config.loader ? (Array.isArray(config.loader) ? config.loader : [config.loader]) : [];
 
-		this.config = {
-			...parentConfig,
-			...config,
-			// Merge context separately
-			context: {
-				...(parentConfig.context || {}),
-				...(config.context || {})
-			},
-			// Conditionally merge filters and loaders
-			...(mergeLoadersAndFilters ? {
+			this.config = {
+				...parentConfig,
+				...config,
+				context: {
+					...(parentConfig.context || {}),
+					...(config.context || {})
+				},
 				filters: {
 					...(parentConfig.filters || {}),
 					...(config.filters || {})
 				},
-				loader: this.mergeLoaders(parentConfig.loader, config.loader),
-			} : {
-				filters: config.filters,
-				loader: config.loader,
-			}),
-			// Remove parent after merging to avoid circular references
-			parent: undefined
-		};
-	}
-
-	protected getConfig(): CommonConfig {
-		return this.config;
-	}
-
-	private mergeLoaders(parentLoader: ILoaderAny | ILoaderAny[] | null | undefined,
-		currentLoader: ILoaderAny | ILoaderAny[] | null | undefined): ILoaderAny | ILoaderAny[] | null {
-		if (!parentLoader) return currentLoader || null;
-		if (!currentLoader) return parentLoader;
-
-		// Convert single loaders to arrays
-		const parentLoaders = Array.isArray(parentLoader) ? parentLoader : [parentLoader];
-		const currentLoaders = Array.isArray(currentLoader) ? currentLoader : [currentLoader];
-
-		// Merge arrays
-		return [...parentLoaders, ...currentLoaders];
+				loader: [...parentLoaders, ...currentLoaders],
+				parent: undefined
+			};
+		} else {
+			this.config = config;
+		}
 	}
 }
