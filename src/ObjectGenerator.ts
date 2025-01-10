@@ -19,8 +19,9 @@ type InferObjectType<T extends ObjectType<any>> =
 	? Extract<T, { output: 'enum' }>['enum'][number]
 	: JSONValue;
 
-export class ObjectGenerator<TConfig extends GenerateObjectConfig, TResult> extends LLMRenderer<TConfig, TResult> {
-	protected async callLLMFunction(config: GenerateObjectConfig): Promise<GenerateObjectReturn<TResult>> {
-		return generateObject<TResult>(config);
+
+export class ObjectGenerator<T> extends LLMRenderer<ObjectGeneratorConfig, GenerateObjectReturn<T>> {
+	protected async callLLMFunction(config: ObjectGeneratorConfig): Promise<GenerateObjectReturn<T>> {
+		return generateObject(config);
 	}
 }

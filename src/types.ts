@@ -34,5 +34,7 @@ export type TextStreamerConfig = StreamTextConfig & TemplateConfig;
 export type ObjectGeneratorConfig = GenerateObjectConfig & TemplateConfig;
 export type ObjectStreamerConfig = StreamObjectConfig & TemplateConfig;
 
-// Combined configuration type that can be any of the generator configs
-export type CommonConfig = TextGeneratorConfig | TextStreamerConfig | ObjectGeneratorConfig | ObjectStreamerConfig | TemplateConfig;
+// Combined configuration type that can be any of the generator configs - TODO: rename to AnyLLMConfig, AnyLLMResult
+export type AnyLLMConfig = TextGeneratorConfig | TextStreamerConfig | ObjectGeneratorConfig | ObjectStreamerConfig;
+export type AnyLLMConfigPartial = Partial<TextGeneratorConfig> | Partial<TextStreamerConfig> | Partial<ObjectGeneratorConfig> | Partial<ObjectStreamerConfig>;
+export type AnyLLMResult = GenerateTextReturn | StreamTextReturn | GenerateObjectReturn<any> | StreamObjectReturn<any>;

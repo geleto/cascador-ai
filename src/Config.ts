@@ -1,9 +1,9 @@
-import { CommonConfig } from './types';
+import { AnyLLMConfigPartial } from './types';
 
 export class Config {
-	protected config: CommonConfig;
+	protected config: AnyLLMConfigPartial;
 
-	constructor(config: CommonConfig = {}) {
+	constructor(config: AnyLLMConfigPartial) {
 		// Validate parent type
 		if (config.parent && !(config.parent instanceof Config)) {
 			throw new Error('Config parent must be an instance of Config');
