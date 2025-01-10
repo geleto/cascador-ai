@@ -111,21 +111,22 @@ const mainGenerator = new TemplateRenderer({
 ```
 
 ## The Cascador-AI API Classes
-Generators and streamers are objects that can also be invoked like functions to produce or stream results. For instance, you can do `await someGenerator()` to get a result, or use `for await (const chunk of someStreamer()) { ... }` for streaming.
+Generators and streamers are objects that can also be invoked like functions to produce or stream results. For instance, you can do `const { text } = await someGenerator('prompt')` to get a result, or use `const { textStream } = await someStreamer('prompt'); for await (const chunk of textStream) { ... }` for streaming.
 
-I'll merge the tables and organize the classes with Config first, followed by Template and the other classes:
+| Class | Parent | Return Type | Description |
+|-------|---------|------------|-------------|
+| [**Config**](#config) | - | - | Base configuration store that handles merging of configs including context, filters, and loaders. |
+| [**TemplateRenderer**](#templaterenderer) | Config | `Promise<string>` | Renders templates using the Cascada template engine with context. Can be called with `(prompt: string, context?: Context)` or `(config: Partial<CommonConfig>)`. |
+| [**TextGenerator**](#textgenerator) | LLMRenderer | `Promise<{ text: string, ... }>` [Reference](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text#returns) | Generates a text response from a prompt (e.g., conversation or summary). |
+| [**TextStreamer**](#textstreamer) | LLMRenderer | `Promise<{ textStream: AsyncIterable<string>, ... }>` [Reference](https://sdk.vercel.ai/docs/reference/ai-sdk-core/stream-text#returns) | Streams text in real-time as an AsyncIterable for interactive or continuous output. |
+| [**ObjectGenerator**](#objectgenerator) | LLMRenderer | `Promise<{ object: T, ... }>` [Reference](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object#returns) | Generates structured data validated with a schema (e.g., [Zod](https://github.com/colinhacks/zod)). |
+| [**ObjectStreamer**](#objectstreamer) | LLMRenderer | `Promise<{ elementStream: AsyncIterable<T>, ... }>` or `Promise<{ partialObjectStream: AsyncIterable<Partial<T>>, ... }>` [Reference](https://sdk.vercel.ai/docs/reference/ai-sdk-core/stream-object#returns) | Streams structured objects or arrays incrementally. Object mode uses partialObjectStream for partial updates, array mode uses elementStream for complete elements. |                                                            |
 
-## The Cascador-AI API Classes
-Generators and streamers are objects that can also be invoked like functions to produce or stream results. For instance, you can do `await someGenerator()` to get a result, or use `for await (const chunk of someStreamer()) { ... }` for streaming.
-
-| Class                      | [Vercel AI SDK Method](https://sdk.vercel.ai/docs/ai-sdk-core)                                             | Return Type                     | Description                                                                                                         |
-|---------------------------|------------------------------------------------------------------------------------------------------------|---------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| **Config**                | -                                                                                                          | -                               | A configuration store (e.g., model, context) that can be shared via the `parent` property in other generators.      |
-| **TemplateRenderer** | -                                                                                                          | `Promise<string>`               | Generates a template engine response using a template and context object.                                           |
-| **TextGenerator**         | [`generateText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext)                     | `Promise<string>`               | Generates a text response from a prompt (e.g., conversation or summary).                                            |
-| **TextStreamer**          | [`streamText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#streamtext)                         | `ReadableStream` (text chunks)  | Streams text in real-time for interactive or continuous output scenarios.                                          |
-| **ObjectGenerator**       | [`generateObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#generate-object)     | `Promise<object \| array>`      | Generates structured data, optionally validated with a schema (e.g., [Zod](https://github.com/colinhacks/zod)).     |
-| **ObjectStreamer**        | [`streamObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-structured-data#stream-object)         | `ReadableStream` (objects)      | Streams structured objects or arrays incrementally.                                                                 |
+## Calling the Cascador-AI instances
+All instances of the Cascador-AI classes can be called as functions in two ways:
+1. Prompt string and context object: `const { text } = await generator('Write about {{ topic }}', { topic: 'AI' });`
+2. Config object: `const { text } = await generator({ context: { topic: 'AI' }, temperature: 0.7 });`
+The same pattern works for all generators/streamers, just with different return properties.
 
 ### **TemplateRenderer**
 This class renders a template with a given context.
