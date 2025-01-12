@@ -2,25 +2,16 @@ import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
 import { Context, TemplateConfig } from './types';
 import { Config } from './Config';
 
-/**
- * TemplateRendererBase class that can be called as a function in two ways:
- *
- * 1. With a string prompt and optional context:
- *    await renderer('Hello {{ name }}', { name: 'World' })
- *
- * 2. With a config override object:
- *    await renderer({ context: { name: 'World' } })
- */
-export abstract class TemplateRendererBase extends Config {
+export class TemplateEngine extends Config {
 	protected env: PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateConfig) {
-		super(config);
+	constructor(config: TemplateConfig, parent?: Config) {
+		super(config, parent);
 
 		// Initialize environment
-		this.env = new PAsyncEnvironment(this.config.loader || null);
+		this.env = new PAsyncEnvironment(this.config.loader || null, this.config.options);
 
 		// Add filters
 		if (this.config.filters) {
@@ -46,6 +37,19 @@ export abstract class TemplateRendererBase extends Config {
 			}
 			this.templatePromise = this.env.getTemplatePAsync(this.config.promptName);
 		}
+	}
+
+	async call(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string> {
+		if (typeof promptOrConfig === 'string') {
+			return this.render(promptOrConfig, context);
+		}
+
+		if (promptOrConfig && typeof promptOrConfig === 'object') {
+			const newConfig = Config.mergeConfig(this.config, promptOrConfig);
+			return this.render(undefined, newConfig.context);
+		}
+
+		return this.render();
 	}
 
 	protected async render(
