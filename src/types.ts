@@ -19,7 +19,7 @@ type TextStreamerConfig = Parameters<typeof streamText>[0] & TemplateConfig;
 type ObjectStreamerConfig = Parameters<typeof generateObject>[0] & TemplateConfig;
 type ObjectGeneratorConfig = Parameters<typeof streamObject>[0] & TemplateConfig;
 
-export type AnyLLMConfigPartial =
+export type LLMPartialConfig =
 	Partial<TextGeneratorConfig> |
 	Partial<TextStreamerConfig> |
 	Partial<ObjectGeneratorConfig> |

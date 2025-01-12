@@ -1,21 +1,21 @@
-import { AnyLLMConfigPartial } from './types';
+import { LLMPartialConfig } from './types';
 
 export interface ConfigBase<ConfigType> {
 	config: ConfigType;
 }
 
-export class Config implements ConfigBase<AnyLLMConfigPartial> {
-	config: AnyLLMConfigPartial;
+export class Config implements ConfigBase<LLMPartialConfig> {
+	config: LLMPartialConfig;
 
-	constructor(config: AnyLLMConfigPartial, parent?: Config) {
+	constructor(config: LLMPartialConfig, parent?: Config) {
 		this.config = Config.mergeConfig(parent ? parent.config : undefined, config);
 	}
 
-	getMergedConfig(parentConfig?: AnyLLMConfigPartial): AnyLLMConfigPartial {
+	getMergedConfig(parentConfig?: LLMPartialConfig): LLMPartialConfig {
 		return Config.mergeConfig(parentConfig, this.config);
 	}
 
-	static mergeConfig(parentConfig?: AnyLLMConfigPartial, config?: AnyLLMConfigPartial): AnyLLMConfigPartial {
+	static mergeConfig(parentConfig?: LLMPartialConfig, config?: LLMPartialConfig): LLMPartialConfig {
 		if (!parentConfig) {
 			return { ...(config || {}) };
 		}
