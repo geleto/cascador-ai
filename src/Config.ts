@@ -4,39 +4,44 @@ export interface ConfigBase<ConfigType> {
 	config: ConfigType;
 }
 
-export class Config implements ConfigBase<LLMPartialConfig> {
-	config: LLMPartialConfig;
+export class Config<TConfig extends LLMPartialConfig = {}, TParentConfig extends LLMPartialConfig = {}> {
+	readonly config: TConfig & TParentConfig;
 
-	constructor(config: LLMPartialConfig, parent?: Config) {
-		this.config = Config.mergeConfig(parent ? parent.config : undefined, config);
+	constructor(config: TConfig, parent?: Config<any, any>) {
+		this.config = Config.mergeConfig(parent?.config, config);
 	}
 
-	getMergedConfig(parentConfig?: LLMPartialConfig): LLMPartialConfig {
-		return Config.mergeConfig(parentConfig, this.config);
+	getMergedConfig<TNewConfig extends LLMPartialConfig>(
+		newConfig?: TNewConfig
+	): (TConfig & TParentConfig) & TNewConfig {
+		return Config.mergeConfig(this.config, newConfig);
 	}
 
-	static mergeConfig(parentConfig?: LLMPartialConfig, config?: LLMPartialConfig): LLMPartialConfig {
+	static mergeConfig<TChild extends LLMPartialConfig, TParent extends LLMPartialConfig>(
+		parentConfig: TParent | undefined,
+		childConfig: TChild | undefined
+	): TChild & TParent {
 		if (!parentConfig) {
-			return { ...(config || {}) };
+			return { ...(childConfig || {}) } as TChild & TParent;
 		}
-		if (!config) {
-			return { ...parentConfig };
+		if (!childConfig) {
+			return { ...parentConfig } as TChild & TParent;
 		}
 		return {
 			...parentConfig,
-			...config,
+			...childConfig,
 			context: {
 				...(parentConfig.context || {}),
-				...(config.context || {})
+				...(childConfig.context || {})
 			},
 			filters: {
 				...(parentConfig.filters || {}),
-				...(config.filters || {})
+				...(childConfig.filters || {})
 			},
 			loader: [
 				...(parentConfig.loader ? (Array.isArray(parentConfig.loader) ? parentConfig.loader : [parentConfig.loader]) : []),
-				...(config.loader ? (Array.isArray(config.loader) ? config.loader : [config.loader]) : [])
+				...(childConfig.loader ? (Array.isArray(childConfig.loader) ? childConfig.loader : [childConfig.loader]) : [])
 			],
-		};
+		} as TChild & TParent;
 	}
 }

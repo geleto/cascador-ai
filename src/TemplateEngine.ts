@@ -1,13 +1,13 @@
 import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
-import { Context, TemplateConfig } from './types';
+import { Context, LLMPartialConfig, TemplateConfig } from './types';
 import { Config } from './Config';
 
-export class TemplateEngine extends Config {
+export class TemplateEngine extends Config<TemplateConfig> {
 	protected env: PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateConfig, parent?: Config) {
+	constructor(config: TemplateConfig, parent?: Config<LLMPartialConfig>) {
 		super(config, parent);
 
 		// Initialize environment
@@ -27,7 +27,6 @@ export class TemplateEngine extends Config {
 		// Compile template if prompt is provided
 		if (this.config.prompt) {
 			this.template = compilePAsync(this.config.prompt, this.env);
-			//todo if promptName - save the template to the cache
 		} else {
 			if (!this.config.promptName) {
 				throw new Error('TemplateRendererBase requires a prompt or promptName to be specified');
