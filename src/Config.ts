@@ -1,6 +1,6 @@
 import { LLMPartialConfig } from './types';
 
-export class Config<TConfig extends LLMPartialConfig = {}, TParentConfig extends LLMPartialConfig = {}> {
+export class Config<TConfig extends LLMPartialConfig = LLMPartialConfig, TParentConfig extends LLMPartialConfig = {}> {
 	readonly config: TConfig & TParentConfig;
 
 	constructor(config: TConfig, parent?: Config<TParentConfig>) {

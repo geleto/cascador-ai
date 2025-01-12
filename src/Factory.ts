@@ -12,7 +12,7 @@ type TemplateRenderer<T extends TemplateConfig = TemplateConfig> = {
 }
 
 export class Factory {
-	TemplateRenderer(config: Partial<TemplateConfig>, parent?: Config<LLMPartialConfig>): TemplateRenderer {
+	TemplateRenderer(config: Partial<TemplateConfig>, parent?: Config): TemplateRenderer {
 		const renderer = new TemplateEngine(config, parent);
 		const callableRenderer: TemplateRenderer = (promptOrConfig?: string | Partial<TemplateConfig>, context?: Context) => {
 			return renderer.call(promptOrConfig, context);
@@ -21,15 +21,15 @@ export class Factory {
 		return callableRenderer;
 	}
 
-	Config<T extends LLMPartialConfig>(config: T, parent?: Config<LLMPartialConfig>) {
+	Config<T extends LLMPartialConfig>(config: T, parent?: Config) {
 		return new Config<T>(config, parent);
 	}
 
-	TextGenerator(config: CallSignatureConfig<typeof generateText>, parent?: Config<LLMPartialConfig>) {
+	TextGenerator(config: CallSignatureConfig<typeof generateText>, parent?: Config) {
 		return createLLMRenderer<typeof generateText>(config, generateText, parent);
 	}
 
-	ObjectGenerator(config: CallSignatureConfig<typeof generateObject>, parent?: Config<LLMPartialConfig>) {
+	ObjectGenerator(config: CallSignatureConfig<typeof generateObject>, parent?: Config) {
 		return createLLMRenderer<typeof generateObject>(config, generateObject, parent);
 	}
 }

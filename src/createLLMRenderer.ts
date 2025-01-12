@@ -13,7 +13,7 @@ export type CallSignatureConfig<F extends (config: any) => Promise<any>> = Param
 
 //Create a generator/streamer from a Vercel AI function
 export function createLLMRenderer<F extends (config: any) => Promise<any>>
-	(config: CallSignatureConfig<F>, func: F, parent?: Config<LLMPartialConfig>) {
+	(config: CallSignatureConfig<F>, func: F, parent?: Config) {
 	type rtype = Awaited<ReturnType<F>>;//avoid TS bug where ReturnType<F> is not considered a promise
 	const renderer = new TemplateEngine(config, parent);
 	const generator: FunctionCallSignature<F> = (

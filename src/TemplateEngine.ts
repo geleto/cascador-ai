@@ -7,7 +7,7 @@ export class TemplateEngine extends Config<TemplateConfig> {
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateConfig, parent?: Config<LLMPartialConfig>) {
+	constructor(config: TemplateConfig, parent?: Config) {
 		super(config, parent);
 
 		// Initialize environment
@@ -70,7 +70,7 @@ export class TemplateEngine extends Config<TemplateConfig> {
 
 		// If we have a promptName, load and compile that template
 		if (this.config.promptName && !this.template) {
-			this.template = await this.env.getTemplate(this.config.promptName, true);
+			this.template = await this.env.getTemplatePAsync(this.config.promptName, true);
 		}
 
 		if (!this.template) {
