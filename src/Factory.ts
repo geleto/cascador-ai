@@ -1,7 +1,7 @@
 import { Config, ConfigBase } from "./Config";
 import { CallSignatureConfig, createLLMRenderer, FunctionCallSignature } from "./createLLMRenderer";
 import { TemplateEngine } from "./TemplateEngine";
-import { Context, TemplateConfig } from "./types";
+import { AnyLLMConfigPartial, Context, TemplateConfig } from "./types";
 import { generateObject, generateText } from 'ai';
 
 type TemplateRenderer = ConfigBase<TemplateConfig> & {
@@ -22,14 +22,14 @@ export class Factory {
 		callableRenderer.config = config;
 		return callableRenderer;
 	}
-	Config(config: TemplateConfig) {
-		return new Config(config);
+	Config(config: AnyLLMConfigPartial, parent?: Config) {
+		return new Config(config, parent);
 	}
-	TextGenerator(config: CallSignatureConfig<typeof generateText>) {
-		return createLLMRenderer<typeof generateText>(config, generateText);
+	TextGenerator(config: CallSignatureConfig<typeof generateText>, parent?: Config) {
+		return createLLMRenderer<typeof generateText>(config, generateText, parent);
 	}
-	ObjectGenerator(config: CallSignatureConfig<typeof generateObject>) {
-		return createLLMRenderer<typeof generateObject>(config, generateObject);
+	ObjectGenerator(config: CallSignatureConfig<typeof generateObject>, parent?: Config) {
+		return createLLMRenderer<typeof generateObject>(config, generateObject, parent);
 	}
 
 }

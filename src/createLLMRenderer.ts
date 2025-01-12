@@ -1,3 +1,4 @@
+import { Config } from "./Config";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, TemplateConfig } from "./types";
 
@@ -11,9 +12,9 @@ export type FunctionCallSignature<F extends (config: any) => Promise<any>> = {
 export type CallSignatureConfig<F extends (config: any) => Promise<any>> = Parameters<F>[0] & TemplateConfig;
 
 //Create a generator/streamer from a Vercel AI function
-export function createLLMRenderer<F extends (config: any) => Promise<any>>(config: CallSignatureConfig<F>, func: F) {
+export function createLLMRenderer<F extends (config: any) => Promise<any>>(config: CallSignatureConfig<F>, func: F, parent?: Config) {
 	type rtype = Awaited<ReturnType<F>>;//avoid TS bug where ReturnType<F> is not considered a promise
-	const renderer = new TemplateEngine(config);
+	const renderer = new TemplateEngine(config, parent);
 	const generator: FunctionCallSignature<F> = (
 		async (promptOrConfig?: Partial<CallSignatureConfig<F>> | string, context?: Context): Promise<rtype> => {
 			const prompt = await renderer.call(promptOrConfig, context);

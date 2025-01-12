@@ -10,7 +10,6 @@ export type Filters = Record<string, (input: any, ...args: any[]) => Promise<any
 export interface TemplateConfig {
 	context?: Context;
 	filters?: Filters;
-	parent?: ConfigBase<AnyLLMConfigPartial>
 	loader?: ILoaderAny | ILoaderAny[] | null;
 	promptName?: string;
 	prompt?: string;

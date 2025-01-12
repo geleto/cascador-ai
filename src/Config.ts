@@ -8,14 +8,14 @@ export class Config implements ConfigBase<AnyLLMConfigPartial> {
 	config: AnyLLMConfigPartial;
 
 	constructor(config: AnyLLMConfigPartial, parent?: Config) {
-		this.config = Config.mergeConfig(parent ? parent.config : undefined, config, parent);
+		this.config = Config.mergeConfig(parent ? parent.config : undefined, config);
 	}
 
 	getMergedConfig(parentConfig?: AnyLLMConfigPartial): AnyLLMConfigPartial {
 		return Config.mergeConfig(parentConfig, this.config);
 	}
 
-	static mergeConfig(parentConfig?: AnyLLMConfigPartial, config?: AnyLLMConfigPartial, parent?: Config): AnyLLMConfigPartial {
+	static mergeConfig(parentConfig?: AnyLLMConfigPartial, config?: AnyLLMConfigPartial): AnyLLMConfigPartial {
 		if (!parentConfig) {
 			return { ...(config || {}) };
 		}
@@ -37,7 +37,6 @@ export class Config implements ConfigBase<AnyLLMConfigPartial> {
 				...(parentConfig.loader ? (Array.isArray(parentConfig.loader) ? parentConfig.loader : [parentConfig.loader]) : []),
 				...(config.loader ? (Array.isArray(config.loader) ? config.loader : [config.loader]) : [])
 			],
-			parent
 		};
 	}
 }
