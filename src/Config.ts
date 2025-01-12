@@ -11,12 +11,6 @@ export class Config<TConfig extends LLMPartialConfig = {}, TParentConfig extends
 		this.config = Config.mergeConfig(parent?.config, config);
 	}
 
-	getMergedConfig<TNewConfig extends LLMPartialConfig>(
-		newConfig?: TNewConfig
-	): (TConfig & TParentConfig) & TNewConfig {
-		return Config.mergeConfig(this.config, newConfig);
-	}
-
 	static mergeConfig<TChild extends LLMPartialConfig, TParent extends LLMPartialConfig>(
 		parentConfig: TParent | undefined,
 		childConfig: TChild | undefined
