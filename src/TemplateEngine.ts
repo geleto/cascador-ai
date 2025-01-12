@@ -10,6 +10,14 @@ export class TemplateEngine extends Config<TemplateConfig> {
 	constructor(config: TemplateConfig, parent?: Config) {
 		super(config, parent);
 
+		if (!config.prompt && !config.promptName) {
+			throw new Error('Either prompt or promptName must be specified');
+		}
+
+		if (config.promptName && !config.loader) {
+			throw new Error('Loader is required when using promptName');
+		}
+
 		// Initialize environment
 		this.env = new PAsyncEnvironment(this.config.loader || null, this.config.options);
 
@@ -70,7 +78,7 @@ export class TemplateEngine extends Config<TemplateConfig> {
 
 		// If we have a promptName, load and compile that template
 		if (this.config.promptName && !this.template) {
-			this.template = await this.env.getTemplatePAsync(this.config.promptName, true);
+			this.template = await this.env.getTemplatePAsync(this.config.promptName);
 		}
 
 		if (!this.template) {
@@ -78,6 +86,10 @@ export class TemplateEngine extends Config<TemplateConfig> {
 		}
 
 		// Render template with context
-		return await this.template.render(context || {});
+		try {
+			return await this.template.render(context || {})
+		} catch (error) {
+			throw new Error('Failed to render template', { cause: error });
+		}
 	}
 }
