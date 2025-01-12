@@ -1,13 +1,9 @@
 import { LLMPartialConfig } from './types';
 
-export interface ConfigBase<ConfigType> {
-	config: ConfigType;
-}
-
 export class Config<TConfig extends LLMPartialConfig = {}, TParentConfig extends LLMPartialConfig = {}> {
 	readonly config: TConfig & TParentConfig;
 
-	constructor(config: TConfig, parent?: Config<any, any>) {
+	constructor(config: TConfig, parent?: Config<TParentConfig>) {
 		this.config = Config.mergeConfig(parent?.config, config);
 	}
 
