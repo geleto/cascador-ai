@@ -1,5 +1,5 @@
 import { ConfigData } from "./ConfigData";
-import { createLLMGenerator, createLLMStreamer, GeneratorConfig, StreamerConfig } from "./createLLMRenderer";
+import { createLLMGenerator, createLLMStreamer } from "./createLLMRenderer";
 import { TemplateEngine } from "./TemplateEngine";
 import {
 	Context,
@@ -7,8 +7,7 @@ import {
 	TemplateConfig,
 	ObjectStreamOutputType,
 	ObjectGeneratorOutputType,
-	ObjectStreamerConfig,
-	ObjectGeneratorConfig
+	ConfigFromFunction
 } from "./types";
 import { generateObject, generateText, streamText, streamObject } from 'ai';
 import { z } from 'zod';
@@ -35,17 +34,17 @@ export class Factory {
 	}
 
 	// Use generator for Promise-based functions
-	TextGenerator(config: GeneratorConfig<typeof generateText>, parent?: ConfigData) {
+	TextGenerator(config: ConfigFromFunction<typeof generateText>, parent?: ConfigData) {
 		return createLLMGenerator<typeof generateText>(config, generateText, parent);
 	}
 
 	// Use streamer for stream-based functions
-	TextStreamer(config: StreamerConfig<typeof streamText>, parent?: ConfigData) {
+	TextStreamer(config: ConfigFromFunction<typeof streamText>, parent?: ConfigData) {
 		return createLLMStreamer<typeof streamText>(config, streamText, parent);
 	}
 
 	ObjectGenerator<T>(
-		config: ObjectGeneratorConfig & { schema?: z.Schema<T> },
+		config: ConfigFromFunction<typeof generateObject> & { schema?: z.Schema<T> },
 		parentOrOutput?: ConfigData | ObjectGeneratorOutputType,
 		maybeOutput: ObjectGeneratorOutputType = 'object'
 	) {
@@ -61,7 +60,7 @@ export class Factory {
 	}
 
 	ObjectStreamer<T>(
-		config: ObjectStreamerConfig & { schema?: z.Schema<T> },
+		config: ConfigFromFunction<typeof streamObject> & { schema?: z.Schema<T> },
 		parentOrOutput?: ConfigData | ObjectStreamOutputType,
 		maybeOutput: ObjectStreamOutputType = 'object'
 	) {

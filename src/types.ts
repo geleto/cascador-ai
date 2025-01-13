@@ -1,4 +1,3 @@
-// In types.ts
 import { generateText, streamText, generateObject, GenerateObjectResult, streamObject, JSONValue } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
 
@@ -19,18 +18,13 @@ export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum
 export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
 
 // Base configs for generators and streamers
-export type GeneratorConfig<F extends (config: any) => Promise<any>> = Parameters<F>[0] & TemplateConfig;
-export type StreamerConfig<F extends (config: any) => Record<string, any>> = Parameters<F>[0] & TemplateConfig;
-
-// Config types for different generators/streamers
-export type TextGeneratorConfig = GeneratorConfig<typeof generateText>;
-export type TextStreamerConfig = StreamerConfig<typeof streamText>;
-export type ObjectGeneratorConfig = Omit<Parameters<typeof generateObject>[0], 'output'> & TemplateConfig;
-export type ObjectStreamerConfig = Omit<Parameters<typeof streamObject>[0], 'output'> & TemplateConfig;
+export type GeneratorFunction = (config: any) => (Promise<any>);
+export type StreamFunction = (config: any) => (any);
+export type ConfigFromFunction<F extends GeneratorFunction | StreamFunction> = Omit<Parameters<F>[0], 'output'> & TemplateConfig;
 
 // Union type for partial configs
 export type LLMPartialConfig =
-	Partial<TextGeneratorConfig> |
-	Partial<TextStreamerConfig> |
-	Partial<ObjectGeneratorConfig> |
-	Partial<ObjectStreamerConfig>;
+	Partial<ConfigFromFunction<typeof generateText>> |
+	Partial<ConfigFromFunction<typeof streamText>> |
+	Partial<ConfigFromFunction<typeof generateObject>> |
+	Partial<ConfigFromFunction<typeof streamObject>>;

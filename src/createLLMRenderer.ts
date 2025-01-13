@@ -1,29 +1,17 @@
 // createLLMRenderer.ts
 import { ConfigData } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
-import { Context, TemplateConfig } from "./types";
-
-// More flexible base types for different kinds of returns
-type AnyStreamResult = {
-	textStream?: AsyncIterable<any>;
-	fullStream?: AsyncIterable<any>;
-	[key: string]: any;
-};
-
-// Base type for LLM functions that encompasses both Promise and Stream returns
-type LLMFunction = (config: any) => (Promise<any> | AnyStreamResult);
+import { Context, ConfigFromFunction, TemplateConfig, StreamFunction, GeneratorFunction } from "./types";
 
 // Generator function signature that preserves overloads
-export type GeneratorCallSignature<F extends LLMFunction> = {
+export type GeneratorCallSignature<F extends GeneratorFunction> = {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
 	config: Parameters<F>[0] & TemplateConfig;
 };
 
-export type GeneratorConfig<F extends LLMFunction> = Parameters<F>[0] & TemplateConfig;
-
 // Create a generator that preserves function overloads
-export function createLLMGenerator<F extends LLMFunction>(
-	config: GeneratorConfig<F>,
+export function createLLMGenerator<F extends GeneratorFunction>(
+	config: ConfigFromFunction<F>,
 	func: F,
 	parent?: ConfigData
 ): GeneratorCallSignature<F> {
@@ -65,21 +53,19 @@ export function createLLMGenerator<F extends LLMFunction>(
 	return generator;
 }
 
-export type StreamerCallSignature<F extends LLMFunction> = {
+export type StreamerCallSignature<F extends StreamFunction> = {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
 	config: Parameters<F>[0] & TemplateConfig;
 }
 
-export type StreamerConfig<F extends LLMFunction> = Parameters<F>[0] & TemplateConfig;
-
-export function createLLMStreamer<F extends LLMFunction>(
-	config: StreamerConfig<F>,
+export function createLLMStreamer<F extends StreamFunction>(
+	config: ConfigFromFunction<F>,
 	func: F,
 	parent?: ConfigData
 ): StreamerCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
 
-	const streamer = (async (promptOrConfig?: Partial<StreamerConfig<F>> | string, context?: Context) => {
+	const streamer = (async (promptOrConfig?: Partial<ConfigFromFunction<F>> | string, context?: Context) => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 
