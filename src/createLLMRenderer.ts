@@ -1,7 +1,6 @@
 import { Config } from "./Config";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, TemplateConfig } from "./types";
-import { generateObject, StreamTextResult, TextStreamPart } from 'ai';
 
 // More flexible base types for different kinds of returns
 type AnyStreamResult = {
@@ -17,7 +16,7 @@ type LLMFunction = (config: any) => (Promise<any> | AnyStreamResult);
 export type GeneratorCallSignature<F extends LLMFunction> = {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
 	config: Parameters<F>[0] & TemplateConfig;
-}
+};
 
 export type GeneratorConfig<F extends LLMFunction> = Parameters<F>[0] & TemplateConfig;
 
@@ -32,17 +31,25 @@ export function createLLMGenerator<F extends LLMFunction>(
 	const generator = (async (promptOrConfig?: any, context?: Context) => {
 		const prompt = await renderer.call(promptOrConfig, context);
 
-		if (typeof promptOrConfig !== 'string') {
+		// If user passes an object, we deeply merge configs
+		if (typeof promptOrConfig !== 'string' && promptOrConfig) {
 			const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
 			if (context) {
-				mergedConfig.context = context;
+				mergedConfig.context = { ...mergedConfig.context, ...context };
 			}
 			return func(mergedConfig);
 		}
+		// If user passes a string
 		else if (typeof promptOrConfig === 'string') {
+			// Fix: also merge context if provided
 			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+			if (context) {
+				mergedConfig.context = { ...mergedConfig.context, ...context };
+			}
 			return func(mergedConfig);
 		}
+
+		// If nothing is passed, just call with the renderer config
 		return func(renderer.config);
 	}) as GeneratorCallSignature<F>;
 
@@ -69,18 +76,25 @@ export function createLLMStreamer<F extends LLMFunction>(
 	const streamer = (async (promptOrConfig?: Partial<StreamerConfig<F>> | string, context?: Context) => {
 		const prompt = await renderer.call(promptOrConfig, context);
 
-		if (typeof promptOrConfig !== 'string') {
+		// Object scenario
+		if (typeof promptOrConfig !== 'string' && promptOrConfig) {
 			const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
 			if (context) {
-				mergedConfig.context = context;
+				mergedConfig.context = { ...mergedConfig.context, ...context };
 			}
 			mergedConfig.prompt = prompt;
 			return func(mergedConfig);
 		}
+		// String scenario
 		else if (typeof promptOrConfig === 'string') {
 			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+			if (context) {
+				mergedConfig.context = { ...mergedConfig.context, ...context };
+			}
 			return func(mergedConfig);
 		}
+
+		// No arguments
 		const mergedConfig = { ...renderer.config, prompt };
 		return func(mergedConfig);
 	}) as StreamerCallSignature<F>;

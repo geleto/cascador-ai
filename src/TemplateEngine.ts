@@ -35,8 +35,9 @@ export class TemplateEngine extends Config {
 		// Compile template if prompt is provided
 		if (this.config.prompt) {
 			this.template = compilePAsync(this.config.prompt, this.env);
-			//@todo if promptName is provided, store the template in the loader
+			//@todo - if promptName is provided, store the template in the loader
 		} else {
+			// If no direct prompt, we must have promptName + loader
 			if (!this.config.promptName) {
 				throw new Error('TemplateRendererBase requires a prompt or promptName to be specified');
 			}
@@ -48,16 +49,21 @@ export class TemplateEngine extends Config {
 	}
 
 	async call(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string> {
+		// If user passed a string prompt
 		if (typeof promptOrConfig === 'string') {
 			return this.render(promptOrConfig, context);
 		}
 
+		// If user passed an object
 		if (promptOrConfig && typeof promptOrConfig === 'object') {
 			const newConfig = Config.mergeConfig(this.config, promptOrConfig);
-			return this.render(undefined, newConfig.context);
+			// If the user provided an override prompt in the object, honor it
+			const maybePrompt = newConfig.prompt;
+			return this.render(maybePrompt, newConfig.context);
 		}
 
-		return this.render();
+		// If nothing passed
+		return this.render(undefined, context);
 	}
 
 	protected async render(
@@ -68,16 +74,17 @@ export class TemplateEngine extends Config {
 			this.template = await this.templatePromise;
 			this.templatePromise = undefined;
 		}
-		const context = contextOverride ?
-			{ ...this.config.context, ...contextOverride } :
-			this.config.context;
+
+		const mergedContext = contextOverride
+			? { ...this.config.context, ...contextOverride }
+			: this.config.context;
 
 		// If prompt override provided, compile new template
 		if (promptOverride) {
 			this.template = await compilePAsync(promptOverride, this.env, '', true);
 		}
 
-		// If we have a promptName, load and compile that template
+		// If we have a promptName but no template yet, load it
 		if (this.config.promptName && !this.template) {
 			this.template = await this.env.getTemplatePAsync(this.config.promptName);
 		}
@@ -88,7 +95,7 @@ export class TemplateEngine extends Config {
 
 		// Render template with context
 		try {
-			return await this.template.render(context || {})
+			return await this.template.render(mergedContext || {});
 		} catch (error) {
 			throw new Error('Failed to render template', { cause: error });
 		}
