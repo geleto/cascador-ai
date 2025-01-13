@@ -2,6 +2,7 @@ import { LLMPartialConfig } from './types';
 
 export class ConfigData<
 	TConfig extends LLMPartialConfig = LLMPartialConfig,
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	TParentConfig extends LLMPartialConfig = {}
 > {
 	readonly config: TConfig & TParentConfig;
@@ -25,29 +26,29 @@ export class ConfigData<
 		if (!childConfig) return parentConfig as TParent & TChild;
 
 		// Start shallow merge
-		const merged: any = { ...parentConfig, ...childConfig };
+		const merged = { ...parentConfig, ...childConfig };
 
 		// Now handle known deep merges:
 		if ('context' in parentConfig || 'context' in childConfig) {
 			merged.context = {
-				...(parentConfig as any).context || {},
-				...(childConfig as any).context || {},
+				...parentConfig.context ?? {},
+				...childConfig.context ?? {},
 			};
 		}
 		if ('filters' in parentConfig || 'filters' in childConfig) {
 			merged.filters = {
-				...(parentConfig as any).filters || {},
-				...(childConfig as any).filters || {},
+				...parentConfig.filters ?? {},
+				...childConfig.filters ?? {},
 			};
 		}
 
 		// Fixed loader handling with proper deduplication and type checking
-		const parentLoaders = parentConfig?.loader
+		const parentLoaders = parentConfig.loader
 			? Array.isArray(parentConfig.loader)
 				? parentConfig.loader
 				: [parentConfig.loader]
 			: [];
-		const childLoaders = childConfig?.loader
+		const childLoaders = childConfig.loader
 			? Array.isArray(childConfig.loader)
 				? childConfig.loader
 				: [childConfig.loader]
@@ -58,6 +59,6 @@ export class ConfigData<
 			new Set([...parentLoaders, ...childLoaders].filter(Boolean))
 		);
 
-		return merged as TParent & TChild;
+		return merged;
 	}
 }

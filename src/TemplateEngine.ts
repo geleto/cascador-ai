@@ -6,7 +6,7 @@ import { ConfigData } from './ConfigData';
 /**
  * @requires ES2017 (ES8) - For async function support
  */
-function isAsync(fn: Function): boolean {
+function isAsync(fn: (...args: any[]) => any): boolean {
 	if (typeof fn !== 'function') {
 		throw new TypeError('Expected a function');
 	}
@@ -14,7 +14,7 @@ function isAsync(fn: Function): boolean {
 	return Object.prototype.toString.call(fn) === '[object AsyncFunction]';
 }
 
-export type TemplateCallSignature<T extends TemplateConfig = TemplateConfig> = {
+export interface TemplateCallSignature<T extends TemplateConfig = TemplateConfig> {
 	(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string>;
 	config: T;
 }
@@ -37,7 +37,7 @@ export class TemplateEngine extends ConfigData {
 		}
 
 		// Initialize environment
-		this.env = new PAsyncEnvironment(this.config.loader || null, this.config.options);
+		this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
 
 		// Add filters with proper type checking
 		if (this.config.filters) {
@@ -65,22 +65,26 @@ export class TemplateEngine extends ConfigData {
 		try {
 			// If user passed a string prompt
 			if (typeof promptOrConfig === 'string') {
-				return this.render(promptOrConfig, context);
+				return await this.render(promptOrConfig, context);
 			}
 
 			// If user passed an object
 			if (promptOrConfig && typeof promptOrConfig === 'object') {
 				const newConfig = ConfigData.mergeConfigs(this.config, promptOrConfig);
-				return this.render(newConfig.prompt, newConfig.context);
+				return await this.render(newConfig.prompt, newConfig.context);
 			}
 
 			// If nothing passed
-			return this.render(undefined, context);
+			return await this.render(undefined, context);
 		} catch (error: any) {
-			const errorMessage = `Template rendering failed: ${error?.message || 'Unknown error'}`;
-			const fullError = new Error(errorMessage, { cause: error });
-			fullError.stack = `${fullError.stack}\nCaused By:\n${error.stack || ''}`;
-			throw fullError;
+			const errorMessage = 'Template rendering failed: ' +
+				(error instanceof Error ? error.message : 'Unknown error');
+
+			const err = new Error(errorMessage, { cause: error });
+			if (error instanceof Error) {
+				err.stack = error.stack;
+			}
+			throw err;
 		}
 	}
 
@@ -102,7 +106,7 @@ export class TemplateEngine extends ConfigData {
 				: this.config.context;
 
 			if (promptOverride) {
-				this.template = await compilePAsync(promptOverride, this.env, '', true);
+				this.template = compilePAsync(promptOverride, this.env, '', true);
 			}
 
 			if (!this.template && this.config.promptName) {
@@ -113,9 +117,10 @@ export class TemplateEngine extends ConfigData {
 				throw new Error('No template available to render');
 			}
 
-			return await this.template.render(mergedContext || {});
+			return await this.template.render(mergedContext ?? {});
 		} catch (error: any) {
-			throw new Error(`Template rendering failed: ${error?.message || 'Unknown error'}`, { cause: error });
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			throw new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
 		}
 	}
 }

@@ -1,8 +1,8 @@
-import { generateText, streamText, generateObject, GenerateObjectResult, streamObject, JSONValue } from 'ai';
+import { generateText, streamText, generateObject, streamObject } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
 
 export type Context = Record<string, any>;
-export type Filters = Record<string, (input: any, ...args: any[]) => Promise<any> | any>;
+export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
 export interface TemplateConfig {
 	context?: Context;

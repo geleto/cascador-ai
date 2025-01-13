@@ -17,7 +17,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"lint": "eslint src --ext .ts",
+		"lint": "eslint src",
 		"typecheck": "tsc --noEmit",
 		"test": "mocha --node-option loader=ts-node/esm \"tests/**/*.test.ts\"",
 		"test:watch": "mocha --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --watch"

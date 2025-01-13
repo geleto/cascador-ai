@@ -34,7 +34,7 @@ export class Factory {
 		maybeOutput: ObjectGeneratorOutputType = 'object'
 	) {
 		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
-		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput || maybeOutput);
+		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput ?? maybeOutput);
 		const configWithOutput = {
 			...config,
 			output: output
@@ -49,7 +49,7 @@ export class Factory {
 		maybeOutput: ObjectStreamOutputType = 'object'
 	) {
 		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
-		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput || maybeOutput);
+		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput ?? maybeOutput);
 		const configWithOutput = {
 			...config,
 			output: output
