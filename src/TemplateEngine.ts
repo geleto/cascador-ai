@@ -1,7 +1,7 @@
 // TemplateEngine.ts
 import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
 import { Context, TemplateConfig } from './types';
-import { Config } from './Config';
+import { ConfigData } from './ConfigData';
 
 /**
  * @requires ES2017 (ES8) - For async function support
@@ -14,12 +14,12 @@ function isAsync(fn: Function): boolean {
 	return Object.prototype.toString.call(fn) === '[object AsyncFunction]';
 }
 
-export class TemplateEngine extends Config {
+export class TemplateEngine extends ConfigData {
 	protected env: PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateConfig, parent?: Config) {
+	constructor(config: TemplateConfig, parent?: ConfigData) {
 		super(config, parent);
 
 		// Validate configuration
@@ -65,7 +65,7 @@ export class TemplateEngine extends Config {
 
 			// If user passed an object
 			if (promptOrConfig && typeof promptOrConfig === 'object') {
-				const newConfig = Config.mergeConfig(this.config, promptOrConfig);
+				const newConfig = ConfigData.mergeConfigs(this.config, promptOrConfig);
 				return this.render(newConfig.prompt, newConfig.context);
 			}
 

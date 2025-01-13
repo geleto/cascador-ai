@@ -1,5 +1,5 @@
 // createLLMRenderer.ts
-import { Config } from "./Config";
+import { ConfigData } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, TemplateConfig } from "./types";
 
@@ -25,7 +25,7 @@ export type GeneratorConfig<F extends LLMFunction> = Parameters<F>[0] & Template
 export function createLLMGenerator<F extends LLMFunction>(
 	config: GeneratorConfig<F>,
 	func: F,
-	parent?: Config
+	parent?: ConfigData
 ): GeneratorCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
 
@@ -33,9 +33,9 @@ export function createLLMGenerator<F extends LLMFunction>(
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 
-			// Object scenario - user passed a config object
+			// Object scenario - user passed a settings object
 			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-				const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
+				const mergedConfig = ConfigData.mergeConfigs(renderer.config, promptOrConfig);
 				mergedConfig.prompt = prompt;
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
@@ -45,7 +45,7 @@ export function createLLMGenerator<F extends LLMFunction>(
 
 			// String scenario - user passed a prompt string
 			if (typeof promptOrConfig === 'string') {
-				const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+				const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
 				}
@@ -53,7 +53,7 @@ export function createLLMGenerator<F extends LLMFunction>(
 			}
 
 			// No arguments scenario - fixed to properly use the rendered prompt
-			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+			const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
 			return func(mergedConfig);
 
 		} catch (error: any) {
@@ -75,7 +75,7 @@ export type StreamerConfig<F extends LLMFunction> = Parameters<F>[0] & TemplateC
 export function createLLMStreamer<F extends LLMFunction>(
 	config: StreamerConfig<F>,
 	func: F,
-	parent?: Config
+	parent?: ConfigData
 ): StreamerCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
 
@@ -83,9 +83,9 @@ export function createLLMStreamer<F extends LLMFunction>(
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 
-			// Object scenario - user passed a config object
+			// Object scenario - user passed a settings object
 			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-				const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
+				const mergedConfig = ConfigData.mergeConfigs(renderer.config, promptOrConfig);
 				mergedConfig.prompt = prompt; // Ensure prompt is set after merging
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
@@ -95,7 +95,7 @@ export function createLLMStreamer<F extends LLMFunction>(
 
 			// String scenario - user passed a prompt string
 			if (typeof promptOrConfig === 'string') {
-				const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+				const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
 				}
@@ -103,7 +103,7 @@ export function createLLMStreamer<F extends LLMFunction>(
 			}
 
 			// No arguments scenario
-			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+			const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
 			return func(mergedConfig);
 		} catch (error: any) {
 			throw new Error(`Streamer execution failed: ${error?.message || 'Unknown error'}`, { cause: error });

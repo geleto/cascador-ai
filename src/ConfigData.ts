@@ -1,21 +1,20 @@
-// Config.ts
 import { LLMPartialConfig } from './types';
 
-export class Config<
+export class ConfigData<
 	TConfig extends LLMPartialConfig = LLMPartialConfig,
 	TParentConfig extends LLMPartialConfig = {}
 > {
 	readonly config: TConfig & TParentConfig;
 
-	constructor(config: TConfig, parent?: Config<TParentConfig>) {
-		this.config = Config.mergeConfig(parent?.config, config);
+	constructor(config: TConfig, parent?: ConfigData<TParentConfig>) {
+		this.config = ConfigData.mergeConfigs(parent?.config, config);
 	}
 
 	/**
 	 * Merge two partial LLM configs into a single object.
 	 * The return type is exactly the union of P & C (with child overriding parent).
 	 */
-	static mergeConfig<
+	static mergeConfigs<
 		TParent extends LLMPartialConfig,
 		TChild extends LLMPartialConfig
 	>(

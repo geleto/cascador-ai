@@ -15,8 +15,8 @@ export interface TemplateConfig {
 }
 
 // Valid output types for object operations
-export type ObjectGeneratorOutput = 'array' | 'object' | 'no-schema' | 'enum';
-export type ObjectStreamOutput = 'array' | 'object' | 'no-schema';
+export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
+export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
 
 // Base configs for generators and streamers
 export type GeneratorConfig<F extends (config: any) => Promise<any>> = Parameters<F>[0] & TemplateConfig;

@@ -1,12 +1,12 @@
-import { Config } from "./Config";
+import { ConfigData } from "./ConfigData";
 import { createLLMGenerator, createLLMStreamer, GeneratorConfig, StreamerConfig } from "./createLLMRenderer";
 import { TemplateEngine } from "./TemplateEngine";
 import {
 	Context,
 	LLMPartialConfig,
 	TemplateConfig,
-	ObjectStreamOutput,
-	ObjectGeneratorOutput,
+	ObjectStreamOutputType,
+	ObjectGeneratorOutputType,
 	ObjectStreamerConfig,
 	ObjectGeneratorConfig
 } from "./types";
@@ -21,7 +21,7 @@ type TemplateRenderer<T extends TemplateConfig = TemplateConfig> = {
 }
 
 export class Factory {
-	TemplateRenderer(config: Partial<TemplateConfig>, parent?: Config): TemplateRenderer {
+	TemplateRenderer(config: Partial<TemplateConfig>, parent?: ConfigData): TemplateRenderer {
 		const renderer = new TemplateEngine(config, parent);
 		const callableRenderer: TemplateRenderer = (promptOrConfig?: string | Partial<TemplateConfig>, context?: Context) => {
 			return renderer.call(promptOrConfig, context);
@@ -30,27 +30,27 @@ export class Factory {
 		return callableRenderer;
 	}
 
-	Config<T extends LLMPartialConfig>(config: T, parent?: Config) {
-		return new Config<T>(config, parent);
+	ConfigData<T extends LLMPartialConfig>(config: T, parent?: ConfigData) {
+		return new ConfigData<T>(config, parent);
 	}
 
 	// Use generator for Promise-based functions
-	TextGenerator(config: GeneratorConfig<typeof generateText>, parent?: Config) {
+	TextGenerator(config: GeneratorConfig<typeof generateText>, parent?: ConfigData) {
 		return createLLMGenerator<typeof generateText>(config, generateText, parent);
 	}
 
 	// Use streamer for stream-based functions
-	TextStreamer(config: StreamerConfig<typeof streamText>, parent?: Config) {
+	TextStreamer(config: StreamerConfig<typeof streamText>, parent?: ConfigData) {
 		return createLLMStreamer<typeof streamText>(config, streamText, parent);
 	}
 
 	ObjectGenerator<T>(
 		config: ObjectGeneratorConfig & { schema?: z.Schema<T> },
-		parentOrOutput?: Config | ObjectGeneratorOutput,
-		maybeOutput: ObjectGeneratorOutput = 'object'
+		parentOrOutput?: ConfigData | ObjectGeneratorOutputType,
+		maybeOutput: ObjectGeneratorOutputType = 'object'
 	) {
-		const parent = parentOrOutput instanceof Config ? parentOrOutput : undefined;
-		const output = parentOrOutput instanceof Config ? maybeOutput : (parentOrOutput || maybeOutput);
+		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
+		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput || maybeOutput);
 
 		const finalConfig = {
 			...config,
@@ -62,11 +62,11 @@ export class Factory {
 
 	ObjectStreamer<T>(
 		config: ObjectStreamerConfig & { schema?: z.Schema<T> },
-		parentOrOutput?: Config | ObjectStreamOutput,
-		maybeOutput: ObjectStreamOutput = 'object'
+		parentOrOutput?: ConfigData | ObjectStreamOutputType,
+		maybeOutput: ObjectStreamOutputType = 'object'
 	) {
-		const parent = parentOrOutput instanceof Config ? parentOrOutput : undefined;
-		const output = parentOrOutput instanceof Config ? maybeOutput : (parentOrOutput || maybeOutput);
+		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
+		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput || maybeOutput);
 
 		const finalConfig = {
 			...config,
