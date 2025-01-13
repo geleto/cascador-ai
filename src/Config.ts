@@ -1,3 +1,4 @@
+// Config.ts
 import { LLMPartialConfig } from './types';
 
 export class Config<
@@ -41,21 +42,21 @@ export class Config<
 			};
 		}
 
-		// Concatenate loader arrays (if any). If either side is null/undefined, skip it.
-		const pLoader = (parentConfig as any).loader;
-		const cLoader = (childConfig as any).loader;
-		const parentLoaders = pLoader
-			? Array.isArray(pLoader) ? pLoader : [pLoader]
+		// Fixed loader handling with proper deduplication and type checking
+		const parentLoaders = parentConfig?.loader
+			? Array.isArray(parentConfig.loader)
+				? parentConfig.loader
+				: [parentConfig.loader]
 			: [];
-		const childLoaders = cLoader
-			? Array.isArray(cLoader) ? cLoader : [cLoader]
+		const childLoaders = childConfig?.loader
+			? Array.isArray(childConfig.loader)
+				? childConfig.loader
+				: [childConfig.loader]
 			: [];
+
 		merged.loader = Array.from(
-			//remove duplicates
-			new Set([
-				...(Array.isArray(parentConfig?.loader) ? parentConfig.loader : parentConfig?.loader ? [parentConfig.loader] : []),
-				...(Array.isArray(childConfig?.loader) ? childConfig.loader : childConfig?.loader ? [childConfig.loader] : []),
-			])
+			//remove duplicates, filter out nulls, but is this possible (todo)
+			new Set([...parentLoaders, ...childLoaders].filter(Boolean))
 		);
 
 		return merged as TParent & TChild;

@@ -1,3 +1,4 @@
+// createLLMRenderer.ts
 import { Config } from "./Config";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, TemplateConfig } from "./types";
@@ -29,35 +30,41 @@ export function createLLMGenerator<F extends LLMFunction>(
 	const renderer = new TemplateEngine(config, parent);
 
 	const generator = (async (promptOrConfig?: any, context?: Context) => {
-		const prompt = await renderer.call(promptOrConfig, context);
+		try {
+			const prompt = await renderer.call(promptOrConfig, context);
 
-		// If user passes an object, we deeply merge configs
-		if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-			const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
-			if (context) {
-				mergedConfig.context = { ...mergedConfig.context, ...context };
+			// Object scenario - user passed a config object
+			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
+				const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
+				mergedConfig.prompt = prompt;
+				if (context) {
+					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
+				}
+				return func(mergedConfig);
 			}
-			return func(mergedConfig);
-		}
-		// If user passes a string
-		else if (typeof promptOrConfig === 'string') {
-			// Fix: also merge context if provided
+
+			// String scenario - user passed a prompt string
+			if (typeof promptOrConfig === 'string') {
+				const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+				if (context) {
+					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
+				}
+				return func(mergedConfig);
+			}
+
+			// No arguments scenario - fixed to properly use the rendered prompt
 			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
-			if (context) {
-				mergedConfig.context = { ...mergedConfig.context, ...context };
-			}
 			return func(mergedConfig);
-		}
 
-		// If nothing is passed, just call with the renderer config
-		return func(renderer.config);
+		} catch (error: any) {
+			throw new Error(`Generator execution failed: ${error?.message || 'Unknown error'}`, { cause: error });
+		}
 	}) as GeneratorCallSignature<F>;
 
 	generator.config = renderer.config;
 	return generator;
 }
 
-// Streamer function signature that handles stream results
 export type StreamerCallSignature<F extends LLMFunction> = {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
 	config: Parameters<F>[0] & TemplateConfig;
@@ -65,7 +72,6 @@ export type StreamerCallSignature<F extends LLMFunction> = {
 
 export type StreamerConfig<F extends LLMFunction> = Parameters<F>[0] & TemplateConfig;
 
-// Create a streamer that handles stream results
 export function createLLMStreamer<F extends LLMFunction>(
 	config: StreamerConfig<F>,
 	func: F,
@@ -74,29 +80,34 @@ export function createLLMStreamer<F extends LLMFunction>(
 	const renderer = new TemplateEngine(config, parent);
 
 	const streamer = (async (promptOrConfig?: Partial<StreamerConfig<F>> | string, context?: Context) => {
-		const prompt = await renderer.call(promptOrConfig, context);
+		try {
+			const prompt = await renderer.call(promptOrConfig, context);
 
-		// Object scenario
-		if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-			const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
-			if (context) {
-				mergedConfig.context = { ...mergedConfig.context, ...context };
+			// Object scenario - user passed a config object
+			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
+				const mergedConfig = Config.mergeConfig(renderer.config, promptOrConfig);
+				mergedConfig.prompt = prompt; // Ensure prompt is set after merging
+				if (context) {
+					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
+				}
+				return func(mergedConfig);
 			}
-			mergedConfig.prompt = prompt;
-			return func(mergedConfig);
-		}
-		// String scenario
-		else if (typeof promptOrConfig === 'string') {
+
+			// String scenario - user passed a prompt string
+			if (typeof promptOrConfig === 'string') {
+				const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
+				if (context) {
+					mergedConfig.context = { ...mergedConfig.context || {}, ...context };
+				}
+				return func(mergedConfig);
+			}
+
+			// No arguments scenario
 			const mergedConfig = Config.mergeConfig(renderer.config, { prompt });
-			if (context) {
-				mergedConfig.context = { ...mergedConfig.context, ...context };
-			}
 			return func(mergedConfig);
+		} catch (error: any) {
+			throw new Error(`Streamer execution failed: ${error?.message || 'Unknown error'}`, { cause: error });
 		}
-
-		// No arguments
-		const mergedConfig = { ...renderer.config, prompt };
-		return func(mergedConfig);
 	}) as StreamerCallSignature<F>;
 
 	streamer.config = renderer.config;
