@@ -2,7 +2,7 @@ import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
 import { Context, LLMPartialConfig, TemplateConfig } from './types';
 import { Config } from './Config';
 
-export class TemplateEngine extends Config<TemplateConfig> {
+export class TemplateEngine extends Config {
 	protected env: PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
