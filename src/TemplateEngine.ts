@@ -14,6 +14,11 @@ function isAsync(fn: Function): boolean {
 	return Object.prototype.toString.call(fn) === '[object AsyncFunction]';
 }
 
+export type TemplateCallSignature<T extends TemplateConfig = TemplateConfig> = {
+	(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string>;
+	config: T;
+}
+
 export class TemplateEngine extends ConfigData {
 	protected env: PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;

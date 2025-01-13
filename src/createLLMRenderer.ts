@@ -3,20 +3,15 @@ import { ConfigData } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, ConfigFromFunction, TemplateConfig, StreamFunction, GeneratorFunction } from "./types";
 
-// Generator function signature that preserves overloads
 export type GeneratorCallSignature<F extends GeneratorFunction> = {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
 	config: Parameters<F>[0] & TemplateConfig;
 };
 
-// Create a generator that preserves function overloads
 export function createLLMGenerator<F extends GeneratorFunction>(
-	config: ConfigFromFunction<F>,
-	func: F,
-	parent?: ConfigData
+	config: ConfigFromFunction<F>, func: F, parent?: ConfigData
 ): GeneratorCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
-
 	const generator = (async (promptOrConfig?: any, context?: Context) => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
@@ -59,12 +54,9 @@ export type StreamerCallSignature<F extends StreamFunction> = {
 }
 
 export function createLLMStreamer<F extends StreamFunction>(
-	config: ConfigFromFunction<F>,
-	func: F,
-	parent?: ConfigData
+	config: ConfigFromFunction<F>, func: F, parent?: ConfigData
 ): StreamerCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
-
 	const streamer = (async (promptOrConfig?: Partial<ConfigFromFunction<F>> | string, context?: Context) => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
