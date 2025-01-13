@@ -35,6 +35,7 @@ export class TemplateEngine extends Config<TemplateConfig> {
 		// Compile template if prompt is provided
 		if (this.config.prompt) {
 			this.template = compilePAsync(this.config.prompt, this.env);
+			//@todo if promptName is provided, store the template in the loader
 		} else {
 			if (!this.config.promptName) {
 				throw new Error('TemplateRendererBase requires a prompt or promptName to be specified');

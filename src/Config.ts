@@ -33,5 +33,6 @@ export class Config<TConfig extends LLMPartialConfig = LLMPartialConfig, TParent
 				...(childConfig.loader ? (Array.isArray(childConfig.loader) ? childConfig.loader : [childConfig.loader]) : [])
 			],
 		} as TChild & TParent;
+		//todo - use set to ensure unique loaders and filters
 	}
 }
