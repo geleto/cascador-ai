@@ -37,9 +37,7 @@ export default tseslint.config(
 			'space-in-parens': ['error', 'never'],
 			'no-multi-spaces': 'error',
 
-			"@typescript-eslint/no-explicit-any": ["error", {
-				"ignoreTypedefs": true
-			}],
+			"@typescript-eslint/no-explicit-any": "off"
 		}
 	}
 );
