@@ -1,6 +1,9 @@
 import { ConfigData } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
-import { Context, ConfigFromFunction, TemplateConfig, StreamFunction, GeneratorFunction } from "./types";
+import { Context, TemplateConfig, LLMConfigArg } from "./types";
+
+export type GeneratorFunction = (config: any) => Promise<any>;
+export type StreamFunction = (config: any) => any;
 
 export interface GeneratorCallSignature<F extends GeneratorFunction> {
 	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
@@ -8,11 +11,13 @@ export interface GeneratorCallSignature<F extends GeneratorFunction> {
 }
 
 export function createLLMGenerator<F extends GeneratorFunction>(
-	config: ConfigFromFunction<F>, func: F, parent?: ConfigData
+	config: LLMConfigArg,
+	func: F,
+	parent?: ConfigData
 ): GeneratorCallSignature<F> {
-	type rtype = Awaited<ReturnType<F>>;//avoid TS bug where async function return type is not inferred correctly as Promise
+	type rtype = Awaited<ReturnType<F>>; //avoid TS bug where async function return type is not inferred correctly as Promise
 	const renderer = new TemplateEngine(config, parent);
-	const generator = (async (promptOrConfig?: Partial<ConfigFromFunction<F>> | string, context?: Context): Promise<rtype> => {
+	const generator = (async (promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): Promise<rtype> => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 
@@ -58,10 +63,12 @@ export interface StreamerCallSignature<F extends StreamFunction> {
 }
 
 export function createLLMStreamer<F extends StreamFunction>(
-	config: ConfigFromFunction<F>, func: F, parent?: ConfigData
+	config: LLMConfigArg,
+	func: F,
+	parent?: ConfigData
 ): StreamerCallSignature<F> {
 	const renderer = new TemplateEngine(config, parent);
-	const streamer = (async (promptOrConfig?: Partial<ConfigFromFunction<F>> | string, context?: Context) => {
+	const streamer = (async (promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context) => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 

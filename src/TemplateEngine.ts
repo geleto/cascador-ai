@@ -2,20 +2,9 @@ import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
 import { Context, TemplateConfig } from './types';
 import { ConfigData } from './ConfigData';
 
-/**
- * @requires ES2017 (ES8) - For async function support
- */
-function isAsync(fn: (...args: any[]) => any): boolean {
-	if (typeof fn !== 'function') {
-		throw new TypeError('Expected a function');
-	}
-	// Most reliable detection across all ES2017+ environments
-	return Object.prototype.toString.call(fn) === '[object AsyncFunction]';
-}
-
-export interface TemplateCallSignature<T extends TemplateConfig = TemplateConfig> {
+export interface TemplateCallSignature {
 	(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string>;
-	config: T;
+	config: ConfigData['config'];
 }
 
 export class TemplateEngine extends ConfigData {
@@ -23,7 +12,7 @@ export class TemplateEngine extends ConfigData {
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateConfig, parent?: ConfigData) {
+	constructor(config: Partial<TemplateConfig>, parent?: ConfigData) {
 		super(config, parent);
 
 		// Validate configuration
@@ -38,21 +27,16 @@ export class TemplateEngine extends ConfigData {
 		// Initialize environment
 		this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
 
-		// Add filters with proper type checking
+		// Add filters if provided
 		if (this.config.filters) {
 			for (const [name, filter] of Object.entries(this.config.filters)) {
-				//todo - get rid of addFilterPAsync in cascada and handle async filters properly in addFilter
-				if (isAsync(filter)) {
-					this.env.addFilterPAsync(name, filter);
-				} else if (typeof filter === 'function') {
+				if (typeof filter === 'function') {
 					this.env.addFilter(name, filter);
-				} else {
-					throw new Error(`Invalid filter type for ${name}`);
 				}
 			}
 		}
 
-		// Handle template compilation with proper prioritization
+		// Handle template compilation
 		if (this.config.prompt) {
 			this.template = compilePAsync(this.config.prompt, this.env);
 		} else if (this.config.promptName) {
@@ -70,7 +54,7 @@ export class TemplateEngine extends ConfigData {
 			// If user passed an object
 			if (promptOrConfig && typeof promptOrConfig === 'object') {
 				const newConfig = ConfigData.mergeConfigs(this.config, promptOrConfig);
-				return await this.render(newConfig.prompt, newConfig.context);
+				return await this.render(newConfig.prompt, context);
 			}
 
 			// If nothing passed
@@ -87,7 +71,6 @@ export class TemplateEngine extends ConfigData {
 		}
 	}
 
-	//@todo - implement proper compile caching - hash the prompt
 	protected async render(
 		promptOverride?: string,
 		contextOverride?: Context
@@ -103,7 +86,7 @@ export class TemplateEngine extends ConfigData {
 				: this.config.context;
 
 			if (promptOverride) {
-				this.template = compilePAsync(promptOverride, this.env, '', true);
+				this.template = compilePAsync(promptOverride, this.env);
 			}
 
 			if (!this.template && this.config.promptName) {
@@ -117,11 +100,7 @@ export class TemplateEngine extends ConfigData {
 			return await this.template.render(mergedContext ?? {});
 		} catch (error: any) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			const err = new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
-			if (error instanceof Error) {
-				err.stack = error.stack;
-			}
-			throw err;
+			throw new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
 		}
 	}
 }

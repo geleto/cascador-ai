@@ -1,9 +1,8 @@
-import { LLMPartialConfig } from './types';
+import { LLMConfigArg } from './types';
 
 export class ConfigData<
-	TConfig extends LLMPartialConfig = LLMPartialConfig,
-	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-	TParentConfig extends LLMPartialConfig = {}
+	TConfig extends LLMConfigArg = LLMConfigArg,
+	TParentConfig extends LLMConfigArg = LLMConfigArg
 > {
 	readonly config: TConfig & TParentConfig;
 
@@ -16,8 +15,8 @@ export class ConfigData<
 	 * The return type is exactly the union of P & C (with child overriding parent).
 	 */
 	static mergeConfigs<
-		TParent extends LLMPartialConfig,
-		TChild extends LLMPartialConfig
+		TParent extends LLMConfigArg,
+		TChild extends LLMConfigArg
 	>(
 		parentConfig?: TParent,
 		childConfig?: TChild
@@ -42,7 +41,7 @@ export class ConfigData<
 			};
 		}
 
-		// Fixed loader handling with proper deduplication and type checking
+		// Fixed loader handling with proper deduplication
 		const parentLoaders = parentConfig.loader
 			? Array.isArray(parentConfig.loader)
 				? parentConfig.loader
@@ -55,7 +54,6 @@ export class ConfigData<
 			: [];
 
 		merged.loader = Array.from(
-			//remove duplicates, filter out nulls, but is this possible (todo)
 			new Set([...parentLoaders, ...childLoaders].filter(Boolean))
 		);
 

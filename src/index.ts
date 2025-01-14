@@ -1,16 +1,36 @@
+
 import { Factory } from "./Factory";
 
 export const create = new Factory();
 
-/*const templateRenderer = create.TemplateRenderer({ prompt: 'Hello {{name}}' });
-const result1 = templateRenderer({ context: { name: 'Alan' } });
-const result2 = templateRenderer({ prompt: 'Hi {{name}}', context: { name: 'Bob' } });
-const result3 = templateRenderer('Hey {{name}}', { name: 'Charlie' });
-const result4 = templateRenderer();//error
+/*import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
 
-const newRenderer = create.TemplateRenderer({ promptName: 'greeting', parent: templateRenderer });
-const newRenderer2 = create.TemplateRenderer({ promptName: 'greeting', parent: new Config({ temperature: 0.5 }) });*/
+(async (): Promise<void> => {
 
-/*const gen = create.TextGenerator({ model: openai('gpt-4o') });
-gen({ prompt: 'Hello, world! {{text}}', context: { text: 'Hi' } }).then((result) => console.log(result.text));
-gen('Hello {{name}}!', { name: 'Alex' }).then((result) => console.log(result.text));*/
+	const parent = create.ConfigData({ model: openai('gpt-4') });
+	const gen1 = create.TextGenerator({}, parent);
+
+	// Return type checks
+	const result = await gen1('test');
+	const text: string = result.text; // should compile
+	console.log(text);
+
+	const wrongProp: any = result.wrong; // should NOT compile
+
+	// Deep inheritance with return types
+	const schema = z.object({
+		name: z.string(),
+		age: z.number(),
+		hobbies: z.array(z.string()),
+	});
+	const genObject = create.ObjectGenerator({ schema }, 'object', parent);
+
+	type MyType = z.infer<typeof schema>;
+	const arrayResult = await genObject('test');
+	const arr: MyType[] = arrayResult.object; // should compile
+	const obj: MyType = arrayResult.object; // should NOT compile
+
+	console.log(arr, obj, wrongProp)//shut up unused var warnings
+
+})().catch(console.error);*/

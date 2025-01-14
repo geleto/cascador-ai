@@ -19,7 +19,7 @@ export default tseslint.config(
 		},
 		rules: {
 			// Base formatting
-			'indent': ['error', 'tab'],
+			"indent": ["error", "tab", { "SwitchCase": 1 }],
 			'linebreak-style': ['error', 'unix'],
 
 			// Spacing rules
