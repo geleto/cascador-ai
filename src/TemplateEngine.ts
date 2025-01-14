@@ -120,7 +120,11 @@ export class TemplateEngine extends ConfigData {
 			return await this.template.render(mergedContext ?? {});
 		} catch (error: any) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			throw new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
+			const err = new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
+			if (error instanceof Error) {
+				err.stack = error.stack;
+			}
+			throw err;
 		}
 	}
 }
