@@ -1,4 +1,3 @@
-// TemplateEngine.ts
 import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
 import { Context, TemplateConfig } from './types';
 import { ConfigData } from './ConfigData';
@@ -88,9 +87,7 @@ export class TemplateEngine extends ConfigData {
 		}
 	}
 
-	//@todo - implement proper caching
-	//maybe store the last prompt and re-compile only if it changes
-	//or store cache by prompt name, have a look at the cascada cache implementation
+	//@todo - implement proper compile caching - hash the prompt
 	protected async render(
 		promptOverride?: string,
 		contextOverride?: Context

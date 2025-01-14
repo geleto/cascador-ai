@@ -1,9 +1,13 @@
-import { generateObject, generateText, streamText, streamObject } from 'ai';
+import { generateObject, generateText, streamText } from 'ai';
 
 import { ConfigData } from "./ConfigData";
-import { createLLMGenerator, createLLMStreamer } from "./createLLMRenderer";
+import { createLLMGenerator, createLLMStreamer, GeneratorCallSignature } from "./createLLMRenderer";
 import { TemplateCallSignature, TemplateEngine } from "./TemplateEngine";
-import { Context, LLMPartialConfig, TemplateConfig, ObjectStreamOutputType, ObjectGeneratorOutputType, ConfigFromFunction, SchemaType } from "./types";
+import { Context, LLMPartialConfig, TemplateConfig, ObjectGeneratorOutputType, ConfigFromFunction, SchemaType } from "./types";
+
+type RequiresSchema = 'array' | 'object' | 'enum';
+
+// Base config without output but preserving required fields
 
 export class Factory {
 	ConfigData<T extends LLMPartialConfig>(config: T, parent?: ConfigData) {
@@ -27,33 +31,79 @@ export class Factory {
 		return createLLMStreamer<typeof streamText>(config, streamText, parent);
 	}
 
+	// Overload 1: With ConfigData parent
 	ObjectGenerator<T = any>(
 		config: ConfigFromFunction<typeof generateObject> & { schema: SchemaType<T> },
+		parentOrOutput: ConfigData,
+		maybeOutput: RequiresSchema
+	): GeneratorCallSignature<typeof generateObject>;
+
+	ObjectGenerator<T = any>(
+		config: ConfigFromFunction<typeof generateObject> & { schema?: SchemaType<T> },
+		parentOrOutput: ConfigData,
+		maybeOutput: Exclude<ObjectGeneratorOutputType, RequiresSchema>
+	): GeneratorCallSignature<typeof generateObject>;
+
+	// Overload 2: Direct output type
+	ObjectGenerator<T = any>(
+		config: ConfigFromFunction<typeof generateObject> & { schema: SchemaType<T> },
+		parentOrOutput: RequiresSchema
+	): GeneratorCallSignature<typeof generateObject>;
+
+	ObjectGenerator<T = any>(
+		config: ConfigFromFunction<typeof generateObject> & { schema?: SchemaType<T> },
+		parentOrOutput?: Exclude<ObjectGeneratorOutputType, RequiresSchema>
+	): GeneratorCallSignature<typeof generateObject>;
+
+	// Implementation
+	ObjectGenerator<T = any>(
+		config: ConfigFromFunction<typeof generateObject> & { schema?: SchemaType<T> },
 		parentOrOutput?: ConfigData | ObjectGeneratorOutputType,
 		maybeOutput: ObjectGeneratorOutputType = 'object'
-	) {
+	): GeneratorCallSignature<typeof generateObject> {
 		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
 		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput ?? maybeOutput);
 		const configWithOutput = {
 			...config,
-			output: output
+			output
 		} as Parameters<typeof generateObject>[0];
 
 		return createLLMGenerator(configWithOutput, generateObject, parent);
 	}
-
-	ObjectStreamer<T = any>(
-		config: ConfigFromFunction<typeof streamObject> & { schema: SchemaType<T> },
-		parentOrOutput?: ConfigData | ObjectStreamOutputType,
-		maybeOutput: ObjectStreamOutputType = 'object'
-	) {
-		const parent = parentOrOutput instanceof ConfigData ? parentOrOutput : undefined;
-		const output = parentOrOutput instanceof ConfigData ? maybeOutput : (parentOrOutput ?? maybeOutput);
-		const configWithOutput = {
-			...config,
-			output: output
-		} as Parameters<typeof streamObject>[0];
-
-		return createLLMStreamer(configWithOutput, streamObject, parent);
-	}
 }
+
+/*const create = new Factory();
+
+import { z } from 'zod';
+import { openai } from '@ai-sdk/openai';
+(() => {
+	const schema = z.object({ foo: z.string() });
+	const model = openai('gpt-4');
+
+	const parent = create.ConfigData({
+		model
+	});
+
+	const t1 = create.TextGenerator({
+		prompt: 'test'
+	}, parent);
+
+	const t2 = create.ObjectGenerator({
+		schema,
+		model,
+		prompt: 'test'
+	}, parent, 'object');
+
+	console.log(t1.config);
+
+	const t3 = create.ObjectGenerator({
+		prompt: 'test',
+		model: openai('gpt-4')
+	}, 'no-schema');
+
+	const t3 = create.ObjectGenerator({
+		schema,
+		prompt: 'test',
+		model: openai('gpt-4')
+	}, 'object');
+})();*/
