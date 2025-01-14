@@ -1,5 +1,6 @@
-import { generateText, streamText, generateObject, streamObject } from 'ai';
+import { generateText, streamText, generateObject, streamObject, Schema } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
+import { z } from 'zod';
 
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
@@ -12,6 +13,8 @@ export interface TemplateConfig {
 	prompt?: string;
 	options?: ConfigureOptions;
 }
+
+export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 
 // Valid output types for object operations
 export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';

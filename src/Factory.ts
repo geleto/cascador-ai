@@ -1,10 +1,9 @@
 import { generateObject, generateText, streamText, streamObject } from 'ai';
-import { z } from 'zod';
 
 import { ConfigData } from "./ConfigData";
 import { createLLMGenerator, createLLMStreamer } from "./createLLMRenderer";
 import { TemplateCallSignature, TemplateEngine } from "./TemplateEngine";
-import { Context, LLMPartialConfig, TemplateConfig, ObjectStreamOutputType, ObjectGeneratorOutputType, ConfigFromFunction } from "./types";
+import { Context, LLMPartialConfig, TemplateConfig, ObjectStreamOutputType, ObjectGeneratorOutputType, ConfigFromFunction, SchemaType } from "./types";
 
 export class Factory {
 	ConfigData<T extends LLMPartialConfig>(config: T, parent?: ConfigData) {
@@ -28,8 +27,8 @@ export class Factory {
 		return createLLMStreamer<typeof streamText>(config, streamText, parent);
 	}
 
-	ObjectGenerator<T>(
-		config: ConfigFromFunction<typeof generateObject> & { schema?: z.Schema<T> },
+	ObjectGenerator<T = any>(
+		config: ConfigFromFunction<typeof generateObject> & { schema: SchemaType<T> },
 		parentOrOutput?: ConfigData | ObjectGeneratorOutputType,
 		maybeOutput: ObjectGeneratorOutputType = 'object'
 	) {
@@ -43,8 +42,8 @@ export class Factory {
 		return createLLMGenerator(configWithOutput, generateObject, parent);
 	}
 
-	ObjectStreamer<T>(
-		config: ConfigFromFunction<typeof streamObject> & { schema?: z.Schema<T> },
+	ObjectStreamer<T = any>(
+		config: ConfigFromFunction<typeof streamObject> & { schema: SchemaType<T> },
 		parentOrOutput?: ConfigData | ObjectStreamOutputType,
 		maybeOutput: ObjectStreamOutputType = 'object'
 	) {
