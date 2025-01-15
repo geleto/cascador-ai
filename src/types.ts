@@ -1,8 +1,19 @@
-import { generateText, streamText, generateObject, streamObject, Schema, LanguageModel } from 'ai';
+import {
+	LanguageModel,
+	Schema,
+	generateText,
+	streamText,
+	generateObject,
+	streamObject,
+	GenerateObjectResult,
+	JSONValue,
+	StreamObjectResult,
+	DeepPartial
+} from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
 import { z } from 'zod';
 
-// Basic template types
+// Template types
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
@@ -15,67 +26,153 @@ export interface TemplateConfig {
 	options?: ConfigureOptions;
 }
 
-// Raw config types from Vercel functions
-type RawGenerateTextConfig = Parameters<typeof generateText>[0];
-type RawStreamTextConfig = Parameters<typeof streamText>[0];
-type RawGenerateObjectConfig = Parameters<typeof generateObject>[0];
-type RawStreamObjectConfig = Parameters<typeof streamObject>[0];
+// Base configs for each type
+type BaseGenerateObjectConfig = Omit<
+	Parameters<typeof generateObject>[0],
+	| 'output'
+	| 'schema'
+	| 'enum'
+	| 'mode'
+	| 'schemaName'
+	| 'schemaDescription'
+> & TemplateConfig;
 
-// Base argument types (omit output and add template config) - these are used for config arguments in the specific factory methods
-// They don't have output property and have template config properties added
-export type GenerateTextConfigArg = Omit<RawGenerateTextConfig, 'output'> & TemplateConfig;
-export type StreamTextConfigArg = Omit<RawStreamTextConfig, 'output'> & TemplateConfig;
-export type GenerateObjectConfigArg = Omit<RawGenerateObjectConfig, 'output'> & TemplateConfig;
-export type StreamObjectConfigArg = Omit<RawStreamObjectConfig, 'output'> & TemplateConfig;
+type BaseStreamObjectConfig = Omit<
+	Parameters<typeof streamObject>[0],
+	| 'output'
+	| 'schema'
+	| 'enum'
+	| 'mode'
+	| 'schemaName'
+	| 'schemaDescription'
+	| 'onFinish'
+> & TemplateConfig;
 
-// Union type for factory method arguments
-// This is used to allow any of the above config types to be passed to the ConfigData factory method
+// Generate Object specific configurations
+interface GenerateObjectObjectSpecificConfig<T> {
+	output?: 'object';
+	schema: z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+	schemaName?: string;
+	schemaDescription?: string;
+	mode?: 'auto' | 'json' | 'tool';
+}
+
+interface GenerateObjectArraySpecificConfig<T> {
+	output: 'array';
+	schema: z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+	schemaName?: string;
+	schemaDescription?: string;
+	mode?: 'auto' | 'json' | 'tool';
+}
+
+interface GenerateObjectEnumSpecificConfig {
+	output: 'enum';
+	enum: string[];
+	mode?: 'auto' | 'json' | 'tool';
+}
+
+interface GenerateObjectNoSchemaSpecificConfig {
+	output: 'no-schema';
+	mode?: 'json';
+}
+
+// Stream Object specific configurations
+/*interface StreamObjectObjectSpecificConfig<T> extends GenerateObjectObjectSpecificConfig<T> {
+	onFinish?: OnFinishCallback<T>;
+}
+
+interface StreamObjectArraySpecificConfig<T> extends GenerateObjectArraySpecificConfig<T> {
+	onFinish?: OnFinishCallback<T[]>;
+}
+
+interface StreamObjectNoSchemaSpecificConfig extends GenerateObjectNoSchemaSpecificConfig {
+	onFinish?: OnFinishCallback<JSONValue>;
+}*/
+
+// Extract the base OnFinishCallback type
+// We don't have access to OnFinishCallback directly, so we extract it from the streamObject function
+//and change the type to match the specific object type
+type BaseOnFinishCallback = NonNullable<Parameters<typeof streamObject>[0]['onFinish']>;
+
+// Stream Object specific configurations using extracted type
+interface StreamObjectObjectSpecificConfig<T> extends GenerateObjectObjectSpecificConfig<T> {
+	onFinish?: BaseOnFinishCallback extends (event: { object: any }) => void
+	? (event: { object: T }) => void
+	: never;
+}
+
+interface StreamObjectArraySpecificConfig<T> extends GenerateObjectArraySpecificConfig<T> {
+	onFinish?: BaseOnFinishCallback extends (event: { object: any }) => void
+	? (event: { object: T[] }) => void
+	: never;
+}
+
+interface StreamObjectNoSchemaSpecificConfig extends GenerateObjectNoSchemaSpecificConfig {
+	onFinish?: BaseOnFinishCallback extends (event: { object: any }) => void
+	? (event: { object: JSONValue }) => void
+	: never;
+}
+
+// Complete config types
+export type GenerateObjectObjectConfig<T> = BaseGenerateObjectConfig & GenerateObjectObjectSpecificConfig<T>;
+export type GenerateObjectArrayConfig<T> = BaseGenerateObjectConfig & GenerateObjectArraySpecificConfig<T>;
+export type GenerateObjectEnumConfig = BaseGenerateObjectConfig & GenerateObjectEnumSpecificConfig;
+export type GenerateObjectNoSchemaConfig = BaseGenerateObjectConfig & GenerateObjectNoSchemaSpecificConfig;
+
+export type StreamObjectObjectConfig<T> = BaseStreamObjectConfig & StreamObjectObjectSpecificConfig<T>;
+export type StreamObjectArrayConfig<T> = BaseStreamObjectConfig & StreamObjectArraySpecificConfig<T>;
+export type StreamObjectNoSchemaConfig = BaseStreamObjectConfig & StreamObjectNoSchemaSpecificConfig;
+
+// Text configs
+export type GenerateTextConfig = Parameters<typeof generateText>[0] & TemplateConfig;
+export type StreamTextConfig = Parameters<typeof streamText>[0] & TemplateConfig;
+
+
+// Union types for all possible configs
+export type AllGenerateObjectConfigs =
+	| GenerateObjectObjectConfig<any>
+	| GenerateObjectArrayConfig<any>
+	| GenerateObjectEnumConfig
+	| GenerateObjectNoSchemaConfig;
+
+export type AllStreamObjectConfigs =
+	| StreamObjectObjectConfig<any>
+	| StreamObjectArrayConfig<any>
+	| StreamObjectNoSchemaConfig;
+
+// LLM Config Arg type for ConfigData
 export type LLMConfigArg = Partial<
-	| GenerateTextConfigArg
-	| StreamTextConfigArg
-	| GenerateObjectConfigArg
-	| StreamObjectConfigArg
+	| GenerateTextConfig
+	| StreamTextConfig
+	| AllGenerateObjectConfigs
+	| AllStreamObjectConfigs
 >;
 
-// Output-specific config types for the raw functions (e.g. for output: 'object' or 'array')
-export type RawGenerateObjectConfigForOutput<O> = Extract<RawGenerateObjectConfig, { output: O }>;
-export type RawStreamObjectConfigForOutput<O> = Extract<RawStreamObjectConfig, { output: O }>;
+// Result types
+export type {
+	GenerateObjectResult,
+	StreamObjectResult,
+	GenerateTextResult,
+	StreamTextResult
+} from 'ai';
 
-// Final config types for Vercel functions, with output property added and template config properties removed
-export type FinalGenerateObjectConfig<O> =
-	Omit<GenerateObjectConfigArg, keyof TemplateConfig> &
-	{ output: O } &
-	RawGenerateObjectConfigForOutput<O>;
+type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
-export type FinalStreamObjectConfig<O> =
-	Omit<StreamObjectConfigArg, keyof TemplateConfig> &
-	{ output: O } &
-	RawStreamObjectConfigForOutput<O>;
+export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
+export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
+export type GenerateObjectEnumResult = GenerateObjectResult<string>;
+export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
-// Output type definitions
-export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
-export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
+export type StreamObjectObjectResult<T> = StreamObjectResult<DeepPartial<T>, T, never>;
+export type StreamObjectArrayResult<T> = StreamObjectResult<T[], T[], AsyncIterableStream<T>>;
+export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
 
-// Schema type
-export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
-
-// Required config types based on output, these are used for the final call
-// We check if the configs in the parent chain, plus the current config, plus the call congig, when merged
-// and for the specific output type, will have all the required properties
-export type RequiredObjectConfig<T, O extends ObjectGeneratorOutputType> =
-	(O extends 'array' | 'object' ?
-		(GenerateObjectConfigArg & { schema: SchemaType<T> })//generateObject with array or object output must have schema
-		: (O extends 'enum' ?
-			(GenerateObjectConfigArg & { enum: string[] })//enum output must have enum values
-			: GenerateObjectConfigArg)//not array, object or enum => 'no-schema' output does not require schema
-	);
-
-// Type guards for runtime validation
+// Type guards for property checking
 export function hasModel(config: unknown): config is { model: LanguageModel } {
 	return config !== null && typeof config === 'object' && 'model' in config;
 }
 
-export function hasSchema<T>(config: unknown): config is { schema: SchemaType<T> } {
+export function hasSchema<T>(config: unknown): config is { schema: Schema<T> } {
 	if (config === null || typeof config !== 'object') {
 		return false;
 	}
@@ -91,6 +188,35 @@ export function hasEnum(config: unknown): config is { enum: string[] } {
 	return 'enum' in record &&
 		Array.isArray(record.enum) &&
 		record.enum.every(item => typeof item === 'string');
+}
+
+// Type guards for config types
+export function isGenerateObjectObjectConfig<T>(config: AllGenerateObjectConfigs): config is GenerateObjectObjectConfig<T> {
+	return !config.output || config.output === 'object';
+}
+
+export function isGenerateObjectArrayConfig<T>(config: AllGenerateObjectConfigs): config is GenerateObjectArrayConfig<T> {
+	return config.output === 'array';
+}
+
+export function isGenerateObjectEnumConfig(config: AllGenerateObjectConfigs): config is GenerateObjectEnumConfig {
+	return config.output === 'enum';
+}
+
+export function isGenerateObjectNoSchemaConfig(config: AllGenerateObjectConfigs): config is GenerateObjectNoSchemaConfig {
+	return config.output === 'no-schema';
+}
+
+export function isStreamObjectObjectConfig<T>(config: AllStreamObjectConfigs): config is StreamObjectObjectConfig<T> {
+	return !config.output || config.output === 'object';
+}
+
+export function isStreamObjectArrayConfig<T>(config: AllStreamObjectConfigs): config is StreamObjectArrayConfig<T> {
+	return config.output === 'array';
+}
+
+export function isStreamObjectNoSchemaConfig(config: AllStreamObjectConfigs): config is StreamObjectNoSchemaConfig {
+	return config.output === 'no-schema';
 }
 
 // Error types
