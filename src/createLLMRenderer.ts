@@ -1,80 +1,84 @@
-import { ConfigData } from "./ConfigData";
+import { ConfigData, mergeConfigs } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
-import { Context, TemplateConfig, LLMConfigArg } from "./types";
+import { Context, BaseConfig } from "./types";
 
-export type GeneratorFunction = (config: any) => Promise<any>;
+export type GeneratorFunction<TConfig = any, TResult = any> =
+	(config: TConfig) => Promise<TResult>;
 export type StreamFunction = (config: any) => any;
 
-export interface GeneratorCallSignature<F extends GeneratorFunction> {
-	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
-	config: Parameters<F>[0] & TemplateConfig;
+export interface GeneratorCallSignature<TConfig extends BaseConfig, F extends GeneratorFunction> {
+	(promptOrConfig?: Partial<TConfig> | string, context?: Context): ReturnType<F>;
+	config: TConfig;
 }
 
-export function createLLMGenerator<F extends GeneratorFunction>(
-	config: LLMConfigArg,
-	func: F,
-	parent?: ConfigData
-): GeneratorCallSignature<F> {
-	type rtype = Awaited<ReturnType<F>>; //avoid TS bug where async function return type is not inferred correctly as Promise
+//todo - merge the 2 functions
+export function createLLMGenerator<CType extends BaseConfig>(config: BaseConfig, func: GeneratorFunction, parent?: ConfigData)
+	: GeneratorCallSignature<CType, typeof func> {
+
 	const renderer = new TemplateEngine(config, parent);
-	const generator = (async (promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): Promise<rtype> => {
-		try {
-			const prompt = await renderer.call(promptOrConfig, context);
 
-			// Object scenario - user passed a settings object
-			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-				const mergedConfig = ConfigData.mergeConfigs(renderer.config, promptOrConfig);
-				mergedConfig.prompt = prompt;
-				if (context) {
-					mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
-				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				return await func(mergedConfig);
+	//todo - the call config must be a proper almost full config
+	const generatorFn = (async (promptOrConfig?: CType | string, context?: Context) => {
+		const prompt = await renderer.call(promptOrConfig, context);
+
+		// Object scenario - user passed a settings object
+		if (typeof promptOrConfig !== 'string' && promptOrConfig) {
+			const mergedConfig = mergeConfigs(renderer.config, promptOrConfig);
+			mergedConfig.prompt = prompt;
+			if (context) {
+				mergedConfig.context = Object.assign(
+					{} as Record<string, unknown>,
+					mergedConfig.context ?? {},
+					context
+				) as Context;
 			}
-
-			// String scenario - user passed a prompt string
-			if (typeof promptOrConfig === 'string') {
-				const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
-				if (context) {
-					mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
-				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				return await func(mergedConfig);
-			}
-
-			// No arguments scenario - fixed to properly use the rendered prompt
-			const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return await func(mergedConfig);
-
-		} catch (error: any) {
-			const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
-			throw new Error(`Generator execution failed: ${errorMessage}`, { cause: error });
+			return func(mergedConfig);
 		}
-	}) as GeneratorCallSignature<F>;
 
-	generator.config = renderer.config;
-	return generator;
+		// String scenario - user passed a prompt string
+		if (typeof promptOrConfig === 'string') {
+			const mergedConfig = mergeConfigs(renderer.config, { prompt });
+			if (context) {
+				mergedConfig.context = Object.assign(
+					{} as Record<string, unknown>,
+					mergedConfig.context ?? {},
+					context
+				) as Context;
+			}
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return func(mergedConfig);
+		}
+
+		// No arguments scenario
+		const mergedConfig = mergeConfigs(renderer.config, { prompt });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return func(mergedConfig);
+	}) as GeneratorCallSignature<CType, typeof func>;
+
+	generatorFn.config = renderer.config as CType;
+	return generatorFn;
 }
 
-export interface StreamerCallSignature<F extends StreamFunction> {
-	(promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context): ReturnType<F>;
-	config: Parameters<F>[0] & TemplateConfig;
+export interface StreamerCallSignature<TConfig extends BaseConfig, F extends StreamFunction> {
+	(promptOrConfig?: Partial<TConfig> | string, context?: Context): ReturnType<F>;
+	config: TConfig;
 }
 
-export function createLLMStreamer<F extends StreamFunction>(
-	config: LLMConfigArg,
-	func: F,
+export function createLLMStreamer2<CType extends BaseConfig>(
+	config: BaseConfig,
+	func: StreamFunction,
 	parent?: ConfigData
-): StreamerCallSignature<F> {
+): StreamerCallSignature<CType, typeof func> {
 	const renderer = new TemplateEngine(config, parent);
-	const streamer = (async (promptOrConfig?: Partial<Parameters<F>[0] & TemplateConfig> | string, context?: Context) => {
+
+	const streamerFn = (async (promptOrConfig?: CType | string, context?: Context) => {
 		try {
 			const prompt = await renderer.call(promptOrConfig, context);
 
 			// Object scenario - user passed a settings object
 			if (typeof promptOrConfig !== 'string' && promptOrConfig) {
-				const mergedConfig = ConfigData.mergeConfigs(renderer.config, promptOrConfig);
+				const mergedConfig = mergeConfigs(renderer.config, promptOrConfig);
 				mergedConfig.prompt = prompt; // Ensure prompt is set after merging
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
@@ -85,7 +89,7 @@ export function createLLMStreamer<F extends StreamFunction>(
 
 			// String scenario - user passed a prompt string
 			if (typeof promptOrConfig === 'string') {
-				const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
+				const mergedConfig = mergeConfigs(renderer.config, { prompt });
 				if (context) {
 					mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
 				}
@@ -94,15 +98,15 @@ export function createLLMStreamer<F extends StreamFunction>(
 			}
 
 			// No arguments scenario
-			const mergedConfig = ConfigData.mergeConfigs(renderer.config, { prompt });
+			const mergedConfig = mergeConfigs(renderer.config, { prompt });
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return func(mergedConfig);
 		} catch (error: any) {
 			const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
 			throw new Error(`Streamer execution failed: ${errorMessage}`, { cause: error });
 		}
-	}) as StreamerCallSignature<F>;
+	}) as StreamerCallSignature<CType, typeof func>;
 
-	streamer.config = renderer.config;
-	return streamer;
+	streamerFn.config = renderer.config as CType;
+	return streamerFn;
 }
