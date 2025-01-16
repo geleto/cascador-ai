@@ -1,10 +1,10 @@
 import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
-import { Context, TemplateConfig } from './types';
-import { ConfigData } from './ConfigData';
+import { Context, TemplateBaseConfig, TemplateConfig } from './types';
+import { ConfigData, mergeConfigs, TemplateConfigData } from './ConfigData';
 
 export interface TemplateCallSignature {
-	(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string>;
-	config: ConfigData['config'];
+	(promptOrConfig?: string | TemplateBaseConfig, context?: Context): Promise<string>;
+	config: TemplateBaseConfig;
 }
 
 export class TemplateEngine extends ConfigData {
@@ -12,17 +12,8 @@ export class TemplateEngine extends ConfigData {
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: Partial<TemplateConfig>, parent?: ConfigData) {
+	constructor(config: TemplateBaseConfig, parent?: TemplateConfigData) {
 		super(config, parent);
-
-		// Validate configuration
-		if (config.promptName && !config.loader) {
-			throw new Error('Loader is required when using promptName');
-		}
-
-		if (!config.prompt && !config.promptName) {
-			throw new Error('Either prompt or promptName must be specified');
-		}
 
 		// Initialize environment
 		this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
@@ -44,7 +35,18 @@ export class TemplateEngine extends ConfigData {
 		}
 	}
 
-	async call(promptOrConfig?: string | Partial<TemplateConfig>, context?: Context): Promise<string> {
+	async call(promptOrConfig?: string | TemplateConfig, context?: Context): Promise<string> {
+		/**
+		 * Test with merged
+		 // Validate configuration
+		if (config.promptName && !config.loader) {
+			throw new Error('Loader is required when using promptName');
+		}
+
+		if (!config.prompt && !config.promptName) {
+			throw new Error('Either prompt or promptName must be specified');
+		}
+		 */
 		try {
 			// If user passed a string prompt
 			if (typeof promptOrConfig === 'string') {
@@ -53,7 +55,7 @@ export class TemplateEngine extends ConfigData {
 
 			// If user passed an object
 			if (promptOrConfig && typeof promptOrConfig === 'object') {
-				const newConfig = ConfigData.mergeConfigs(this.config, promptOrConfig);
+				const newConfig = mergeConfigs(this.config, promptOrConfig);
 				return await this.render(newConfig.prompt, context);
 			}
 
