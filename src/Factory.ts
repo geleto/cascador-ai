@@ -1,166 +1,185 @@
-import { generateText, generateObject, streamText, LanguageModel } from 'ai';
-import { ConfigData } from './ConfigData';
+import { generateText, generateObject, streamText, CoreTool } from 'ai';
+import { ConfigData, ConfigDataModelSet as ConfigDataModelIsSet, ConfigDataTools, ConfigDataToolsModelSet, TemplateConfigData } from './ConfigData';
 import { createLLMGenerator, createLLMStreamer, GeneratorCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
 	Context,
-	TemplateConfig,
+
+	BaseConfig,
+	TemplateBaseConfig,
+
 	ObjectGeneratorOutputType,
-	SchemaType,
-	GenerateObjectConfigArg,
-	FinalGenerateObjectConfig,
-	ConfigError,
-	LLMConfigArg,
-	GenerateTextConfigArg,
-	StreamTextConfigArg,
-	RequiredObjectConfig,
-	hasModel,
-	hasSchema,
-	hasEnum
+	GenerateTextFinalConfig,
+
+	BaseConfigModelIsSet,
+	ToolsConfig
 } from './types';
 
-//todo - move validation functions to types.ts
-function validateConfig(config: unknown, parent?: ConfigData): asserts config is { model: LanguageModel } {
-	const hasModelInChain = hasModel(config) || (parent && hasModel(parent.config));
-	if (!hasModelInChain) {
-		throw new ConfigError('Model must be provided either in config or parent chain');
-	}
+type AnyConfigData<T extends Record<string, CoreTool> = any> =
+	| ConfigData
+	| ConfigDataTools<T>
+	| TemplateConfigData;
+
+// Type guards
+function isToolsConfig<T extends Record<string, CoreTool>>(
+	config: unknown
+): config is ToolsConfig<T> {
+	return !!config &&
+		typeof config === 'object' &&
+		'tools' in config &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		typeof (config as any).tools === 'object';
 }
 
-function validateObjectConfig<T>(
-	config: unknown,
-	output: ObjectGeneratorOutputType,
-	parent?: ConfigData
-): asserts config is RequiredObjectConfig<T, typeof output> {
-	validateConfig(config, parent);
-
-	switch (output) {
-		case 'array':
-		case 'object': {
-			const hasSchemaInChain = hasSchema(config) || (parent && hasSchema(parent.config));
-			if (!hasSchemaInChain) {
-				throw new ConfigError(`Schema is required for output type '${output}'`);
-			}
-			break;
-		}
-		case 'enum': {
-			const hasEnumInChain = hasEnum(config) || (parent && hasEnum(parent.config));
-			if (!hasEnumInChain) {
-				throw new ConfigError('Enum values are required for output type "enum"');
-			}
-			break;
-		}
-	}
+function isModelConfig(
+	config: unknown
+): config is BaseConfigModelIsSet {
+	return !!config &&
+		typeof config === 'object' &&
+		'model' in config &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		(config as any).model !== null;
 }
 
 export class Factory {
-	ConfigData<T extends LLMConfigArg>(config: T, parent?: ConfigData) {
-		validateConfig(config, parent);
-		return new ConfigData<T>(config, parent);
+	//todo - rename to ConfigData
+	/**
+	* Config/ConfigTools create configuration objects that can have model and/or tool properties.
+	* Child configs inherit their parent's tools and model settings - if the parent has tools config object,
+	* the child will be tool-enabled; if the parent has a model property set, the child will
+	* be a ModelSet config as well.
+	*/
+	// Tools configs - most specific
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: ToolsConfig<TOOLS> & BaseConfigModelIsSet,
+		parent?: AnyConfigData<TOOLS>
+	): ConfigDataToolsModelSet<TOOLS>;
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: ToolsConfig<TOOLS>,
+		parent?: ConfigDataModelIsSet
+	): ConfigDataToolsModelSet<TOOLS>;
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: ToolsConfig<TOOLS>,
+		parent?: ConfigData
+	): ConfigDataTools<TOOLS>;
+
+	// Model configs
+	Config(
+		config: BaseConfig,
+		parent?: ConfigDataModelIsSet
+	): ConfigDataModelIsSet;
+	Config(
+		config: BaseConfigModelIsSet,
+		parent?: AnyConfigData<never>
+	): ConfigDataModelIsSet;
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: BaseConfigModelIsSet,
+		parent?: ConfigDataTools<TOOLS>
+	): ConfigDataToolsModelSet<TOOLS>;
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: BaseConfig,
+		parent?: ConfigDataTools<TOOLS>
+	): ConfigDataTools<TOOLS>;
+
+	// Base config - least specific
+	Config(
+		config: BaseConfig,
+		parent?: ConfigData
+	): ConfigData;
+
+	Config<TOOLS extends Record<string, CoreTool>>(
+		config: BaseConfig,
+		parent?: AnyConfigData
+	): AnyConfigData {
+		// Validate inputs, for JS too
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		if (!config || typeof config !== 'object') {
+			throw new Error('Invalid config object');
+		}
+
+		if (parent && !(
+			parent instanceof ConfigData ||
+			parent instanceof ConfigDataTools ||
+			parent instanceof TemplateConfigData
+		)) {
+			throw new Error('Invalid parent config');
+		}
+
+		// Handle tools config
+		if (isToolsConfig<TOOLS>(config)) {
+			if (isModelConfig(config) || (parent && isModelConfig(parent))) {
+				return new ConfigDataToolsModelSet<TOOLS>(
+					config as ToolsConfig<TOOLS> & BaseConfigModelIsSet,
+					parent
+				);
+			}
+			return new ConfigDataTools<TOOLS>(config, parent);
+		}
+
+		// Handle model inheritance
+		if (isModelConfig(config)) {
+			if (parent instanceof ConfigDataTools) {
+				const toolsParent = parent as ConfigDataTools<TOOLS>;
+				return new ConfigDataToolsModelSet<TOOLS>(
+					config,
+					toolsParent
+				);
+			}
+			return new ConfigDataModelIsSet(config, parent);
+		}
+
+		// Handle tools inheritance
+		if (parent instanceof ConfigDataTools) {
+			const toolsParent = parent as ConfigDataTools<TOOLS>;
+			return new ConfigDataTools<TOOLS>(config, toolsParent);
+		}
+
+		// Base case
+		return new ConfigData(config, parent);
 	}
 
-	TemplateRenderer(config: Partial<TemplateConfig>, parent?: ConfigData): TemplateCallSignature {
+	TemplateConfig(config: TemplateBaseConfig, parent?: TemplateConfigData): TemplateConfigData {
+		return new TemplateConfigData(config, parent);
+	}
+
+	TemplateRenderer(config: TemplateBaseConfig, parent?: TemplateConfigData): TemplateCallSignature {
 		const renderer = new TemplateEngine(config, parent);
-		const callable: TemplateCallSignature = (promptOrConfig?: string | Partial<TemplateConfig>, context?: Context) => {
+
+		const callable = ((promptOrConfig?: string | TemplateBaseConfig, context?: Context) => {
 			return renderer.call(promptOrConfig, context);
-		};
+		}) as TemplateCallSignature;
+
 		callable.config = renderer.config;
 		return callable;
 	}
 
-	TextGenerator(
-		config: Partial<GenerateTextConfigArg>,
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateText> {
-		validateConfig(config, parent);
+	//Overloads for TextGenerator: either config or parent must have model set
+	TextGenerator(config: BaseConfigModelIsSet, parent?: AnyConfigData): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText>;
+	TextGenerator(config: BaseConfig, parent?: ConfigDataModelIsSet): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText>;
+
+
+	//implementation
+	TextGenerator(config: BaseConfig, parent?: AnyConfigData): GeneratorCallSignature<BaseConfig, typeof generateText> {
 		return createLLMGenerator(config, generateText, parent);
 	}
 
-	TextStreamer(
-		config: StreamTextConfigArg,
-		parent?: ConfigData
-	) {
-		validateConfig(config, parent);
+	//Overloads for TextStreamer: either config or parent must have model set
+
+	//implementation
+	TextStreamer(config: BaseConfig, parent?: AnyConfigData): GeneratorCallSignature<BaseConfig, typeof streamText> {
+		//validateConfig(config, parent);
 		return createLLMStreamer(config, streamText, parent);
 	}
 
-	// Utility for creating final configs to pass to Vercel functions
-	// TODO: Type assertion will be removed when model/schema requirements are implemented
-	private static makeFinalConfig<O extends string>(
-		config: GenerateObjectConfigArg,
-		output: O
-	): FinalGenerateObjectConfig<O> {
-		// Remove template config properties
-		/* eslint-disable @typescript-eslint/no-unused-vars */
-		const { context, filters, loader, promptName, options, ...rawConfig } = config;
+	// Overloads for ObjectGenerator: either config or parent must have model set and no tools (ToolsConfig<any>, ConfigDataTools<any>)
 
-		return {
-			...rawConfig,
-			output
-		} as FinalGenerateObjectConfig<O>;
-	}
-
-	// Overloads for ObjectGenerator
-
-	ObjectGenerator<T>(
-		config: GenerateObjectConfigArg & { schema: SchemaType<T> },
-		output: 'object',
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateObject>;
-
-	ObjectGenerator<T>(
-		config: GenerateObjectConfigArg & { schema: SchemaType<T> },
-		// eslint-disable-next-line @typescript-eslint/unified-signatures
-		output: 'array',
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateObject>;
-
-	ObjectGenerator(
-		config: GenerateObjectConfigArg & { enum: string[] },
-		output: 'enum',
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateObject>;
-
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-	ObjectGenerator<T>(
-		config: GenerateObjectConfigArg,
-		output: 'no-schema',
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateObject>;
+	//todo: no tools, model set
+	ObjectGenerator(config: BaseConfig, output: 'object', parent?: AnyConfigData): GeneratorCallSignature<BaseConfig, typeof generateObject>;
 
 	// Implementation
-	ObjectGenerator<T>(
-		config: GenerateObjectConfigArg & { schema?: SchemaType<T>; enum?: string[] },
-		output: ObjectGeneratorOutputType,
-		parent?: ConfigData
-	): GeneratorCallSignature<typeof generateObject> {
-		validateObjectConfig<T>(config, output, parent);
-
-		switch (output) {
-			case 'no-schema':
-				return createLLMGenerator(
-					Factory.makeFinalConfig(config, 'no-schema'),
-					generateObject,
-					parent
-				);
-			case 'object':
-				return createLLMGenerator(
-					Factory.makeFinalConfig(config, 'object'),
-					generateObject,
-					parent
-				);
-			case 'array':
-				return createLLMGenerator(
-					Factory.makeFinalConfig(config, 'array'),
-					generateObject,
-					parent
-				);
-			case 'enum':
-				return createLLMGenerator(
-					Factory.makeFinalConfig(config, 'enum'),
-					generateObject,
-					parent
-				);
-		}
+	ObjectGenerator(config: BaseConfig, output: ObjectGeneratorOutputType, parent?: AnyConfigData) {
+		return createLLMStreamer(config, generateObject, parent);
 	}
 }
+
+export const create = new Factory();

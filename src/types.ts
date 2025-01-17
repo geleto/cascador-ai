@@ -26,7 +26,7 @@ export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
 export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
 
-//type ExcludeProperties<T, U> = Omit<T, keyof U>;
+export type ExcludeProperties<T, U> = Omit<T, keyof U>;
 
 // Template config without the prompt
 export interface TemplateBaseConfig {
@@ -93,7 +93,7 @@ type GenerateTextToolsConfig<TOOLS extends Record<string, CoreTool>> = Pick<Para
 type StreamTextToolsConfig<TOOLS extends Record<string, CoreTool>> = GenerateTextToolsConfig<TOOLS> & { experimental_toolCallStreaming?: boolean };
 
 export type ToolsConfig<TOOLS extends Record<string, CoreTool>> = StreamTextToolsConfig<TOOLS> & BaseConfig;
-export type ToolsConfigModelSet<TOOLS extends Record<string, CoreTool>> = StreamTextToolsConfig<TOOLS> & BaseConfigModelIsSet;
+export type ToolsConfigModelIsSet<TOOLS extends Record<string, CoreTool>> = ToolsConfig<TOOLS> & { model: LanguageModel };
 
 // Base configs for each type, remove the output property because it's a separate argument in our factory functions
 type BaseGenerateObjectConfig = Omit<

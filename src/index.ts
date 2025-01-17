@@ -8,7 +8,13 @@ import { z } from 'zod';
 
 (async (): Promise<void> => {
 
-	const parent = create.ConfigData({ model: openai('gpt-4') });
+	const schema = z.object({
+		name: z.string(),
+		age: z.number(),
+		hobbies: z.array(z.string()),
+	});
+
+	const parent = create.Config({ model: openai('gpt-4') });
 	const gen1 = create.TextGenerator({}, parent);
 
 	// Return type checks
@@ -19,11 +25,7 @@ import { z } from 'zod';
 	const wrongProp: any = result.wrong; // should NOT compile
 
 	// Deep inheritance with return types
-	const schema = z.object({
-		name: z.string(),
-		age: z.number(),
-		hobbies: z.array(z.string()),
-	});
+
 	const genObject = create.ObjectGenerator({ schema }, 'object', parent);
 
 	type MyType = z.infer<typeof schema>;

@@ -2,8 +2,10 @@ import { ConfigData, mergeConfigs } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, BaseConfig } from "./types";
 
+//the vercel function, todo: make more specific
 export type GeneratorFunction<TConfig = any, TResult = any> =
-	(config: TConfig) => Promise<TResult>;
+	(config: TConfig) => Promise<TResult> | TResult;
+
 export type StreamFunction = (config: any) => any;
 
 export interface GeneratorCallSignature<TConfig extends BaseConfig, F extends GeneratorFunction> {
@@ -65,10 +67,8 @@ export interface StreamerCallSignature<TConfig extends BaseConfig, F extends Str
 	config: TConfig;
 }
 
-export function createLLMStreamer2<CType extends BaseConfig>(
-	config: BaseConfig,
-	func: StreamFunction,
-	parent?: ConfigData
+export function createLLMStreamer<CType extends BaseConfig>(
+	config: BaseConfig, func: StreamFunction, parent?: ConfigData
 ): StreamerCallSignature<CType, typeof func> {
 	const renderer = new TemplateEngine(config, parent);
 

@@ -1,5 +1,5 @@
 import { CoreTool } from 'ai';
-import { BaseConfig, BaseConfigModelIsSet, TemplateConfig, ToolsConfig, ToolsConfigModelSet } from './types';
+import { BaseConfig, BaseConfigModelIsSet, TemplateConfig, ToolsConfig, ToolsConfigModelIsSet } from './types';
 
 
 
@@ -19,7 +19,7 @@ export class ConfigDataModelSet<T extends BaseConfigModelIsSet = BaseConfigModel
 export class ConfigDataTools<TOOLS extends Record<string, CoreTool>, T extends ToolsConfig<TOOLS> = ToolsConfig<TOOLS>> extends BaseConfigData<T> {
 }
 
-export class ConfigDataToolsModelSet<TOOLS extends Record<string, CoreTool>, T extends ToolsConfigModelSet<TOOLS> = ToolsConfigModelSet<TOOLS>> extends BaseConfigData<T> {
+export class ConfigDataToolsModelSet<TOOLS extends Record<string, CoreTool>, T extends ToolsConfigModelIsSet<TOOLS> = ToolsConfigModelIsSet<TOOLS>> extends BaseConfigData<T> {
 }
 
 export class TemplateConfigData extends BaseConfigData<Partial<TemplateConfig>> {
