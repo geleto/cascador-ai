@@ -28,11 +28,11 @@ type AnyConfigData = ConfigData | ConfigDataHasTools<any>;
 
 export class Factory {
 	/**
-	 * Config/ConfigTools create configuration objects that can have model and/or tool properties.
-	 * Child configs inherit their parent's tools and model settings - if the parent has tools config object,
-	 * the child will be tool-enabled; if the parent has a model property set, the child will
-	 * be a ModelIsSet config as well.
-	 */
+   * Config/ConfigTools create configuration objects that can have model and/or tool properties.
+   * Child configs inherit their parent's tools and model settings - if the parent has tools config object,
+   * the child will be tool-enabled; if the parent has a model property set, the child will
+   * be a ModelIsSet config as well.
+   */
 
 	// Tools configs - most specific
 	Config<TOOLS extends Record<string, CoreTool>>(
@@ -86,44 +86,24 @@ export class Factory {
 		return callable;
 	}
 
-	//todo - the generator fn config must be type checked to have model
-	TextGenerator(
-		config: BaseConfigModelIsSet,
-		parent?: AnyConfigData
-	): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText>;
-
-	TextGenerator(
-		config: BaseConfig,
-		parent: ConfigDataModelIsSet
-	): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText>;
-
+	// Text functions can use tools and need model (either in config or call)
 	TextGenerator(
 		config: BaseConfig,
 		parent?: AnyConfigData
-	): GeneratorCallSignature<BaseConfig, typeof generateText> {
+	): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText> {
 		return createLLMRenderer(config, generateText, parent);
 	}
 
 	TextStreamer(
-		config: BaseConfigModelIsSet,
-		parent?: AnyConfigData
-	): StreamerCallSignature<StreamTextFinalConfig, typeof streamText>;
-
-	TextStreamer(
-		config: BaseConfig,
-		parent: ConfigDataModelIsSet
-	): StreamerCallSignature<StreamTextFinalConfig, typeof streamText>;
-
-	TextStreamer(
 		config: BaseConfig,
 		parent?: AnyConfigData
-	): StreamerCallSignature<BaseConfig, typeof streamText> {
+	): StreamerCallSignature<StreamTextFinalConfig, typeof streamText> {
 		return createLLMRenderer(config, streamText, parent);
 	}
 
-	// Overloads for ObjectGenerator: model required, no tools allowed
+	// Object functions can't use tools and need model (either in config or call)
 	ObjectGenerator<T>(
-		config: BaseConfigModelIsSet & { schema: SchemaType<T> },
+		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
 		parent?: ConfigData
 	): GeneratorCallSignature<GenerateObjectObjectFinalConfig<T>, typeof generateObject>;
@@ -131,11 +111,11 @@ export class Factory {
 	ObjectGenerator<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'array',
-		parent: ConfigDataModelIsSet
+		parent?: ConfigData
 	): GeneratorCallSignature<GenerateObjectArrayFinalConfig<T>, typeof generateObject>;
 
 	ObjectGenerator<ENUM extends string>(
-		config: BaseConfigModelIsSet & { enum: ENUM[] },
+		config: BaseConfig & { enum: ENUM[] },
 		output: 'enum',
 		parent?: ConfigData
 	): GeneratorCallSignature<GenerateObjectEnumFinalConfig<ENUM>, typeof generateObject>;
@@ -153,13 +133,15 @@ export class Factory {
 		parent?: AnyConfigData
 	) {
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object generators cannot use tools');
+			throw new Error('Object generators cannot use tools - tools found in ' +
+				(isToolsConfig(config) ? 'config' : 'parent config'));
 		}
 		return createLLMRenderer(config, generateObject, parent);
 	}
 
+	// Object functions can't use tools and need model (either in config or call)
 	ObjectStreamer<T>(
-		config: BaseConfigModelIsSet & { schema: SchemaType<T> },
+		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
 		parent?: ConfigData
 	): StreamerCallSignature<StreamObjectObjectFinalConfig<T>, typeof streamObject>;
@@ -167,7 +149,7 @@ export class Factory {
 	ObjectStreamer<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'array',
-		parent: ConfigDataModelIsSet
+		parent?: ConfigData
 	): StreamerCallSignature<StreamObjectArrayFinalConfig<T>, typeof streamObject>;
 
 	ObjectStreamer(
@@ -183,7 +165,8 @@ export class Factory {
 		parent?: AnyConfigData
 	) {
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object streamers cannot use tools');
+			throw new Error('Object streamers cannot use tools - tools found in ' +
+				(isToolsConfig(config) ? 'config' : 'parent config'));
 		}
 		return createLLMRenderer(config, streamObject, parent);
 	}

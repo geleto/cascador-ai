@@ -1,31 +1,31 @@
 import { generateObject, generateText, streamObject, streamText, LanguageModel } from "ai";
-import { ConfigData, IConfigDataModelIsSet, mergeConfigs } from "./ConfigData";
+import { ConfigData, mergeConfigs } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
 import { Context, BaseConfig, hasModel } from "./types";
 
 //the vercel function
 type VercelLLMFunction = typeof generateObject | typeof generateText | typeof streamObject | typeof streamText;
 
-export interface LLMCallSignature<TConfig extends BaseConfig, F extends VercelLLMFunction> {
-	(promptOrConfig?: (Partial<TConfig> & { model: LanguageModel }) | string | Context, context?: Context): ReturnType<F>;
+/**
+ * Function signature for LLM generation/streaming calls.
+ * If base config has no model, requires model in call arguments.
+ * If base config has model, accepts any call signature.
+ */
+export type LLMCallFunction<TConfig extends BaseConfig, F extends VercelLLMFunction> = (promptOrConfig?: TConfig extends { model: LanguageModel }
+	? (Partial<TConfig> | string | Context) // Model in config - any form ok
+	: (Partial<TConfig> & { model: LanguageModel }), // No model in config - must provide model
+	context?: Context
+) => ReturnType<F>;
+
+// Interface extending the function type to add properties
+export interface LLMCallSignature<TConfig extends BaseConfig, F extends VercelLLMFunction>
+	extends LLMCallFunction<TConfig, F> {
 	config: TConfig;
 }
 
 //todo - the generator fn config must be type checked to have model and not have tools if object generator/streamer
 //todo - the config/parent must be type checked to have model and not have tools if object generator/streamer
 //todo must return the correct type <TResult> for the generator function
-export function createLLMRenderer<CType extends BaseConfig & { model: LanguageModel }, F extends VercelLLMFunction>(
-	config: CType,
-	func: F,
-	parent?: ConfigData
-): LLMCallSignature<CType, F>;
-
-export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMFunction>(
-	config: CType,
-	func: F,
-	parent: ConfigData & IConfigDataModelIsSet
-): LLMCallSignature<CType, F>;
-
 export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMFunction>(
 	config: CType,
 	func: F,
@@ -72,6 +72,7 @@ export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMF
 				}
 			}
 
+			// Check for model at runtime after all configs are merged
 			if (!hasModel(mergedConfig)) {
 				throw new Error('Model must be specified either in config, parent, or call arguments');
 			}

@@ -2,11 +2,11 @@ import { CoreTool } from 'ai';
 import { BaseConfig, BaseConfigModelIsSet, TemplateConfig, ToolsConfig, ToolsConfigModelIsSet } from './types';
 
 // Interfaces for ConfigData classes capabilities
-interface IConfigDataModelIsSet {
+export interface IConfigDataModelIsSet {
 	readonly config: BaseConfigModelIsSet;
 }
 
-interface IConfigDataHasTools<TOOLS extends Record<string, CoreTool>> {
+export interface IConfigDataHasTools<TOOLS extends Record<string, CoreTool>> {
 	readonly config: ToolsConfig<TOOLS>;
 }
 
