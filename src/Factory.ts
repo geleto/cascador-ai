@@ -1,6 +1,6 @@
 import { generateText, generateObject, streamText, CoreTool, streamObject } from 'ai';
 import { ConfigData, ConfigDataModelSet as ConfigDataModelIsSet, ConfigDataTools, ConfigDataToolsModelSet, TemplateConfigData } from './ConfigData';
-import { createLLMGenerator, createLLMStreamer, GeneratorCallSignature, StreamerCallSignature } from './createLLMRenderer';
+import { createLLMRenderer, createLLMRenderer, GeneratorCallSignature, StreamerCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
 	Context,
@@ -160,7 +160,7 @@ export class Factory {
 
 	//implementation
 	TextGenerator(config: BaseConfig, parent?: AnyConfigData): GeneratorCallSignature<BaseConfig, typeof generateText> {
-		return createLLMGenerator(config, generateText, parent);
+		return createLLMRenderer(config, generateText, parent);
 	}
 
 	//Overloads for TextStreamer: either config or parent must have model set
@@ -168,7 +168,7 @@ export class Factory {
 	//implementation
 	TextStreamer(config: BaseConfig, parent?: AnyConfigData): GeneratorCallSignature<BaseConfig, typeof streamText> {
 		//validateConfig(config, parent);
-		return createLLMStreamer(config, streamText, parent);
+		return createLLMRenderer(config, streamText, parent);
 	}
 
 	// Overloads for ObjectGenerator: either config or parent must have model set and no tools (ToolsConfig<any>, ConfigDataTools<any>)
@@ -178,14 +178,14 @@ export class Factory {
 
 	// Implementation
 	ObjectGenerator(config: BaseConfig, output: ObjectGeneratorOutputType, parent?: AnyConfigData) {
-		return createLLMStreamer(config, generateObject, parent);
+		return createLLMRenderer(config, generateObject, parent);
 	}
 
 	ObjectStreamer(config: BaseConfig, output: 'object', parent?: AnyConfigData): StreamerCallSignature<BaseConfig, typeof streamObject>;
 
 	// Implementation
 	ObjectStreamer(config: BaseConfig, output: ObjectGeneratorOutputType, parent?: AnyConfigData) {
-		return createLLMStreamer(config, streamObject, parent);
+		return createLLMRenderer(config, streamObject, parent);
 	}
 }
 
