@@ -6,20 +6,13 @@ import { Context, BaseConfig, hasModel } from "./types";
 //the vercel function
 type VercelLLMFunction = typeof generateObject | typeof generateText | typeof streamObject | typeof streamText;
 
-/**
- * Function signature for LLM generation/streaming calls.
- * If base config has no model, requires model in call arguments.
- * If base config has model, accepts any call signature.
- */
-export type LLMCallFunction<TConfig extends BaseConfig, F extends VercelLLMFunction> = (promptOrConfig?: TConfig extends { model: LanguageModel }
-	? (Partial<TConfig> | string | Context) // Model in config - any form ok
-	: (Partial<TConfig> & { model: LanguageModel }), // No model in config - must provide model
-	context?: Context
-) => ReturnType<F>;
-
-// Interface extending the function type to add properties
-export interface LLMCallSignature<TConfig extends BaseConfig, F extends VercelLLMFunction>
-	extends LLMCallFunction<TConfig, F> {
+export interface LLMCallSignature<TConfig extends BaseConfig, F extends VercelLLMFunction> {
+	// Call signatures based on whether config has model
+	(promptOrConfig?: TConfig extends { model: LanguageModel }
+		? (Partial<TConfig> | string | Context) // Model in config - any form ok
+		: (Partial<TConfig> & { model: LanguageModel }), // No model in config - must provide model
+		context?: Context
+	): ReturnType<F>;
 	config: TConfig;
 }
 

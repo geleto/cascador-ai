@@ -191,6 +191,7 @@ export type {
 	StreamTextResult
 } from 'ai';
 
+//these are returned in a Promise
 export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
 export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
 export type GenerateObjectEnumResult = GenerateObjectResult<string>;
@@ -198,6 +199,8 @@ export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
+//these are returned as is without a promise, many of the properties are promises
+//this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.
 export type StreamObjectObjectResult<T> = StreamObjectResult<DeepPartial<T>, T, never>;
 export type StreamObjectArrayResult<T> = StreamObjectResult<T[], T[], AsyncIterableStream<T>>;
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
