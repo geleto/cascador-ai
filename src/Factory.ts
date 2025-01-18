@@ -1,6 +1,6 @@
-import { generateText, generateObject, streamText, CoreTool } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject } from 'ai';
 import { ConfigData, ConfigDataModelSet as ConfigDataModelIsSet, ConfigDataTools, ConfigDataToolsModelSet, TemplateConfigData } from './ConfigData';
-import { createLLMGenerator, createLLMStreamer, GeneratorCallSignature } from './createLLMRenderer';
+import { createLLMGenerator, createLLMStreamer, GeneratorCallSignature, StreamerCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
 	Context,
@@ -179,6 +179,13 @@ export class Factory {
 	// Implementation
 	ObjectGenerator(config: BaseConfig, output: ObjectGeneratorOutputType, parent?: AnyConfigData) {
 		return createLLMStreamer(config, generateObject, parent);
+	}
+
+	ObjectStreamer(config: BaseConfig, output: 'object', parent?: AnyConfigData): StreamerCallSignature<BaseConfig, typeof streamObject>;
+
+	// Implementation
+	ObjectStreamer(config: BaseConfig, output: ObjectGeneratorOutputType, parent?: AnyConfigData) {
+		return createLLMStreamer(config, streamObject, parent);
 	}
 }
 

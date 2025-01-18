@@ -3,10 +3,10 @@ import { TemplateEngine } from "./TemplateEngine";
 import { Context, BaseConfig } from "./types";
 
 //the vercel function, todo: make more specific
-export type GeneratorFunction<TConfig = any, TResult = any> =
-	(config: TConfig) => Promise<TResult> | TResult;
+export type GeneratorFunction<CType = any, TResult = any> =
+	(config: CType) => Promise<TResult> | TResult;
 
-export type StreamFunction = (config: any) => any;
+export type StreamFunction<CType = any, TResult = any> = (config: CType) => TResult;
 
 export interface GeneratorCallSignature<TConfig extends BaseConfig, F extends GeneratorFunction> {
 	(promptOrConfig?: Partial<TConfig> | string, context?: Context): ReturnType<F>;
@@ -14,7 +14,9 @@ export interface GeneratorCallSignature<TConfig extends BaseConfig, F extends Ge
 }
 
 //todo - merge the 2 functions
-export function createLLMGenerator<CType extends BaseConfig>(config: BaseConfig, func: GeneratorFunction, parent?: ConfigData)
+//todo - the config/parent must be type checked to have model and not have tools if object generator/streamer
+//todo must return the correct type <TResult>
+export function createLLMGenerator<CType extends BaseConfig>(config: CType, func: GeneratorFunction, parent?: ConfigData)
 	: GeneratorCallSignature<CType, typeof func> {
 
 	const renderer = new TemplateEngine(config, parent);
@@ -28,26 +30,15 @@ export function createLLMGenerator<CType extends BaseConfig>(config: BaseConfig,
 			const mergedConfig = mergeConfigs(renderer.config, promptOrConfig);
 			mergedConfig.prompt = prompt;
 			if (context) {
-				mergedConfig.context = Object.assign(
-					{} as Record<string, unknown>,
-					mergedConfig.context ?? {},
-					context
-				) as Context;
+				mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return func(mergedConfig);
 		}
 
 		// String scenario - user passed a prompt string
 		if (typeof promptOrConfig === 'string') {
 			const mergedConfig = mergeConfigs(renderer.config, { prompt });
-			if (context) {
-				mergedConfig.context = Object.assign(
-					{} as Record<string, unknown>,
-					mergedConfig.context ?? {},
-					context
-				) as Context;
-			}
+			mergedConfig.context = { ...mergedConfig.context ?? {}, ...context };
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return func(mergedConfig);
 		}
