@@ -1,7 +1,14 @@
 import { CoreTool } from 'ai';
 import { BaseConfig, BaseConfigModelIsSet, TemplateConfig, ToolsConfig, ToolsConfigModelIsSet } from './types';
 
+// Interfaces for ConfigData classes capabilities
+interface IConfigDataModelIsSet {
+	readonly config: BaseConfigModelIsSet;
+}
 
+interface IConfigDataHasTools<TOOLS extends Record<string, CoreTool>> {
+	readonly config: ToolsConfig<TOOLS>;
+}
 
 export class BaseConfigData<ConfigType extends BaseConfig = BaseConfig> {
 	config: ConfigType;
@@ -13,16 +20,29 @@ export class BaseConfigData<ConfigType extends BaseConfig = BaseConfig> {
 export class ConfigData extends BaseConfigData {
 }
 
-export class ConfigDataModelSet<T extends BaseConfigModelIsSet = BaseConfigModelIsSet> extends BaseConfigData<T> {
+export class ConfigDataModelIsSet extends BaseConfigData<BaseConfigModelIsSet>
+	implements IConfigDataModelIsSet {
 }
 
-export class ConfigDataTools<TOOLS extends Record<string, CoreTool>, T extends ToolsConfig<TOOLS> = ToolsConfig<TOOLS>> extends BaseConfigData<T> {
+export class ConfigDataHasTools<TOOLS extends Record<string, CoreTool>>
+	extends BaseConfigData<ToolsConfig<TOOLS>>
+	implements IConfigDataHasTools<TOOLS> {
 }
 
-export class ConfigDataToolsModelSet<TOOLS extends Record<string, CoreTool>, T extends ToolsConfigModelIsSet<TOOLS> = ToolsConfigModelIsSet<TOOLS>> extends BaseConfigData<T> {
+export class ConfigDataHasToolsModelIsSet<TOOLS extends Record<string, CoreTool>>
+	extends BaseConfigData<ToolsConfigModelIsSet<TOOLS>>
+	implements IConfigDataModelIsSet, IConfigDataHasTools<TOOLS> {
 }
 
 export class TemplateConfigData extends BaseConfigData<Partial<TemplateConfig>> {
+}
+
+export function isConfigDataModelIsSet(config: ConfigData): config is ConfigDataModelIsSet {
+	return config instanceof ConfigDataModelIsSet;
+}
+
+export function isConfigDataHasTools(config: ConfigData): config is ConfigDataHasTools<any> {
+	return config instanceof ConfigDataHasTools;
 }
 
 /**
@@ -46,6 +66,7 @@ export function mergeConfigs<
 			...childConfig.context ?? {},
 		};
 	}
+
 	if ('filters' in parentConfig || 'filters' in childConfig) {
 		merged.filters = {
 			...parentConfig.filters ?? {},

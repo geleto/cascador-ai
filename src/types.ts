@@ -13,7 +13,7 @@ import { z } from 'zod';
 // This is a problem because generateObject and streamObject have multiple overloads with different config and return types
 // To overcome this:
 // I get the generateText config type and exclude all properties specific only to it to get the base config type
-// Then I add the specific properties for each function/overload to the base type - which are not many
+// Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
 // Template types
@@ -36,36 +36,25 @@ export interface TemplateBaseConfig {
 	options?: ConfigureOptions;
 }
 
-// Config for the template engine, all
+// Config for the template engine
 export interface TemplateConfig extends TemplateBaseConfig {
 	promptName?: string;
 	prompt?: string;
 }
 
-/*
- * Either prompt or promptName must be provided
-type XOR<T, U> = (T | U) extends object
-  ? (T & { [K in keyof U]?: never }) | (U & { [K in keyof T]?: never })
-  : T | U;
+// Base config for generateText tools
+type GenerateTextToolsConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof generateText<TOOLS>>[0],
+	| 'tools'
+	| 'toolChoice'
+	| 'maxSteps'
+	| 'experimental_activeTools'
+	| 'experimental_repairToolCall'
+>;
 
-interface TemplateConfigBase {
-  context?: Context;
-  filters?: Filters;
-  loader?: ILoaderAny | ILoaderAny[] | null;
-  options?: ConfigureOptions;
-}
-
-// Define two interfaces: one with `promptName` and one with `prompt`.
-interface WithPromptName {
-  promptName: string;
-  prompt?: never;
-}
-
-interface WithPrompt {
-  prompt: string;
-  promptName?: never
-}
- */
+// Stream text extends generate text tools config and adds streaming-specific tool property
+type StreamTextToolsConfig<TOOLS extends Record<string, CoreTool>> = GenerateTextToolsConfig<TOOLS> & {
+	experimental_toolCallStreaming?: boolean
+};
 
 // This is the base config
 // It is a Partial, all properties are optional
@@ -77,23 +66,19 @@ export type BaseConfig = Partial<Omit<Parameters<typeof generateText>[0], keyof 
 	& { mode?: 'auto' | 'json' | 'tool' }
 >;
 
+// Base configs with specific capabilities
 export type BaseConfigModelIsSet = BaseConfig & { model: LanguageModel };
+export type ToolsConfig<TOOLS extends Record<string, CoreTool>> = BaseConfig & StreamTextToolsConfig<TOOLS>;
+export type ToolsConfigModelIsSet<TOOLS extends Record<string, CoreTool>> = ToolsConfig<TOOLS> & { model: LanguageModel };
 
-// this is the base config with the properties used for tools added
-// Base config for tool properties in generateText
-type GenerateTextToolsConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof generateText<TOOLS>>[0],
+// Specific configurations for each type and overload
+type GenerateTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof generateText<TOOLS>>[0],
 	| 'tools'
 	| 'toolChoice'
 	| 'maxSteps'
 	| 'experimental_activeTools'
 	| 'experimental_repairToolCall'
 >;
-
-// Stream text extends generate text tools config and adds the streaming-specific tool property experimental_toolCallStreaming
-type StreamTextToolsConfig<TOOLS extends Record<string, CoreTool>> = GenerateTextToolsConfig<TOOLS> & { experimental_toolCallStreaming?: boolean };
-
-export type ToolsConfig<TOOLS extends Record<string, CoreTool>> = StreamTextToolsConfig<TOOLS> & BaseConfig;
-export type ToolsConfigModelIsSet<TOOLS extends Record<string, CoreTool>> = ToolsConfig<TOOLS> & { model: LanguageModel };
 
 // Base configs for each type, remove the output property because it's a separate argument in our factory functions
 type BaseGenerateObjectConfig = Omit<
@@ -107,8 +92,6 @@ type BaseStreamObjectConfig = Omit<
 >;
 
 // Extract the base OnFinishCallback type from streamObject
-// We don't have access to OnFinishCallback directly, so we extract it from the streamObject config.onFinish
-// Get it from the last overload (see above about Parameters<T>) and change the generic type to match the specific overload
 type BaseOnFinishCallback = NonNullable<Parameters<typeof streamObject>[0]['onFinish']>;
 
 // Extract our own callback type as it's not exported
@@ -116,28 +99,7 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 	? (event: { [K in keyof E]: K extends 'object' ? T | undefined : E[K] }) => R
 	: never;
 
-// Specific configurations for each type and overload
-// Can use Pick for non-overloaded functions
-// for now only used to extract the base config type
-type GenerateTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof generateText<TOOLS>>[0],
-	| 'tools'
-	| 'toolChoice'
-	| 'maxSteps'
-	| 'experimental_activeTools'
-	| 'experimental_repairToolCall'
->;
-
-/*type StreamTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof streamText<TOOLS>>[0],
-	| 'tools'
-	| 'toolChoice'
-	| 'maxSteps'
-	| 'experimental_activeTools'
-	| 'experimental_repairToolCall'
-	| 'experimental_toolCallStreaming'
->;*/
-
 interface GenerateObjectObjectSpecificConfig<T> {
-	//output?: 'object'; - do not add output back, it's a separate argument and not part of the config in our implementation
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -145,7 +107,6 @@ interface GenerateObjectObjectSpecificConfig<T> {
 }
 
 interface GenerateObjectArraySpecificConfig<T> {
-	//output: 'array'; - do not add output back
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -153,18 +114,15 @@ interface GenerateObjectArraySpecificConfig<T> {
 }
 
 interface GenerateObjectEnumSpecificConfig<ENUM extends string> {
-	//output: 'enum'; - do not add output back
 	enum: ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 interface GenerateObjectNoSchemaSpecificConfig {
-	//output: 'no-schema';
 	mode?: 'json';
 }
 
 interface StreamObjectObjectSpecificConfig<T> {
-	//output?: 'object';
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -173,7 +131,6 @@ interface StreamObjectObjectSpecificConfig<T> {
 }
 
 interface StreamObjectArraySpecificConfig<T> {
-	//output: 'array';
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -182,49 +139,35 @@ interface StreamObjectArraySpecificConfig<T> {
 }
 
 interface StreamObjectNoSchemaSpecificConfig {
-	//output: 'no-schema';
 	mode?: 'json';
 	onFinish?: OnFinishCallback<JSONValue>;
 }
 
-//Tools config - these can only be used with generate/stream text functions
+// Type guards for config objects
+export function hasModel(config: unknown): config is { model: LanguageModel } {
+	return !!config && typeof config === 'object' && 'model' in config && !!config.model;
+}
 
-// The raw configs used by the vercel text functions
-/*export type RawGenerateTextConfig = Parameters<typeof generateText>[0];
-export type RawStreamTextConfig = Parameters<typeof streamText>[0];
+export function isToolsConfig<TOOLS extends Record<string, CoreTool>>(
+	config: unknown
+): config is StreamTextToolsConfig<TOOLS> {
+	return !!config && typeof config === 'object' && 'tools' in config;
+}
 
-// The raw configs used by the vercel generate functions, we bring back the output property
-export type RawGenerateObjectObjectConfig<T> = BaseGenerateObjectConfig & GenerateObjectObjectSpecificConfig<T> & { output: 'object' };
-export type RawGenerateObjectArrayConfig<T> = BaseGenerateObjectConfig & GenerateObjectArraySpecificConfig<T> & { output: 'array' };
-export type RawGenerateObjectEnumConfig = BaseGenerateObjectConfig & GenerateObjectEnumSpecificConfig & { output: 'enum' };
-export type RawGenerateObjectNoSchemaConfig = BaseGenerateObjectConfig & GenerateObjectNoSchemaSpecificConfig & { output: 'no-schema' };*/
-
-// The raw configs used by the vercel stream functions
-/*export type RawStreamObjectObjectConfig<T> = BaseStreamObjectConfig & StreamObjectObjectSpecificConfig<T> & { output: 'object' };
-export type RawStreamObjectArrayConfig<T> = BaseStreamObjectConfig & StreamObjectArraySpecificConfig<T> & { output: 'array' };
-export type RawStreamObjectNoSchemaConfig = BaseStreamObjectConfig & StreamObjectNoSchemaSpecificConfig & { output: 'no-schema' };*/
-
-// The configs containing all required Vercel LLM properties,
-// also contains the template config properties but all of those are optional
-// used in the merged config in the factory functions (which also add the output property back)
-export type GenerateTextLLMConfig = Parameters<typeof generateText>[0] & Partial<TemplateConfig>;//ok because no overrides
-export type StreamTextLLMConfig = Parameters<typeof streamText>[0] & Partial<TemplateConfig>;//ok because no overrides
+// The configs containing all required Vercel LLM properties
+export type GenerateTextLLMConfig = Parameters<typeof generateText>[0] & Partial<TemplateConfig>;
+export type StreamTextLLMConfig = Parameters<typeof streamText>[0] & Partial<TemplateConfig>;
 
 export type GenerateObjectObjectLLMConfig<T> = BaseGenerateObjectConfig & GenerateObjectObjectSpecificConfig<T> & Partial<TemplateConfig> & { output: 'object' };
 export type GenerateObjectArrayLLMConfig<T> = BaseGenerateObjectConfig & GenerateObjectArraySpecificConfig<T> & Partial<TemplateConfig> & { output: 'array' };
 export type GenerateObjectEnumLLMConfig<ENUM extends string> = BaseGenerateObjectConfig & GenerateObjectEnumSpecificConfig<ENUM> & Partial<TemplateConfig> & { output: 'enum' };
 export type GenerateObjectNoSchemaLLMConfig = BaseGenerateObjectConfig & GenerateObjectNoSchemaSpecificConfig & Partial<TemplateConfig> & { output: 'no-schema' };
 
-export type GenerateObectsAllLLMConfig<ENUM extends string> = GenerateObjectObjectLLMConfig<any> | GenerateObjectArrayLLMConfig<any> | GenerateObjectEnumLLMConfig<ENUM> | GenerateObjectNoSchemaLLMConfig;
-
 export type StreamObjectObjectLLMConfig<T> = BaseStreamObjectConfig & StreamObjectObjectSpecificConfig<T> & Partial<TemplateConfig> & { output: 'object' };
 export type StreamObjectArrayLLMConfig<T> = BaseStreamObjectConfig & StreamObjectArraySpecificConfig<T> & Partial<TemplateConfig> & { output: 'array' };
 export type StreamObjectNoSchemaLLMConfig = BaseStreamObjectConfig & StreamObjectNoSchemaSpecificConfig & Partial<TemplateConfig> & { output: 'no-schema' };
 
-export type StreamObjectsAllLLMConfig = StreamObjectObjectLLMConfig<any> | StreamObjectArrayLLMConfig<any> | StreamObjectNoSchemaLLMConfig;
-
-// Complete config types with all properties for each every function and overload, used in the final call
-// base config(which is without output property) + specific config + template config
+// Complete config types with all properties for each function and overload
 export type GenerateTextFinalConfig = GenerateTextLLMConfig & TemplateConfig;
 export type StreamTextFinalConfig = StreamTextLLMConfig & TemplateConfig;
 
@@ -237,37 +180,15 @@ export type StreamObjectObjectFinalConfig<T> = StreamObjectObjectLLMConfig<T> & 
 export type StreamObjectArrayFinalConfig<T> = StreamObjectArrayLLMConfig<T> & TemplateConfig;
 export type StreamObjectNoSchemaFinalConfig = StreamObjectNoSchemaLLMConfig & TemplateConfig;
 
-// Union types for all generate object configs
-/*export type GenerateObjectAllFinalConfig<ENUM extends string> =
-	| GenerateObjectObjectFinalConfig<any>
-	| GenerateObjectArrayFinalConfig<any>
-	| GenerateObjectEnumFinalConfig<ENUM>
-	| GenerateObjectNoSchemaFinalConfig;*/
-
-// Union types for all stream object configs
 export type GenerateStreamAllFinalConfig =
 	| StreamObjectObjectFinalConfig<any>
 	| StreamObjectArrayFinalConfig<any>
 	| StreamObjectNoSchemaFinalConfig;
 
-// LLM Config argument for all factory functions, everything is optional (Partial),
-// only 'output' is removed because we add it back as separate argument
-/*export type LLMConfigArg = Partial<
-	Omit<GenerateTextFinalConfig, 'output'> &
-	Omit<StreamTextFinalConfig, 'output'> &
-	Omit<GenerateObjectAllFinalConfig, 'output'> &
-	Omit<GenerateStreamAllFinalConfig, 'output'>
->;*/
-
-//used in StreamObjectArrayResult:
-type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
-
 // Result types
 export type {
-	//GenerateObjectResult, - can extract only the from the last override, useless
-	//StreamObjectResult, - can extract only the from the last override, useless
-	GenerateTextResult, //no overrides, so use directly
-	StreamTextResult //no overrides, so use directly
+	GenerateTextResult,
+	StreamTextResult
 } from 'ai';
 
 export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
@@ -275,51 +196,8 @@ export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
 export type GenerateObjectEnumResult = GenerateObjectResult<string>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
+type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
+
 export type StreamObjectObjectResult<T> = StreamObjectResult<DeepPartial<T>, T, never>;
 export type StreamObjectArrayResult<T> = StreamObjectResult<T[], T[], AsyncIterableStream<T>>;
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
-
-// Type guards for property checking
-export function hasModel(config: unknown): config is { model: LanguageModel } {
-	return config !== null && typeof config === 'object' && 'model' in config;
-}
-
-export function hasSchema<T>(config: unknown): config is { schema: SchemaType<T> } {
-	if (config === null || typeof config !== 'object') {
-		return false;
-	}
-	const record = config as Record<string, unknown>;
-	return 'schema' in record && record.schema !== undefined;
-}
-
-export function hasEnum(config: unknown): config is { enum: string[] } {
-	if (config === null || typeof config !== 'object') {
-		return false;
-	}
-	const record = config as Record<string, unknown>;
-	return 'enum' in record &&
-		Array.isArray(record.enum) &&
-		record.enum.every(item => typeof item === 'string');
-}
-
-// Error types
-export class ConfigError extends Error {
-	constructor(message: string) {
-		super(`Configuration Error: ${message}`);
-		this.name = 'ConfigError';
-	}
-}
-
-export class TemplateError extends Error {
-	constructor(message: string) {
-		super(`Template Error: ${message}`);
-		this.name = 'TemplateError';
-	}
-}
-
-export class ValidationError extends Error {
-	constructor(message: string) {
-		super(`Validation Error: ${message}`);
-		this.name = 'ValidationError';
-	}
-}

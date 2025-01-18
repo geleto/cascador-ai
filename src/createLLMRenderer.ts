@@ -1,19 +1,31 @@
-import { generateObject, generateText, streamObject, streamText } from "ai";
-import { ConfigData, mergeConfigs } from "./ConfigData";
+import { generateObject, generateText, streamObject, streamText, LanguageModel } from "ai";
+import { ConfigData, IConfigDataModelIsSet, mergeConfigs } from "./ConfigData";
 import { TemplateEngine } from "./TemplateEngine";
-import { Context, BaseConfig } from "./types";
+import { Context, BaseConfig, hasModel } from "./types";
 
 //the vercel function
 type VercelLLMFunction = typeof generateObject | typeof generateText | typeof streamObject | typeof streamText;
 
 export interface LLMCallSignature<TConfig extends BaseConfig, F extends VercelLLMFunction> {
-	(promptOrConfig?: Partial<TConfig> | string | Context, context?: Context): ReturnType<F>;
+	(promptOrConfig?: (Partial<TConfig> & { model: LanguageModel }) | string | Context, context?: Context): ReturnType<F>;
 	config: TConfig;
 }
 
-//todo - the generator fn congig must be type checked to have model and not have tools if object generator/streamer
+//todo - the generator fn config must be type checked to have model and not have tools if object generator/streamer
 //todo - the config/parent must be type checked to have model and not have tools if object generator/streamer
 //todo must return the correct type <TResult> for the generator function
+export function createLLMRenderer<CType extends BaseConfig & { model: LanguageModel }, F extends VercelLLMFunction>(
+	config: CType,
+	func: F,
+	parent?: ConfigData
+): LLMCallSignature<CType, F>;
+
+export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMFunction>(
+	config: CType,
+	func: F,
+	parent: ConfigData & IConfigDataModelIsSet
+): LLMCallSignature<CType, F>;
+
 export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMFunction>(
 	config: CType,
 	func: F,
@@ -21,7 +33,6 @@ export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMF
 ): LLMCallSignature<CType, F> {
 	const renderer = new TemplateEngine(config, parent);
 
-	//todo - the call config must be a proper almost full config
 	const llmFn = (async (promptOrConfig?: Partial<CType> | string | Context, context?: Context) => {
 		try {
 			// Handle case where first param is just context
@@ -35,31 +46,36 @@ export function createLLMRenderer<CType extends BaseConfig, F extends VercelLLMF
 
 			const prompt = await renderer.call(effectivePromptOrConfig, effectiveContext);
 
+			let mergedConfig: BaseConfig;
+
 			// Object scenario - llmFn(config, context)
 			if (typeof effectivePromptOrConfig !== 'string' && effectivePromptOrConfig) {
-				const mergedConfig = mergeConfigs(renderer.config, effectivePromptOrConfig);
+				mergedConfig = mergeConfigs(renderer.config, effectivePromptOrConfig);
 				mergedConfig.prompt = prompt;
 				if (effectiveContext) {
 					mergedConfig.context = { ...mergedConfig.context ?? {}, ...effectiveContext };
 				}
-				return func(mergedConfig);
 			}
-
 			// String scenario - llmFn("template string", context)
-			if (typeof effectivePromptOrConfig === 'string') {
-				const mergedConfig = mergeConfigs(renderer.config, { prompt });
+			else if (typeof effectivePromptOrConfig === 'string') {
+				mergedConfig = mergeConfigs(renderer.config, { prompt });
 				if (effectiveContext) {
 					mergedConfig.context = { ...mergedConfig.context ?? {}, ...effectiveContext };
 				}
-				return func(mergedConfig);
+			}
+			// Context only scenario - llmFn(context)
+			else {
+				mergedConfig = renderer.config;
+				mergedConfig.prompt = prompt;
+				if (effectiveContext) {
+					mergedConfig.context = { ...mergedConfig.context ?? {}, ...effectiveContext };
+				}
 			}
 
-			// Context only scenario - llmFn(context)
-			const mergedConfig = renderer.config;
-			mergedConfig.prompt = prompt;
-			if (effectiveContext) {
-				mergedConfig.context = { ...mergedConfig.context ?? {}, ...effectiveContext };
+			if (!hasModel(mergedConfig)) {
+				throw new Error('Model must be specified either in config, parent, or call arguments');
 			}
+
 			return func(mergedConfig);
 		} catch (error: any) {
 			const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
