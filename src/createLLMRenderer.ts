@@ -89,7 +89,7 @@ export function createLLMRenderer<CType extends BaseConfig, TResult>(
 				throw new Error('Model must be specified either in config, parent, or call arguments');
 			}
 
-			return func(mergedConfig as CType & { model: LanguageModel }) as Promise<TResult>;
+			return (await func(mergedConfig as CType & { model: LanguageModel })) as TResult;
 		} catch (error: any) {
 			const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
 			throw new Error(`${func.name || 'LLM'} execution failed: ${errorMessage}`, { cause: error });
