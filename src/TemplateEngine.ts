@@ -1,10 +1,10 @@
 import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
-import { Context, TemplateBaseConfig, TemplateConfig } from './types';
+import { Context, TemplateOnlyBaseConfig, TemplateOnlyConfig } from './types';
 import { ConfigData, mergeConfigs, TemplateConfigData } from './ConfigData';
 
 export interface TemplateCallSignature {
-	(promptOrConfig?: string | TemplateBaseConfig, context?: Context): Promise<string>;
-	config: TemplateBaseConfig;
+	(promptOrConfig?: string | TemplateOnlyBaseConfig, context?: Context): Promise<string>;
+	config: TemplateOnlyBaseConfig;
 }
 
 export class TemplateEngine extends ConfigData {
@@ -12,7 +12,7 @@ export class TemplateEngine extends ConfigData {
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: PAsyncTemplate;
 
-	constructor(config: TemplateBaseConfig, parent?: TemplateConfigData) {
+	constructor(config: TemplateOnlyBaseConfig, parent?: TemplateConfigData) {
 		super(config, parent);
 
 		// Initialize environment
@@ -35,7 +35,7 @@ export class TemplateEngine extends ConfigData {
 		}
 	}
 
-	async call(promptOrConfig?: string | TemplateConfig, context?: Context): Promise<string> {
+	async call(promptOrConfig?: string | TemplateOnlyConfig, context?: Context): Promise<string> {
 		/**
 		 * Test with merged
 		 // Validate configuration

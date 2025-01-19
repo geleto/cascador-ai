@@ -1,13 +1,13 @@
-import { CoreTool } from 'ai';
-import { BaseConfig, BaseConfigModelIsSet, TemplateConfig, ToolsConfig, ToolsConfigModelIsSet } from './types';
+import { CoreTool, LanguageModel } from 'ai';
+import { BaseConfig, TemplateOnlyConfig, BaseConfigWithTools } from './types';
 
 // Interfaces for ConfigData classes capabilities
 export interface IConfigDataModelIsSet {
-	readonly config: BaseConfigModelIsSet;
+	readonly config: BaseConfig & { model: LanguageModel };
 }
 
 export interface IConfigDataHasTools<TOOLS extends Record<string, CoreTool>> {
-	readonly config: ToolsConfig<TOOLS>;
+	readonly config: BaseConfigWithTools<TOOLS>;
 }
 
 export class BaseConfigData<ConfigType extends BaseConfig = BaseConfig> {
@@ -20,21 +20,21 @@ export class BaseConfigData<ConfigType extends BaseConfig = BaseConfig> {
 export class ConfigData extends BaseConfigData {
 }
 
-export class ConfigDataModelIsSet extends BaseConfigData<BaseConfigModelIsSet>
+export class ConfigDataModelIsSet extends BaseConfigData<BaseConfig & { model: LanguageModel }>
 	implements IConfigDataModelIsSet {
 }
 
 export class ConfigDataHasTools<TOOLS extends Record<string, CoreTool>>
-	extends BaseConfigData<ToolsConfig<TOOLS>>
+	extends BaseConfigData<BaseConfigWithTools<TOOLS>>
 	implements IConfigDataHasTools<TOOLS> {
 }
 
 export class ConfigDataHasToolsModelIsSet<TOOLS extends Record<string, CoreTool>>
-	extends BaseConfigData<ToolsConfigModelIsSet<TOOLS>>
+	extends BaseConfigData<BaseConfigWithTools<TOOLS> & { model: LanguageModel }>
 	implements IConfigDataModelIsSet, IConfigDataHasTools<TOOLS> {
 }
 
-export class TemplateConfigData extends BaseConfigData<Partial<TemplateConfig>> {
+export class TemplateConfigData extends BaseConfigData<Partial<TemplateOnlyConfig>> {
 }
 
 export function isConfigDataModelIsSet(config: ConfigData): config is ConfigDataModelIsSet {

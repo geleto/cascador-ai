@@ -1,38 +1,28 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel } from 'ai';
 import { ConfigData, ConfigDataModelIsSet, ConfigDataHasTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
-	BaseConfig,
-	BaseConfigModelIsSet,
-	TemplateBaseConfig,
-	Context,
-	ToolsConfig,
-	ToolsConfigModelIsSet,
-	SchemaType,
+	SchemaType, Context,
+	ObjectGeneratorOutputType, ObjectStreamOutputType,
+
+	//Base Config types, all properties are optional
+	BaseConfig, //a base config common for all generators and streamers
+	TemplateOnlyBaseConfig, //only the template engine configuration properties
+	BaseConfigWithTools, //a base config with tools, can not be used for streamers
+
+	//Type guards functions
 	isToolsConfig,
-	ObjectGeneratorOutputType,
-	ObjectStreamOutputType,
+
+	//Final config types - with all required properties for the vercel functions
 	GenerateTextFinalConfig,
-	GenerateObjectObjectFinalConfig,
-	StreamTextFinalConfig,
-	StreamObjectObjectFinalConfig,
-	StreamObjectArrayFinalConfig,
-	StreamObjectNoSchemaFinalConfig,
-	GenerateObjectArrayFinalConfig,
-	GenerateObjectEnumFinalConfig,
-	GenerateObjectNoSchemaFinalConfig,
-	GenerateTextResult,
-	StreamTextResult,
-	GenerateObjectObjectResult,
-	GenerateObjectArrayResult,
-	GenerateObjectEnumResult,
-	GenerateObjectNoSchemaResult,
-	StreamObjectObjectResult,
-	StreamObjectArrayResult,
-	StreamObjectNoSchemaResult,
-	GenerateObjectResultFromOutput,
-	GenerateObjectConfigFromOutput
+	GenerateObjectObjectFinalConfig, GenerateObjectArrayFinalConfig, GenerateObjectEnumFinalConfig, GenerateObjectNoSchemaFinalConfig,
+	StreamTextFinalConfig, StreamObjectObjectFinalConfig, StreamObjectArrayFinalConfig, StreamObjectNoSchemaFinalConfig,
+
+	//Return types
+	GenerateTextResult, StreamTextResult,
+	GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
+	StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult
 } from './types';
 
 type AnyConfigData = ConfigData | ConfigDataHasTools<any>;
@@ -47,23 +37,23 @@ export class Factory {
 
 	// Tools configs - most specific
 	Config<TOOLS extends Record<string, CoreTool>>(
-		config: ToolsConfigModelIsSet<TOOLS>,
+		config: BaseConfigWithTools<TOOLS> & { model: LanguageModel },
 		parent?: AnyConfigData
 	): ConfigDataHasToolsModelIsSet<TOOLS>;
 
 	Config<TOOLS extends Record<string, CoreTool>>(
-		config: ToolsConfig<TOOLS>,
+		config: BaseConfigWithTools<TOOLS>,
 		parent?: ConfigDataModelIsSet
 	): ConfigDataHasToolsModelIsSet<TOOLS>;
 
 	// Model configs
 	Config(
-		config: BaseConfigModelIsSet,
+		config: BaseConfig & { model: LanguageModel },
 		parent?: AnyConfigData
 	): ConfigDataModelIsSet;
 
 	Config<TOOLS extends Record<string, CoreTool>>(
-		config: ToolsConfig<TOOLS>,
+		config: BaseConfigWithTools<TOOLS>,
 		parent?: ConfigData
 	): ConfigDataHasTools<TOOLS>;
 
@@ -82,14 +72,14 @@ export class Factory {
 		return new ConfigData(config, parent);
 	}
 
-	TemplateConfig(config: TemplateBaseConfig, parent?: TemplateConfigData): TemplateConfigData {
+	TemplateConfig(config: TemplateOnlyBaseConfig, parent?: TemplateConfigData): TemplateConfigData {
 		return new TemplateConfigData(config, parent);
 	}
 
-	TemplateRenderer(config: TemplateBaseConfig, parent?: TemplateConfigData): TemplateCallSignature {
+	TemplateRenderer(config: TemplateOnlyBaseConfig, parent?: TemplateConfigData): TemplateCallSignature {
 		const renderer = new TemplateEngine(config, parent);
 
-		const callable = ((promptOrConfig?: string | TemplateBaseConfig, context?: Context) => {
+		const callable = ((promptOrConfig?: string | TemplateOnlyBaseConfig, context?: Context) => {
 			return renderer.call(promptOrConfig, context);
 		}) as TemplateCallSignature;
 
@@ -116,19 +106,22 @@ export class Factory {
 	ObjectGenerator<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
-		parent?: ConfigData
+		parent?: ConfigData,
+		schema?: SchemaType<T>
 	): LLMCallSignature<GenerateObjectObjectFinalConfig<T>, GenerateObjectObjectResult<T>>;
 
 	ObjectGenerator<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'array',
-		parent?: ConfigData
+		parent?: ConfigData,
+		schema?: SchemaType<T>
 	): LLMCallSignature<GenerateObjectArrayFinalConfig<T>, GenerateObjectArrayResult<T>>;
 
 	ObjectGenerator<ENUM extends string>(
 		config: BaseConfig & { enum: ENUM[] },
 		output: 'enum',
-		parent?: ConfigData
+		parent?: ConfigData,
+		enumValues?: ENUM[]
 	): LLMCallSignature<GenerateObjectEnumFinalConfig<ENUM>, GenerateObjectEnumResult<ENUM>>;
 
 	ObjectGenerator(
@@ -138,29 +131,11 @@ export class Factory {
 	): LLMCallSignature<GenerateObjectNoSchemaFinalConfig, GenerateObjectNoSchemaResult>;
 
 	// Implementation
-	ObjectGenerator<TSchema, ENUM extends string>(
+	ObjectGenerator<TSchema, ENUM extends string = never>(
 		config: BaseConfig,
 		output: ObjectGeneratorOutputType,
-		parent?: ConfigData
-	) {
-		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object generators cannot use tools...');
-		}
-
-		return createLLMRenderer<
-			GenerateObjectConfigFromOutput<TSchema, ENUM, typeof output>,
-			GenerateObjectResultFromOutput<TSchema, ENUM, typeof output>
-		>(
-			{ ...config, output },
-			generateObject,
-			parent
-		);
-	}
-
-	ObjectGeneratorOLD<TSchema, ENUM extends string>(
-		config: BaseConfig,
-		output: ObjectGeneratorOutputType,
-		parent?: ConfigData
+		parent?: ConfigData,
+		schemaOrEnum?: SchemaType<TSchema> | ENUM[]
 	) {
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
 			throw new Error('Object generators cannot use tools...');
@@ -169,19 +144,19 @@ export class Factory {
 		switch (output) {
 			case 'object':
 				return createLLMRenderer<GenerateObjectObjectFinalConfig<TSchema>, GenerateObjectObjectResult<TSchema>>(
-					{ ...config, output: 'object' },
+					{ ...config, output: 'object', schema: schemaOrEnum as SchemaType<TSchema> },
 					generateObject,
 					parent
 				);
 			case 'array':
 				return createLLMRenderer<GenerateObjectArrayFinalConfig<TSchema>, GenerateObjectArrayResult<TSchema>>(
-					{ ...config, output: 'array' },
+					{ ...config, output: 'array', schema: schemaOrEnum as SchemaType<TSchema> },
 					generateObject,
 					parent
 				);
 			case 'enum':
 				return createLLMRenderer<GenerateObjectEnumFinalConfig<ENUM>, GenerateObjectEnumResult<ENUM>>(
-					{ ...config, output: 'enum' },
+					{ ...config, output: 'enum', enum: schemaOrEnum as ENUM[] },
 					generateObject,
 					parent
 				);
@@ -191,6 +166,8 @@ export class Factory {
 					generateObject,
 					parent
 				);
+			default:
+				throw new Error(`Invalid output type: ${output as string}`);
 		}
 	}
 
@@ -198,7 +175,8 @@ export class Factory {
 	ObjectStreamer<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
-		parent?: ConfigData
+		parent?: ConfigData,
+		schema?: SchemaType<T>
 	): LLMCallSignature<StreamObjectObjectFinalConfig<T>, StreamObjectObjectResult<T>>;
 
 	ObjectStreamer<T>(
@@ -214,16 +192,39 @@ export class Factory {
 	): LLMCallSignature<StreamObjectNoSchemaFinalConfig, StreamObjectNoSchemaResult>;
 
 	// Implementation
-	ObjectStreamer(
+	ObjectStreamer<TSchema>(
 		config: BaseConfig,
 		output: ObjectStreamOutputType,
-		parent?: AnyConfigData
+		parent?: ConfigData,
+		schema?: SchemaType<TSchema>
 	) {
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
 			throw new Error('Object streamers cannot use tools - tools found in ' +
-				(isToolsConfig(config) ? 'config' : 'parent config'));
+				(isToolsConfig(config) ? 'config argument' : 'parent configx'));
 		}
-		return createLLMRenderer(config, streamObject, parent);
+
+		switch (output) {
+			case 'object':
+				return createLLMRenderer<StreamObjectObjectFinalConfig<TSchema>, StreamObjectObjectResult<TSchema>>(
+					{ ...config, output: 'object', schema },
+					streamObject,
+					parent
+				);
+			case 'array':
+				return createLLMRenderer<StreamObjectArrayFinalConfig<TSchema>, StreamObjectArrayResult<TSchema>>(
+					{ ...config, output: 'array', schema },
+					streamObject,
+					parent
+				);
+			case 'no-schema':
+				return createLLMRenderer<StreamObjectNoSchemaFinalConfig, StreamObjectNoSchemaResult>(
+					{ ...config, output: 'no-schema' },
+					streamObject,
+					parent
+				);
+			default:
+				throw new Error(`Invalid output type: ${output as string}`);
+		}
 	}
 }
 
