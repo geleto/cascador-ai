@@ -1,6 +1,6 @@
 import { generateText, generateObject, streamText, CoreTool, streamObject } from 'ai';
 import { ConfigData, ConfigDataModelIsSet, ConfigDataHasTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
-import { createLLMRenderer } from './createLLMRenderer';
+import { createLLMRenderer, LLMCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
 	BaseConfig,
@@ -21,7 +21,18 @@ import {
 	StreamObjectNoSchemaFinalConfig,
 	GenerateObjectArrayFinalConfig,
 	GenerateObjectEnumFinalConfig,
-	GenerateObjectNoSchemaFinalConfig
+	GenerateObjectNoSchemaFinalConfig,
+	GenerateTextResult,
+	StreamTextResult,
+	GenerateObjectObjectResult,
+	GenerateObjectArrayResult,
+	GenerateObjectEnumResult,
+	GenerateObjectNoSchemaResult,
+	StreamObjectObjectResult,
+	StreamObjectArrayResult,
+	StreamObjectNoSchemaResult,
+	GenerateObjectResultFromOutput,
+	GenerateObjectConfigFromOutput
 } from './types';
 
 type AnyConfigData = ConfigData | ConfigDataHasTools<any>;
@@ -87,17 +98,17 @@ export class Factory {
 	}
 
 	// Text functions can use tools and need model (either in config or call)
-	TextGenerator(
-		config: BaseConfig,
+	TextGenerator<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>>(
+		config: GenerateTextFinalConfig<TOOLS>,
 		parent?: AnyConfigData
-	): GeneratorCallSignature<GenerateTextFinalConfig, typeof generateText> {
+	): LLMCallSignature<GenerateTextFinalConfig<TOOLS>, GenerateTextResult<TOOLS, any>> {
 		return createLLMRenderer(config, generateText, parent);
 	}
 
-	TextStreamer(
-		config: BaseConfig,
+	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>>(
+		config: StreamTextFinalConfig<TOOLS>,
 		parent?: AnyConfigData
-	): StreamerCallSignature<StreamTextFinalConfig, typeof streamText> {
+	): LLMCallSignature<StreamTextFinalConfig<TOOLS>, StreamTextResult<TOOLS, any>> {
 		return createLLMRenderer(config, streamText, parent);
 	}
 
@@ -106,37 +117,81 @@ export class Factory {
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
 		parent?: ConfigData
-	): GeneratorCallSignature<GenerateObjectObjectFinalConfig<T>, typeof generateObject>;
+	): LLMCallSignature<GenerateObjectObjectFinalConfig<T>, GenerateObjectObjectResult<T>>;
 
 	ObjectGenerator<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'array',
 		parent?: ConfigData
-	): GeneratorCallSignature<GenerateObjectArrayFinalConfig<T>, typeof generateObject>;
+	): LLMCallSignature<GenerateObjectArrayFinalConfig<T>, GenerateObjectArrayResult<T>>;
 
 	ObjectGenerator<ENUM extends string>(
 		config: BaseConfig & { enum: ENUM[] },
 		output: 'enum',
 		parent?: ConfigData
-	): GeneratorCallSignature<GenerateObjectEnumFinalConfig<ENUM>, typeof generateObject>;
+	): LLMCallSignature<GenerateObjectEnumFinalConfig<ENUM>, GenerateObjectEnumResult<ENUM>>;
 
 	ObjectGenerator(
 		config: BaseConfig,
 		output: 'no-schema',
 		parent?: ConfigData
-	): GeneratorCallSignature<GenerateObjectNoSchemaFinalConfig, typeof generateObject>;
+	): LLMCallSignature<GenerateObjectNoSchemaFinalConfig, GenerateObjectNoSchemaResult>;
 
 	// Implementation
-	ObjectGenerator(
+	ObjectGenerator<TSchema, ENUM extends string>(
 		config: BaseConfig,
 		output: ObjectGeneratorOutputType,
-		parent?: AnyConfigData
+		parent?: ConfigData
 	) {
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object generators cannot use tools - tools found in ' +
-				(isToolsConfig(config) ? 'config' : 'parent config'));
+			throw new Error('Object generators cannot use tools...');
 		}
-		return createLLMRenderer(config, generateObject, parent);
+
+		return createLLMRenderer<
+			GenerateObjectConfigFromOutput<TSchema, ENUM, typeof output>,
+			GenerateObjectResultFromOutput<TSchema, ENUM, typeof output>
+		>(
+			{ ...config, output },
+			generateObject,
+			parent
+		);
+	}
+
+	ObjectGeneratorOLD<TSchema, ENUM extends string>(
+		config: BaseConfig,
+		output: ObjectGeneratorOutputType,
+		parent?: ConfigData
+	) {
+		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
+			throw new Error('Object generators cannot use tools...');
+		}
+
+		switch (output) {
+			case 'object':
+				return createLLMRenderer<GenerateObjectObjectFinalConfig<TSchema>, GenerateObjectObjectResult<TSchema>>(
+					{ ...config, output: 'object' },
+					generateObject,
+					parent
+				);
+			case 'array':
+				return createLLMRenderer<GenerateObjectArrayFinalConfig<TSchema>, GenerateObjectArrayResult<TSchema>>(
+					{ ...config, output: 'array' },
+					generateObject,
+					parent
+				);
+			case 'enum':
+				return createLLMRenderer<GenerateObjectEnumFinalConfig<ENUM>, GenerateObjectEnumResult<ENUM>>(
+					{ ...config, output: 'enum' },
+					generateObject,
+					parent
+				);
+			case 'no-schema':
+				return createLLMRenderer<GenerateObjectNoSchemaFinalConfig, GenerateObjectNoSchemaResult>(
+					{ ...config, output: 'no-schema' },
+					generateObject,
+					parent
+				);
+		}
 	}
 
 	// Object functions can't use tools and need model (either in config or call)
@@ -144,19 +199,19 @@ export class Factory {
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'object',
 		parent?: ConfigData
-	): StreamerCallSignature<StreamObjectObjectFinalConfig<T>, typeof streamObject>;
+	): LLMCallSignature<StreamObjectObjectFinalConfig<T>, StreamObjectObjectResult<T>>;
 
 	ObjectStreamer<T>(
 		config: BaseConfig & { schema: SchemaType<T> },
 		output: 'array',
 		parent?: ConfigData
-	): StreamerCallSignature<StreamObjectArrayFinalConfig<T>, typeof streamObject>;
+	): LLMCallSignature<StreamObjectArrayFinalConfig<T>, StreamObjectArrayResult<T>>;
 
 	ObjectStreamer(
 		config: BaseConfig,
 		output: 'no-schema',
 		parent?: ConfigData
-	): StreamerCallSignature<StreamObjectNoSchemaFinalConfig, typeof streamObject>;
+	): LLMCallSignature<StreamObjectNoSchemaFinalConfig, StreamObjectNoSchemaResult>;
 
 	// Implementation
 	ObjectStreamer(

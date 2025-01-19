@@ -63,7 +63,7 @@ type StreamTextToolsConfig<TOOLS extends Record<string, CoreTool>> = GenerateTex
 // It adds the mode property, which while not common for all functions is useful in base configs
 export type BaseConfig = Partial<Omit<Parameters<typeof generateText>[0], keyof GenerateTextSpecificConfig<any>>
 	& TemplateConfig
-	& { mode?: 'auto' | 'json' | 'tool' }
+//& { mode?: 'auto' | 'json' | 'tool' } - removed because no-schema can only ne json
 >;
 
 // Base configs with specific capabilities
@@ -81,6 +81,8 @@ type GenerateTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<P
 >;
 
 // Base configs for each type, remove the output property because it's a separate argument in our factory functions
+// also remove all the properties that are specific to some overloads, thus creating a base config with properties common to all overloads
+// then we will build back up with the specific properties needed for each case.
 type BaseGenerateObjectConfig = Omit<
 	Parameters<typeof generateObject>[0],
 	'output' | 'schema' | 'enum' | 'mode' | 'schemaName' | 'schemaDescription'
@@ -99,15 +101,15 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 	? (event: { [K in keyof E]: K extends 'object' ? T | undefined : E[K] }) => R
 	: never;
 
-interface GenerateObjectObjectSpecificConfig<T> {
-	schema: SchemaType<T>;
+interface GenerateObjectObjectSpecificConfig<TSchema> {
+	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-interface GenerateObjectArraySpecificConfig<T> {
-	schema: SchemaType<T>;
+interface GenerateObjectArraySpecificConfig<TSchema> {
+	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -154,22 +156,25 @@ export function isToolsConfig<TOOLS extends Record<string, CoreTool>>(
 	return !!config && typeof config === 'object' && 'tools' in config;
 }
 
-// The configs containing all required Vercel LLM properties
-export type GenerateTextLLMConfig = Parameters<typeof generateText>[0] & Partial<TemplateConfig>;
-export type StreamTextLLMConfig = Parameters<typeof streamText>[0] & Partial<TemplateConfig>;
+// The configs containing all properties, including the template ones
+export type GenerateTextLLMConfig<TOOLS extends Record<string, CoreTool>> =
+	Partial<(Parameters<typeof generateText>[0] & { tools?: TOOLS }) & TemplateConfig>;
 
-export type GenerateObjectObjectLLMConfig<T> = BaseGenerateObjectConfig & GenerateObjectObjectSpecificConfig<T> & Partial<TemplateConfig> & { output: 'object' };
-export type GenerateObjectArrayLLMConfig<T> = BaseGenerateObjectConfig & GenerateObjectArraySpecificConfig<T> & Partial<TemplateConfig> & { output: 'array' };
+export type StreamTextLLMConfig<TOOLS extends Record<string, CoreTool>> =
+	Partial<(Parameters<typeof streamText>[0] & { tools?: TOOLS }) & TemplateConfig>;
+
+export type GenerateObjectObjectLLMConfig<TSchema> = BaseGenerateObjectConfig & GenerateObjectObjectSpecificConfig<TSchema> & Partial<TemplateConfig> & { output: 'object' };
+export type GenerateObjectArrayLLMConfig<TSchema> = BaseGenerateObjectConfig & GenerateObjectArraySpecificConfig<TSchema> & Partial<TemplateConfig> & { output: 'array' };
 export type GenerateObjectEnumLLMConfig<ENUM extends string> = BaseGenerateObjectConfig & GenerateObjectEnumSpecificConfig<ENUM> & Partial<TemplateConfig> & { output: 'enum' };
 export type GenerateObjectNoSchemaLLMConfig = BaseGenerateObjectConfig & GenerateObjectNoSchemaSpecificConfig & Partial<TemplateConfig> & { output: 'no-schema' };
 
-export type StreamObjectObjectLLMConfig<T> = BaseStreamObjectConfig & StreamObjectObjectSpecificConfig<T> & Partial<TemplateConfig> & { output: 'object' };
-export type StreamObjectArrayLLMConfig<T> = BaseStreamObjectConfig & StreamObjectArraySpecificConfig<T> & Partial<TemplateConfig> & { output: 'array' };
+export type StreamObjectObjectLLMConfig<TSchema> = BaseStreamObjectConfig & StreamObjectObjectSpecificConfig<TSchema> & Partial<TemplateConfig> & { output: 'object' };
+export type StreamObjectArrayLLMConfig<TSchema> = BaseStreamObjectConfig & StreamObjectArraySpecificConfig<TSchema> & Partial<TemplateConfig> & { output: 'array' };
 export type StreamObjectNoSchemaLLMConfig = BaseStreamObjectConfig & StreamObjectNoSchemaSpecificConfig & Partial<TemplateConfig> & { output: 'no-schema' };
 
 // Complete config types with all properties for each function and overload
-export type GenerateTextFinalConfig = GenerateTextLLMConfig & TemplateConfig;
-export type StreamTextFinalConfig = StreamTextLLMConfig & TemplateConfig;
+export type GenerateTextFinalConfig<TOOLS extends Record<string, CoreTool>> = GenerateTextLLMConfig<TOOLS> & TemplateConfig;
+export type StreamTextFinalConfig<TOOLS extends Record<string, CoreTool>> = StreamTextLLMConfig<TOOLS> & TemplateConfig;
 
 export type GenerateObjectObjectFinalConfig<T> = GenerateObjectObjectLLMConfig<T> & TemplateConfig;
 export type GenerateObjectArrayFinalConfig<T> = GenerateObjectArrayLLMConfig<T> & TemplateConfig;
@@ -194,7 +199,7 @@ export type {
 //these are returned in a Promise
 export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
 export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
-export type GenerateObjectEnumResult = GenerateObjectResult<string>;
+export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
@@ -204,3 +209,20 @@ type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 export type StreamObjectObjectResult<T> = StreamObjectResult<DeepPartial<T>, T, never>;
 export type StreamObjectArrayResult<T> = StreamObjectResult<T[], T[], AsyncIterableStream<T>>;
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
+
+// Config types based on output and schema
+export type GenerateObjectConfigFromOutput<TSchema, ENUM extends string, Output extends ObjectGeneratorOutputType> =
+	Output extends 'object' ? GenerateObjectObjectFinalConfig<TSchema> :
+	Output extends 'array' ? GenerateObjectArrayFinalConfig<TSchema> :
+	Output extends 'enum' ? GenerateObjectEnumFinalConfig<ENUM> :
+	Output extends 'no-schema' ? GenerateObjectNoSchemaFinalConfig :
+	never;
+
+
+// Result types based on output and schema
+export type GenerateObjectResultFromOutput<TSchema, ENUM extends string, Output extends ObjectGeneratorOutputType> =
+	Output extends 'object' ? GenerateObjectObjectResult<TSchema> :
+	Output extends 'array' ? GenerateObjectArrayResult<TSchema> :
+	Output extends 'enum' ? GenerateObjectEnumResult<ENUM> :
+	Output extends 'no-schema' ? GenerateObjectNoSchemaResult :
+	never;
