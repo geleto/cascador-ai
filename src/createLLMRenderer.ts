@@ -4,21 +4,14 @@ import { TemplateEngine } from "./TemplateEngine";
 import { Context, BaseConfig, hasModel } from "./types";
 
 // The vercel function
-//type VercelLLMFunction = typeof generateObject | typeof generateText | typeof streamObject | typeof streamText;
-//type VercelLLMFunction<TConfig, TResult> = (config: TConfig) => Promise<TResult> | TResult;
-
-type WithModel<T> = T & { model: LanguageModel };
 type VercelLLMFunction<TConfig extends BaseConfig, TResult> =
-	(config: WithModel<TConfig>) => Promise<TResult> | TResult;
-
+	(config: TConfig & { model: LanguageModel }) => Promise<TResult> | TResult;
 
 /**
  * Function signature for LLM generation/streaming calls.
  * If base config has no model, requires model in call arguments.
  * If base config has model, accepts any call signature.
  */
-
-
 export interface LLMCallSignature<TConfig extends BaseConfig, TResult> {
 	(promptOrConfig?: TConfig extends { model: LanguageModel }
 		? TConfig | string | Context // Model in config - any form ok

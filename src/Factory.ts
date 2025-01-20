@@ -1,4 +1,4 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel, Output } from 'ai';
 import { ConfigData, ConfigDataModelIsSet, BaseConfigDataWithTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
@@ -92,19 +92,90 @@ export class Factory {
 		return callable;
 	}
 
-	// Text functions can use tools and need model (either in config or call)
-	TextGenerator<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>>(
-		config: GenerateTextConfig<TOOLS>,
+	// Text functions can use tools
+	TextGenerator<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: GenerateTextConfig<TOOLS, OUTPUT>,
+		parent: AnyConfigData,
+		experimentalSchema: SchemaType<OUTPUT>
+	): LLMCallSignature<GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
+
+	TextGenerator<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: GenerateTextConfig<TOOLS, OUTPUT>,
+		experimentalSchema: SchemaType<OUTPUT>
+	): LLMCallSignature<GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
+
+	TextGenerator<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: GenerateTextConfig<TOOLS, OUTPUT>,
 		parent?: AnyConfigData
-	): LLMCallSignature<StreamTextConfig<TOOLS>, GenerateTextResult<TOOLS, any>> {
-		return createLLMRenderer(config, generateText, parent);
+	): LLMCallSignature<GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, undefined>>;
+
+	// Implementation
+	TextGenerator<
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
+		OUTPUT = never
+	>(
+		config: GenerateTextConfig<TOOLS, OUTPUT>,
+		parentOrSchema?: AnyConfigData | SchemaType<OUTPUT>,
+		experimentalSchema?: SchemaType<OUTPUT>//this allows to use tools + schema in the same call, unlike generateObject which has no tools
+	): LLMCallSignature<GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>> {
+		let parent: AnyConfigData | undefined;
+		let schema: SchemaType<OUTPUT> | undefined;
+
+		if (parentOrSchema instanceof ConfigData || parentOrSchema instanceof BaseConfigDataWithTools) {
+			parent = parentOrSchema;
+			schema = experimentalSchema;
+		} else {
+			schema = parentOrSchema;
+		}
+
+		const finalConfig = schema
+			? { ...config, experimental_output: Output.object({ schema }) }
+			: config;
+
+		return createLLMRenderer(finalConfig, generateText, parent);
 	}
 
-	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>>(
-		config: StreamTextConfig<TOOLS>,
+	// Text functions can use tools
+	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: StreamTextConfig<TOOLS, OUTPUT>,
+		parent: AnyConfigData,
+		experimentalSchema: SchemaType<OUTPUT>
+	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>>;
+
+	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: StreamTextConfig<TOOLS, OUTPUT>,
+		experimentalSchema: SchemaType<OUTPUT>
+	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>>;
+
+	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+		config: StreamTextConfig<TOOLS, OUTPUT>,
 		parent?: AnyConfigData
-	): LLMCallSignature<StreamTextConfig<TOOLS>, StreamTextResult<TOOLS, any>> {
-		return createLLMRenderer(config, streamText, parent);
+	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, undefined>>;
+
+	// Implementation
+	TextStreamer<
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
+		OUTPUT = never
+	>(
+		config: StreamTextConfig<TOOLS, OUTPUT>,
+		parentOrSchema?: AnyConfigData | SchemaType<OUTPUT>,
+		experimentalSchema?: SchemaType<OUTPUT>//this allows to use tools + schema in the same call, unlike generateObject which has no tools
+	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>> {
+		let parent: AnyConfigData | undefined;
+		let schema: SchemaType<OUTPUT> | undefined;
+
+		if (parentOrSchema instanceof ConfigData || parentOrSchema instanceof BaseConfigDataWithTools) {
+			parent = parentOrSchema;
+			schema = experimentalSchema;
+		} else {
+			schema = parentOrSchema;
+		}
+
+		const finalConfig = schema
+			? { ...config, experimental_output: Output.object({ schema }) }
+			: config;
+
+		return createLLMRenderer(finalConfig, streamText, parent);
 	}
 
 	// Object functions can't use tools and need model (either in config or call)

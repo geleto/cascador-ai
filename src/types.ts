@@ -92,18 +92,25 @@ export type ConfigWithTools<TOOLS extends Record<string, CoreTool>> = BaseConfig
 
 // Non-tool specific properties for generateText plus the tool config for generate text
 // for generate text - remove the experimental streaming tool property (it's in the common tools config and not kept separately for simplicity)
-type GenerateTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<
-	Parameters<typeof generateText<TOOLS, never, never>>[0],
+type GenerateTextSpecificConfig<
+	TOOLS extends Record<string, CoreTool>,
+	OUTPUT = never
+> = Pick<
+	Parameters<typeof generateText < TOOLS, OUTPUT, DeepPartial<OUTPUT>>>[0],
 	| 'stopSequences'
 	| 'experimental_continueSteps'
+	| 'experimental_output'
 > & Omit<GenerateTextToolsOnlyConfig<TOOLS>, 'experimental_toolCallStreaming'>;
 
 // All generateText properties plus streaming-specific properties and streaming tools config
-export type StreamTextSpecificConfig<TOOLS extends Record<string, CoreTool>> = Pick<Parameters<typeof streamText<TOOLS>>[0],
+export type StreamTextSpecificConfig<
+	TOOLS extends Record<string, CoreTool>,
+	OUTPUT = never
+> = Pick<Parameters<typeof streamText< TOOLS, OUTPUT, DeepPartial<OUTPUT>>>[0],
 	| 'experimental_transform'
 	| 'onChunk'
 	| 'onFinish'
-> & GenerateTextSpecificConfig<TOOLS> & StreamTextToolsOnlyConfig<TOOLS>;
+> & GenerateTextSpecificConfig<TOOLS, OUTPUT> & StreamTextToolsOnlyConfig<TOOLS>;
 
 interface GenerateObjectObjectSpecificConfig<TSchema> {
 	schema: SchemaType<TSchema>;
@@ -152,11 +159,11 @@ interface StreamObjectNoSchemaSpecificConfig {
 
 // The configs containing all properties, including the template and tools ones
 // @todo rename LLM to Intermediate
-export type GenerateTextConfig<TOOLS extends Record<string, CoreTool>> =
-	BaseConfig & GenerateTextSpecificConfig<TOOLS>;
+export type GenerateTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
+	BaseConfig & GenerateTextSpecificConfig<TOOLS, OUTPUT>;
 
-export type StreamTextConfig<TOOLS extends Record<string, CoreTool>> =
-	BaseConfig & StreamTextSpecificConfig<TOOLS>;
+export type StreamTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
+	BaseConfig & StreamTextSpecificConfig<TOOLS, OUTPUT>;
 
 export type GenerateObjectObjectConfig<TSchema> = BaseConfig & GenerateObjectObjectSpecificConfig<TSchema>;
 export type GenerateObjectArrayConfig<TSchema> = BaseConfig & GenerateObjectArraySpecificConfig<TSchema>;
