@@ -110,39 +110,53 @@ export class Factory {
 	// Object functions can't use tools and need model (either in config or call)
 	ObjectGenerator<TSchema>(
 		config: GenerateObjectObjectConfig<TSchema>,
-		output: 'object',
-		parent: ConfigData | undefined,
-		schema: SchemaType<TSchema>
+		outputOrParent: 'object' | ConfigData | undefined,
+		outputOrSchema: 'object' | SchemaType<TSchema>,
+		schema?: SchemaType<TSchema>
 	): LLMCallSignature<GenerateObjectObjectConfig<TSchema> & { output: 'object', schema: SchemaType<TSchema> }, GenerateObjectObjectResult<TSchema>>;
 
 	ObjectGenerator<TSchema>(
 		config: GenerateObjectArrayConfig<TSchema>,
-		output: 'array',
-		parent: ConfigData | undefined,
-		schema: SchemaType<TSchema>
+		outputOrParent: 'array' | ConfigData | undefined,
+		outputOrSchema: 'array' | SchemaType<TSchema>,
+		schema?: SchemaType<TSchema>
 	): LLMCallSignature<GenerateObjectArrayConfig<TSchema> & { output: 'array', schema: SchemaType<TSchema> }, GenerateObjectArrayResult<TSchema>>;
 
 	ObjectGenerator<ENUM extends string>(
 		config: GenerateObjectEnumConfig<ENUM>,
-		output: 'enum',
-		parent: ConfigData | undefined,
-		enumValues: ENUM[]
+		outputOrParent: 'enum' | ConfigData | undefined,
+		outputOrSchema: 'enum' | ENUM[],
+		enumValues?: ENUM[]
 	): LLMCallSignature<GenerateObjectEnumConfig<ENUM> & { output: 'enum', enum: ENUM[] }, GenerateObjectEnumResult<ENUM>>;
 
 	ObjectGenerator(
 		config: GenerateObjectNoSchemaConfig,
-		output: 'no-schema',
-		parent: ConfigData | undefined,
-		schema: undefined
+		outputOrParent: 'no-schema' | ConfigData | undefined,
+		output?: 'no-schema'
 	): LLMCallSignature<GenerateObjectNoSchemaConfig & { output: 'no-schema' }, GenerateObjectNoSchemaResult>;
 
 	// Implementation
 	ObjectGenerator<TSchema, ENUM extends string>(
 		config: GenerateObjectObjectConfig<TSchema> | GenerateObjectArrayConfig<TSchema> | GenerateObjectEnumConfig<ENUM> | GenerateObjectNoSchemaConfig,
-		output: ObjectGeneratorOutputType,
-		parent?: ConfigData,
+		outputOrParent: ObjectGeneratorOutputType | ConfigData | undefined,
+		outputOrSchema?: ObjectGeneratorOutputType | SchemaType<TSchema> | ENUM[],
 		schemaOrEnum?: SchemaType<TSchema> | ENUM[]
 	) {
+		let parent: ConfigData | undefined;
+		let output: ObjectGeneratorOutputType;
+		let schema: SchemaType<TSchema> | ENUM[] | undefined;
+
+		if (typeof outputOrParent === 'string') {
+			// Called as: config, output, schema
+			output = outputOrParent;
+			schema = outputOrSchema as SchemaType<TSchema> | ENUM[];
+		} else {
+			// Called as: config, parent, output, schema
+			parent = outputOrParent;
+			output = outputOrSchema as ObjectGeneratorOutputType;
+			schema = schemaOrEnum;
+		}
+
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
 			throw new Error('Object generators cannot use tools...');
 		}
@@ -153,7 +167,7 @@ export class Factory {
 					GenerateObjectObjectConfig<TSchema> & { output: 'object', schema: SchemaType<TSchema> },
 					GenerateObjectObjectResult<TSchema>
 				>(
-					{ ...config as GenerateObjectObjectConfig<TSchema>, output: 'object', schema: schemaOrEnum as SchemaType<TSchema> },
+					{ ...config as GenerateObjectObjectConfig<TSchema>, output: 'object', schema: schema as SchemaType<TSchema> },
 					generateObject,
 					parent
 				);
@@ -162,7 +176,7 @@ export class Factory {
 					GenerateObjectArrayConfig<TSchema> & { output: 'array', schema: SchemaType<TSchema> },
 					GenerateObjectArrayResult<TSchema>
 				>(
-					{ ...config as GenerateObjectArrayConfig<TSchema>, output: 'array', schema: schemaOrEnum as SchemaType<TSchema> },
+					{ ...config as GenerateObjectArrayConfig<TSchema>, output: 'array', schema: schema as SchemaType<TSchema> },
 					generateObject,
 					parent
 				);
@@ -171,7 +185,7 @@ export class Factory {
 					GenerateObjectEnumConfig<ENUM> & { output: 'enum', enum: ENUM[] },
 					GenerateObjectEnumResult<ENUM>
 				>(
-					{ ...config as GenerateObjectEnumConfig<ENUM>, output: 'enum', enum: schemaOrEnum as ENUM[] },
+					{ ...config as GenerateObjectEnumConfig<ENUM>, output: 'enum', enum: schema as ENUM[] },
 					generateObject,
 					parent
 				);
@@ -192,32 +206,46 @@ export class Factory {
 	// Object functions can't use tools and need model (either in config or call)
 	ObjectStreamer<TSchema>(
 		config: StreamObjectObjectConfig<TSchema>,
-		output: 'object',
-		parent: ConfigData | undefined,
-		schema: SchemaType<TSchema>
+		outputOrParent: 'object' | ConfigData | undefined,
+		outputOrSchema: 'object' | SchemaType<TSchema>,
+		schema?: SchemaType<TSchema>
 	): LLMCallSignature<StreamObjectObjectConfig<TSchema> & { output: 'object', schema: SchemaType<TSchema> }, StreamObjectObjectResult<TSchema>>;
 
 	ObjectStreamer<TSchema>(
 		config: StreamObjectArrayConfig<TSchema>,
-		output: 'array',
-		parent: ConfigData | undefined,
-		schema: SchemaType<TSchema>
+		outputOrParent: 'array' | ConfigData | undefined,
+		outputOrSchema: 'array' | SchemaType<TSchema>,
+		schema?: SchemaType<TSchema>
 	): LLMCallSignature<StreamObjectArrayConfig<TSchema> & { output: 'array', schema: SchemaType<TSchema> }, StreamObjectArrayResult<TSchema>>;
 
 	ObjectStreamer(
 		config: StreamObjectNoSchemaConfig,
-		output: 'no-schema',
-		parent?: ConfigData,
-
+		outputOrParent: 'no-schema' | ConfigData | undefined,
+		output?: 'no-schema'
 	): LLMCallSignature<StreamObjectNoSchemaConfig & { output: 'no-schema' }, StreamObjectNoSchemaResult>;
 
 	// Implementation
 	ObjectStreamer<TSchema>(
 		config: StreamObjectObjectConfig<TSchema> | StreamObjectArrayConfig<TSchema> | StreamObjectNoSchemaConfig,
-		output: ObjectStreamOutputType,
-		parent?: ConfigData,
+		outputOrParent: ObjectStreamOutputType | ConfigData | undefined,
+		outputOrSchema?: ObjectStreamOutputType | SchemaType<TSchema>,
 		schema?: SchemaType<TSchema>
 	) {
+		let parent: ConfigData | undefined;
+		let output: ObjectStreamOutputType;
+		let schemaValue: SchemaType<TSchema> | undefined;
+
+		if (typeof outputOrParent === 'string') {
+			// Called as: config, output, schema
+			output = outputOrParent;
+			schemaValue = outputOrSchema as SchemaType<TSchema>;
+		} else {
+			// Called as: config, parent, output, schema
+			parent = outputOrParent;
+			output = outputOrSchema as ObjectStreamOutputType;
+			schemaValue = schema;
+		}
+
 		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
 			throw new Error('Object streamers cannot use tools - tools found in ' +
 				(isToolsConfig(config) ? 'config argument' : 'parent config'));
@@ -230,7 +258,7 @@ export class Factory {
 					StreamObjectObjectResult<TSchema>
 				>(
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					{ ...config as StreamObjectObjectConfig<TSchema>, output: 'object', schema: schema! },
+					{ ...config as StreamObjectObjectConfig<TSchema>, output: 'object', schema: schemaValue! },
 					streamObject,
 					parent
 				);
@@ -240,7 +268,7 @@ export class Factory {
 					StreamObjectArrayResult<TSchema>
 				>(
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					{ ...config as StreamObjectArrayConfig<TSchema>, output: 'array', schema: schema! },
+					{ ...config as StreamObjectArrayConfig<TSchema>, output: 'array', schema: schemaValue! },
 					streamObject,
 					parent
 				);

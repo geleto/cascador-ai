@@ -448,8 +448,7 @@ Simplify a single call by providing a new prompt and optionally a context:
 
 ## Roadmap
 
-- **Embeddings Support**
-  Add functionality for vector-based text embeddings.
+- **Embeddings Example**
 - **Image Generation**
   Integrate image generators (e.g., DALL-E) to produce images from prompts.
 - **`onStepFinish` Callback**
