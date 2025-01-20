@@ -1,5 +1,5 @@
 import { CoreTool, LanguageModel } from 'ai';
-import { BaseConfig, TemplateOnlyConfig, BaseConfigWithTools } from './types';
+import { BaseConfig, TemplateOnlyConfig, BaseConfigWithTools, ConfigWithTools } from './types';
 
 // Interfaces for ConfigData classes capabilities
 export interface IConfigDataModelIsSet {
@@ -24,9 +24,15 @@ export class ConfigDataModelIsSet extends BaseConfigData<BaseConfig & { model: L
 	implements IConfigDataModelIsSet {
 }
 
-export class ConfigDataHasTools<TOOLS extends Record<string, CoreTool>>
+// The constructor accepts a full config with tools which includes 1 experimental stream-only property
+// because the stream and generate configs share all other properties, for simplicity they are accepted here as a simple type
+// but the stored config is the base config with tools which is the common subset of the two
+export class BaseConfigDataWithTools<TOOLS extends Record<string, CoreTool>>
 	extends BaseConfigData<BaseConfigWithTools<TOOLS>>
 	implements IConfigDataHasTools<TOOLS> {
+	constructor(config: ConfigWithTools<TOOLS>, parent?: ConfigData) {
+		super(config as BaseConfigWithTools<TOOLS>, parent);
+	}
 }
 
 export class ConfigDataHasToolsModelIsSet<TOOLS extends Record<string, CoreTool>>
@@ -41,8 +47,8 @@ export function isConfigDataModelIsSet(config: ConfigData): config is ConfigData
 	return config instanceof ConfigDataModelIsSet;
 }
 
-export function isConfigDataHasTools(config: ConfigData): config is ConfigDataHasTools<any> {
-	return config instanceof ConfigDataHasTools;
+export function isConfigDataHasTools(config: ConfigData): config is BaseConfigDataWithTools<any> {
+	return config instanceof BaseConfigDataWithTools;
 }
 
 /**
