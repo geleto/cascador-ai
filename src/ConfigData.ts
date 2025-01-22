@@ -43,14 +43,6 @@ export class ConfigDataHasToolsModelIsSet<TOOLS extends Record<string, CoreTool>
 export class TemplateConfigData extends BaseConfigData<Partial<TemplateOnlyConfig>> {
 }
 
-export function isConfigDataModelIsSet(config: ConfigData): config is ConfigDataModelIsSet {
-	return config instanceof ConfigDataModelIsSet;
-}
-
-export function isConfigDataHasTools(config: ConfigData): config is BaseConfigDataWithTools<any> {
-	return config instanceof BaseConfigDataWithTools;
-}
-
 /**
  * Merge two partial LLM configs into a single object.
  * The return type is exactly the union of P & C (with child overriding parent).

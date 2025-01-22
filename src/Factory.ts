@@ -1,8 +1,8 @@
 import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel, Output, DeepPartial } from 'ai';
-import { ConfigData, ConfigDataModelIsSet, BaseConfigDataWithTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
-import { createLLMRenderer, LLMCallSignature } from './createLLMRenderer';
+import { ConfigData, mergeConfigs, ConfigDataModelIsSet, BaseConfigDataWithTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
+	LLMCallSignature,
 	SchemaType, Context,
 	ObjectGeneratorOutputType, ObjectStreamOutputType,
 
@@ -23,6 +23,8 @@ import {
 	GenerateTextResult, StreamTextResult,
 	GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
 	StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
+	VercelLLMFunction,
+	hasModel,
 	//GenerateTextToolsOnlyConfig
 } from './types';
 
@@ -132,12 +134,8 @@ export class Factory {
 			? { ...config, experimental_output: Output.object({ schema }) }
 			: config;
 
-		return createLLMRenderer(finalConfig, generateText, parent);
+		return Factory.createLLMRenderer(finalConfig, generateText, parent);
 	}
-
-	// generateText<TOOLS extends Record<string, CoreTool>, OUTPUT = never, OUTPUT_PARTIAL = never>
-	// streamText<TOOLS extends Record<string, CoreTool>, OUTPUT = never, PARTIAL_OUTPUT = never>
-
 
 	// Text functions can use tools
 	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
@@ -179,7 +177,7 @@ export class Factory {
 			? { ...config, experimental_output: Output.object({ schema }) }
 			: config;
 
-		return createLLMRenderer(finalConfig, streamText, parent);
+		return Factory.createLLMRenderer(finalConfig, streamText, parent);
 	}
 
 	// Object functions can't use tools and need model (either in config or call)
@@ -261,7 +259,7 @@ export class Factory {
 
 		switch (output) {
 			case 'object':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					GenerateObjectObjectConfig<TSchema> & { output: 'object', schema: SchemaType<TSchema> },
 					GenerateObjectObjectResult<TSchema>
 				>(
@@ -270,7 +268,7 @@ export class Factory {
 					parent
 				);
 			case 'array':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					GenerateObjectArrayConfig<TSchema> & { output: 'array', schema: SchemaType<TSchema> },
 					GenerateObjectArrayResult<TSchema>
 				>(
@@ -279,7 +277,7 @@ export class Factory {
 					parent
 				);
 			case 'enum':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					GenerateObjectEnumConfig<ENUM> & { output: 'enum', enum: ENUM[] },
 					GenerateObjectEnumResult<ENUM>
 				>(
@@ -288,7 +286,7 @@ export class Factory {
 					parent
 				);
 			case 'no-schema':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					GenerateObjectNoSchemaConfig & { output: 'no-schema' },
 					GenerateObjectNoSchemaResult
 				>(
@@ -368,7 +366,7 @@ export class Factory {
 
 		switch (output) {
 			case 'object':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					StreamObjectObjectConfig<TSchema> & { output: 'object', schema: SchemaType<TSchema> },
 					StreamObjectObjectResult<TSchema>
 				>(
@@ -378,7 +376,7 @@ export class Factory {
 					parent
 				);
 			case 'array':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					StreamObjectArrayConfig<TSchema> & { output: 'array', schema: SchemaType<TSchema> },
 					StreamObjectArrayResult<TSchema>
 				>(
@@ -388,7 +386,7 @@ export class Factory {
 					parent
 				);
 			case 'no-schema':
-				return createLLMRenderer<
+				return Factory.createLLMRenderer<
 					StreamObjectNoSchemaConfig & { output: 'no-schema' },
 					StreamObjectNoSchemaResult
 				>(
@@ -399,6 +397,68 @@ export class Factory {
 			default:
 				throw new Error(`Invalid output type: ${output as string}`);
 		}
+	}
+
+	private static createLLMRenderer<TConfig extends BaseConfig, TResult>(
+		config: TConfig,
+		func: VercelLLMFunction<TConfig & { model: LanguageModel }, TResult>,
+		parent?: ConfigData
+	): LLMCallSignature<TConfig, TResult> {
+		const renderer = new TemplateEngine(config, parent);
+
+		const llmFn = (async (promptOrConfig?: Partial<TConfig> | string | Context, context?: Context) => {
+			try {
+				// Handle case where first param is just context
+				const effectiveContext = typeof promptOrConfig === 'object' && !('prompt' in promptOrConfig)
+					? promptOrConfig as Context
+					: context;
+
+				const effectivePromptOrConfig = typeof promptOrConfig === 'object' && !('prompt' in promptOrConfig)
+					? undefined
+					: promptOrConfig;
+
+				const prompt = await renderer.call(effectivePromptOrConfig, effectiveContext);
+
+				let merged: BaseConfig;
+
+				// Object scenario - llmFn(config, context)
+				if (typeof effectivePromptOrConfig !== 'string' && effectivePromptOrConfig) {
+					merged = mergeConfigs(renderer.config, effectivePromptOrConfig as TConfig);
+					merged.prompt = prompt;
+					if (effectiveContext) {
+						merged.context = { ...merged.context ?? {}, ...effectiveContext };
+					}
+				}
+				// String scenario - llmFn("template string", context)
+				else if (typeof effectivePromptOrConfig === 'string') {
+					merged = mergeConfigs(renderer.config, { prompt });
+					if (effectiveContext) {
+						merged.context = { ...merged.context ?? {}, ...effectiveContext };
+					}
+				}
+				// Context only scenario - llmFn(context)
+				else {
+					merged = renderer.config;
+					merged.prompt = prompt;
+					if (effectiveContext) {
+						merged.context = { ...merged.context ?? {}, ...effectiveContext };
+					}
+				}
+
+				// Check for model at runtime after all configs are merged
+				if (!hasModel(merged)) {
+					throw new Error('Model must be specified either in config, parent, or call arguments');
+				}
+
+				return (await func(merged as TConfig & { model: LanguageModel })) as TResult;
+			} catch (error: any) {
+				const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
+				throw new Error(`${func.name || 'LLM'} execution failed: ${errorMessage}`, { cause: error });
+			}
+		}) as LLMCallSignature<TConfig, TResult>;
+
+		llmFn.config = renderer.config as TConfig;
+		return llmFn;
 	}
 }
 

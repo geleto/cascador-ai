@@ -17,6 +17,25 @@ import { z } from 'zod';
 // Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
+// The vercel function as passed to the call signature
+export type VercelLLMFunction<TConfig extends BaseConfig, TResult> =
+	(config: TConfig & { model: LanguageModel }) => Promise<TResult> | TResult;
+
+
+/**
+ * Function signature for LLM generation/streaming calls.
+ * If base config has no model, requires model in call arguments.
+ * If base config has model, accepts any call signature.
+ */
+export interface LLMCallSignature<TConfig extends BaseConfig, TResult> {
+	(promptOrConfig?: TConfig extends { model: LanguageModel }
+		? TConfig | string | Context // Model in config - any form ok
+		: TConfig & { model: LanguageModel }, // No model in config - must provide model
+		context?: Context
+	): Promise<TResult>; // The function's call signature
+	config: TConfig; // Additional property on the function type
+};
+
 // Template types
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
