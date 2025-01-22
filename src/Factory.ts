@@ -1,4 +1,4 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel, Output } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel, Output, DeepPartial } from 'ai';
 import { ConfigData, ConfigDataModelIsSet, BaseConfigDataWithTools, ConfigDataHasToolsModelIsSet, TemplateConfigData } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './createLLMRenderer';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
@@ -135,6 +135,10 @@ export class Factory {
 		return createLLMRenderer(finalConfig, generateText, parent);
 	}
 
+	// generateText<TOOLS extends Record<string, CoreTool>, OUTPUT = never, OUTPUT_PARTIAL = never>
+	// streamText<TOOLS extends Record<string, CoreTool>, OUTPUT = never, PARTIAL_OUTPUT = never>
+
+
 	// Text functions can use tools
 	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
 		config: StreamTextConfig<TOOLS, OUTPUT>,
@@ -160,7 +164,7 @@ export class Factory {
 		config: StreamTextConfig<TOOLS, OUTPUT>,
 		parentOrSchema?: AnyConfigData | SchemaType<OUTPUT>,
 		experimentalSchema?: SchemaType<OUTPUT>//this allows to use tools + schema in the same call, unlike generateObject which has no tools
-	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>> {
+	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, DeepPartial<OUTPUT>>> {
 		let parent: AnyConfigData | undefined;
 		let schema: SchemaType<OUTPUT> | undefined;
 
