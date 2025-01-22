@@ -46,8 +46,6 @@ export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
 export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
 
-export type ExcludeProperties<T, U> = Omit<T, keyof U>;
-
 // Extract the base OnFinishCallback type from streamObject
 type BaseOnFinishCallback = NonNullable<Parameters<typeof streamObject>[0]['onFinish']>;
 
@@ -74,7 +72,7 @@ export interface TemplateOnlyConfig extends TemplateOnlyBaseConfig {
 // It is a Partial, all properties are optional
 // It omits all specific properties for each function/overload, leaving only the common ones
 // It adds the template engine configuration properties
-// It adds the mode property, which while not common for all functions is useful in base configs
+// To get it : The generateText specific config is removed for the generateText function config
 export type BaseConfig =
 	Partial<Omit<Parameters<typeof generateText>[0], keyof GenerateTextSpecificConfig<any>>
 		& TemplateOnlyConfig
@@ -111,6 +109,8 @@ export type ConfigWithTools<TOOLS extends Record<string, CoreTool>> = BaseConfig
 
 // Non-tool specific properties for generateText plus the tool config for generate text
 // for generate text - remove the experimental streaming tool property (it's in the common tools config and not kept separately for simplicity)
+
+//To get BaseConfig, this specific config is removed for the generateText function config
 type GenerateTextSpecificConfig<
 	TOOLS extends Record<string, CoreTool>,
 	OUTPUT = never
@@ -121,40 +121,43 @@ type GenerateTextSpecificConfig<
 	| 'experimental_output'
 > & Omit<GenerateTextToolsOnlyConfig<TOOLS>, 'experimental_toolCallStreaming'>;
 
+export type GenerateTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
+	BaseConfig & GenerateTextSpecificConfig<TOOLS, OUTPUT>;
+
 // All generateText properties plus streaming-specific properties and streaming tools config
-export type StreamTextSpecificConfig<
+export type StreamTextConfig<
 	TOOLS extends Record<string, CoreTool>,
 	OUTPUT = never
-> = Pick<Parameters<typeof streamText< TOOLS, OUTPUT, DeepPartial<OUTPUT>>>[0],
+> = BaseConfig & Pick<Parameters<typeof streamText< TOOLS, OUTPUT, DeepPartial<OUTPUT>>>[0],
 	| 'experimental_transform'
 	| 'onChunk'
 	| 'onFinish'
 > & GenerateTextSpecificConfig<TOOLS, OUTPUT> & StreamTextToolsOnlyConfig<TOOLS>;
 
-interface GenerateObjectObjectSpecificConfig<TSchema> {
+export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
 	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-interface GenerateObjectArraySpecificConfig<TSchema> {
+export type GenerateObjectArrayConfig<TSchema> = BaseConfig & {
 	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-interface GenerateObjectEnumSpecificConfig<ENUM extends string> {
+export type GenerateObjectEnumConfig<ENUM extends string> = BaseConfig & {
 	enum: ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-interface GenerateObjectNoSchemaSpecificConfig {
+export type GenerateObjectNoSchemaConfig = BaseConfig & {
 	mode?: 'json';
 }
 
-interface StreamObjectObjectSpecificConfig<T> {
+export type StreamObjectObjectConfig<T> = BaseConfig & {
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -162,7 +165,7 @@ interface StreamObjectObjectSpecificConfig<T> {
 	onFinish?: OnFinishCallback<T>;
 }
 
-interface StreamObjectArraySpecificConfig<T> {
+export type StreamObjectArrayConfig<T> = BaseConfig & {
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -171,27 +174,10 @@ interface StreamObjectArraySpecificConfig<T> {
 	elementStream?: AsyncIterableStream<T>;//?
 }
 
-interface StreamObjectNoSchemaSpecificConfig {
+export type StreamObjectNoSchemaConfig = BaseConfig & {
 	mode?: 'json';
 	onFinish?: OnFinishCallback<JSONValue>;
 }
-
-// The configs containing all properties, including the template and tools ones
-// @todo rename LLM to Intermediate
-export type GenerateTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
-	BaseConfig & GenerateTextSpecificConfig<TOOLS, OUTPUT>;
-
-export type StreamTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
-	BaseConfig & StreamTextSpecificConfig<TOOLS, OUTPUT>;
-
-export type GenerateObjectObjectConfig<TSchema> = BaseConfig & GenerateObjectObjectSpecificConfig<TSchema>;
-export type GenerateObjectArrayConfig<TSchema> = BaseConfig & GenerateObjectArraySpecificConfig<TSchema>;
-export type GenerateObjectEnumConfig<ENUM extends string> = BaseConfig & GenerateObjectEnumSpecificConfig<ENUM>;
-export type GenerateObjectNoSchemaConfig = BaseConfig & GenerateObjectNoSchemaSpecificConfig;
-
-export type StreamObjectObjectConfig<TSchema> = BaseConfig & StreamObjectObjectSpecificConfig<TSchema>;
-export type StreamObjectArrayConfig<TSchema> = BaseConfig & StreamObjectArraySpecificConfig<TSchema>;
-export type StreamObjectNoSchemaConfig = BaseConfig & StreamObjectNoSchemaSpecificConfig;
 
 // Result types
 export type {
