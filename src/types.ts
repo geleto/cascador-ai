@@ -1,10 +1,6 @@
 import {
-	LanguageModel, Schema, //API types
-	generateText, streamText, streamObject, //API functions
-	GenerateObjectResult, StreamObjectResult, //result generics
-	JSONValue, DeepPartial,
-	CoreTool,
-	CoreToolChoice
+	LanguageModel, Schema, generateText, streamText, streamObject,
+	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, CoreTool, CoreToolChoice
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
 import { z } from 'zod';
@@ -17,8 +13,8 @@ import { z } from 'zod';
 // Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
-// The vercel function as passed to the call signature
-export type VercelLLMFunction<TConfig extends BaseConfig, TResult> =
+// The vercel function as passed to createLLMRenderer
+export type VercelLLMFunction<TConfig, TResult> =
 	(config: TConfig & { model: LanguageModel }) => Promise<TResult> | TResult;
 
 
@@ -26,14 +22,19 @@ export type VercelLLMFunction<TConfig extends BaseConfig, TResult> =
  * Function signature for LLM generation/streaming calls.
  * If base config has no model, requires model in call arguments.
  * If base config has model, accepts any call signature.
+ * @todo - make sure output/schema/enum can't be in the call config
  */
-export interface LLMCallSignature<TConfig extends BaseConfig, TResult> {
-	(promptOrConfig?: TConfig extends { model: LanguageModel }
-		? TConfig | string | Context // Model in config - any form ok
-		: TConfig & { model: LanguageModel }, // No model in config - must provide model
+export interface LLMCallSignature<
+	TStoredConfig,
+	TArgumentConfig,
+	TResult,
+> {
+	(promptOrConfig?: TStoredConfig extends { model: LanguageModel }
+		? TArgumentConfig | string | Context // Model in config - any form ok
+		: TArgumentConfig & { model: LanguageModel }, // No model in config - must provide model
 		context?: Context
 	): Promise<TResult>; // The function's call signature
-	config: TConfig; // Additional property on the function type
+	config: TStoredConfig;
 };
 
 // Template types
@@ -41,6 +42,8 @@ export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
 export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+
+type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
 // Valid output types for object operations
 export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
@@ -63,10 +66,9 @@ export interface TemplateOnlyBaseConfig {
 }
 
 // Config for the template engine
-export interface TemplateOnlyConfig extends TemplateOnlyBaseConfig {
-	promptName?: string;
-	prompt?: string;
-}
+export type TemplateOnlyConfig =
+	| (TemplateOnlyBaseConfig & { prompt: string; promptName?: undefined })
+	| (TemplateOnlyBaseConfig & { promptName: string; prompt?: undefined });
 
 // This is the base config
 // It is a Partial, all properties are optional
@@ -121,6 +123,10 @@ type GenerateTextSpecificConfig<
 	| 'experimental_output'
 > & Omit<GenerateTextToolsOnlyConfig<TOOLS>, 'experimental_toolCallStreaming'>;
 
+//
+// Configs for each function/overload
+// The base config is extended with the specific properties for each function/overload
+
 export type GenerateTextConfig<TOOLS extends Record<string, CoreTool>, OUTPUT = never> =
 	BaseConfig & GenerateTextSpecificConfig<TOOLS, OUTPUT>;
 
@@ -135,6 +141,7 @@ export type StreamTextConfig<
 > & GenerateTextSpecificConfig<TOOLS, OUTPUT> & StreamTextToolsOnlyConfig<TOOLS>;
 
 export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
+	output: 'object';
 	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -142,6 +149,7 @@ export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
 }
 
 export type GenerateObjectArrayConfig<TSchema> = BaseConfig & {
+	output: 'array';
 	schema: SchemaType<TSchema>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -149,15 +157,18 @@ export type GenerateObjectArrayConfig<TSchema> = BaseConfig & {
 }
 
 export type GenerateObjectEnumConfig<ENUM extends string> = BaseConfig & {
+	output: 'enum';
 	enum: ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectNoSchemaConfig = BaseConfig & {
+	output: 'no-schema';
 	mode?: 'json';
 }
 
 export type StreamObjectObjectConfig<T> = BaseConfig & {
+	output: 'object';
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -166,6 +177,7 @@ export type StreamObjectObjectConfig<T> = BaseConfig & {
 }
 
 export type StreamObjectArrayConfig<T> = BaseConfig & {
+	output: 'array';
 	schema: SchemaType<T>;
 	schemaName?: string;
 	schemaDescription?: string;
@@ -175,9 +187,23 @@ export type StreamObjectArrayConfig<T> = BaseConfig & {
 }
 
 export type StreamObjectNoSchemaConfig = BaseConfig & {
+	output: 'no-schema';
 	mode?: 'json';
 	onFinish?: OnFinishCallback<JSONValue>;
 }
+
+export type AnyConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
+	| TemplateOnlyConfig
+	| GenerateTextConfig<TOOLS, OUTPUT>
+	| StreamTextConfig<TOOLS, OUTPUT>
+	| GenerateObjectObjectConfig<TSchema>
+	| GenerateObjectArrayConfig<TSchema>
+	| GenerateObjectEnumConfig<ENUM>
+	| GenerateObjectNoSchemaConfig
+	| StreamObjectObjectConfig<T>
+	| StreamObjectArrayConfig<T>
+	| StreamObjectNoSchemaConfig;
+
 
 // Result types
 export type {
@@ -190,8 +216,6 @@ export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
 export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
 export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
-
-type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
 //These are returned as is without a promise, many of the properties are promises,
 //this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.
