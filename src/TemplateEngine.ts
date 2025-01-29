@@ -1,98 +1,105 @@
-import { PAsyncEnvironment, PAsyncTemplate, compilePAsync } from 'cascada-tmpl';
-import { Context, TemplateOnlyConfig } from './types';
-import { ConfigData, mergeConfigs } from './ConfigData';
+import { ILoaderAny, Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
+import { Context, TemplateOnlyConfig, PromptType } from './types';
 
-export interface TemplateCallSignature<TConfig extends TemplateOnlyConfig> {
-	(promptOrConfig?: string | TemplateOnlyConfig, context?: Context): Promise<string>;
-	config: TConfig;
+// Helper type to determine if a promptType requires a loader
+type RequiresLoader<T extends PromptType | undefined> =
+	T extends 'template-name' | 'async-template-name' | undefined ? true : false;
+
+class TemplateError extends Error {
+	constructor(message: string, cause?: Error) {
+		super(message);
+		this.name = 'TemplateError';
+		this.cause = cause;
+	}
 }
 
-type HasTemplateProperties<T> = T extends { prompt: string | undefined } | { promptName: string | undefined } ? true : false;
-
-
-// Type for the call method parameter based on whether TConfig includes template properties
-type CallParameter<TConfig> = HasTemplateProperties<TConfig> extends true
-	? string | Partial<Omit<TemplateOnlyConfig, 'prompt' | 'promptName'>> | undefined
-	: string | TemplateOnlyConfig;
-
-export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> extends ConfigData<TConfig> {
-	protected env: PAsyncEnvironment;
+export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> {
+	protected env: Environment | PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
-	protected template?: PAsyncTemplate;
+	protected template?: Template | PAsyncTemplate;
+	protected config: TConfig;
 
-	constructor(config: TConfig) {
-		super(config);
+	constructor(
+		config: RequiresLoader<TConfig['promptType']> extends true
+			? TConfig & { loader: ILoaderAny | ILoaderAny[] }
+			: TConfig
+	) {
+		this.config = {
+			...config,
+			promptType: config.promptType ?? 'async-template'
+		};
 
-		if (config.promptName && !config.loader) {
-			throw new Error('Loader is required when using promptName');
+		// Validate loader requirement
+		if (
+			(this.config.promptType === 'template-name' ||
+				this.config.promptType === 'async-template-name' ||
+				this.config.promptType === undefined) &&
+			!this.config.loader
+		) {
+			throw new TemplateError('A loader is required when promptType is "template-name", "async-template-name", or undefined.');
 		}
 
-		// Initialize environment
-		this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
+		// Initialize appropriate environment based on promptType
+		try {
+			if (this.config.promptType === 'template' || this.config.promptType === 'template-name') {
+				this.env = new Environment(this.config.loader ?? null, this.config.options);
+			} else if (this.config.promptType === undefined ||
+				this.config.promptType === 'async-template' ||
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+				this.config.promptType === 'async-template-name') {
+				this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
+			} else {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				throw new TemplateError(`Invalid promptType: ${this.config.promptType}`);
+			}
 
-		// Add filters if provided
-		if (this.config.filters) {
-			for (const [name, filter] of Object.entries(this.config.filters)) {
-				if (typeof filter === 'function') {
-					this.env.addFilter(name, filter);
+			// Add filters if provided
+			if (this.config.filters) {
+				for (const [name, filter] of Object.entries(this.config.filters)) {
+					if (typeof filter === 'function') {
+						this.env.addFilter(name, filter);
+					}
 				}
 			}
-		}
 
-		// Handle template compilation
-		if (this.config.prompt) {
-			this.template = compilePAsync(this.config.prompt, this.env);
-		} else if (this.config.promptName) {
-			this.templatePromise = this.env.getTemplatePAsync(this.config.promptName);
+			// Initialize template if prompt provided
+			if (this.config.prompt) {
+				if (this.config.promptType === 'template') {
+					this.template = compile(this.config.prompt, this.env as Environment);
+				} else if (this.config.promptType === 'template-name') {
+					this.template = this.env.getTemplate(this.config.prompt);
+				} else if (this.config.promptType === 'async-template') {
+					this.template = compilePAsync(this.config.prompt, this.env as PAsyncEnvironment);
+				} else if (this.config.promptType === 'async-template-name') {
+					this.templatePromise = (this.env as PAsyncEnvironment).getTemplatePAsync(this.config.prompt);
+				}
+			}
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new TemplateError(`Template initialization failed: ${error.message}`, error);
+			} else if (typeof error === 'string') {
+				throw new TemplateError(`Template initialization failed: ${error}`);
+			}
+			throw new TemplateError('Template initialization failed due to an unknown error');
 		}
 	}
 
-	async call(promptOrConfig?: CallParameter<TConfig>, context?: Context): Promise<string> {
-		try {
-			// If user passed a string prompt
-			if (typeof promptOrConfig === 'string') {
-				return await this.render(promptOrConfig, context);
-			}
+	// Overloaded call methods with proper type checking
+	call(context?: Context): TConfig extends { prompt: string } ? Promise<string> : never;
+	call(prompt: string, context?: Context): Promise<string>;
+	async call(
+		promptOrContext?: string | Context,
+		maybeContext?: Context
+	): Promise<string> {
+		const prompt = typeof promptOrContext === 'string' ? promptOrContext : undefined;
+		const context = typeof promptOrContext === 'string' ? maybeContext : promptOrContext;
 
-			// If user passed an object
-			if (promptOrConfig && typeof promptOrConfig === 'object') {
-				const newConfig = mergeConfigs(this.config, promptOrConfig);
-
-				// Check for conflicting template properties
-				// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-				if (newConfig.prompt && newConfig.promptName) {
-					throw new Error('Cannot specify both prompt and promptName');
-				}
-
-				// Validate that the merged config has either prompt or promptName
-				if (!newConfig.prompt && !newConfig.promptName) {
-					throw new Error('Either prompt or promptName must be specified');
-				}
-
-				// Validate loader requirement for promptName
-				if (newConfig.promptName && !newConfig.loader) {
-					throw new Error('Loader is required when using promptName');
-				}
-
-				return await this.render(newConfig.prompt, context);
-			}
-
-			// If nothing passed, validate existing config
-			if (!this.config.prompt && !this.config.promptName) {
-				throw new Error('Either prompt or promptName must be specified');
-			}
-
-			return await this.render(undefined, context);
-		} catch (error: any) {
-			const errorMessage = 'Template rendering failed: ' +
-				(error instanceof Error ? error.message : 'Unknown error');
-
-			const err = new Error(errorMessage, { cause: error });
-			if (error instanceof Error) {
-				err.stack = error.stack;
-			}
-			throw err;
+		// Runtime check for missing prompt
+		if (!prompt && !this.config.prompt) {
+			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
 		}
+
+		return this.render(prompt, context);
 	}
 
 	protected async render(
@@ -100,31 +107,70 @@ export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> extends
 		contextOverride?: Context
 	): Promise<string> {
 		try {
-			if (this.templatePromise) {
+			const mergedContext = contextOverride
+				? { ...this.config.context ?? {}, ...contextOverride }
+				: this.config.context ?? {};
+
+			// If we have a prompt override, use renderString directly
+			if (promptOverride) {
+				if (this.env instanceof PAsyncEnvironment) {
+					return await this.env.renderString(promptOverride, mergedContext);
+				}
+				return await new Promise((resolve, reject) => {
+					const env = this.env as Environment;
+					try {
+						env.renderString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
+							if (err) {
+								reject(err);
+							} else if (res !== null) {
+								resolve(res);
+							} else {
+								reject(new TemplateError('Template render returned null result'));
+							}
+						});
+					} catch (error) {
+						reject(new Error(error instanceof Error ? error.message : String(error)));
+					}
+				});
+			}
+
+			// Otherwise use the compiled template
+			if (!this.template && this.templatePromise) {
 				this.template = await this.templatePromise;
 				this.templatePromise = undefined;
 			}
 
-			const mergedContext = contextOverride
-				? { ...this.config.context, ...contextOverride }
-				: this.config.context;
-
-			if (promptOverride) {
-				this.template = compilePAsync(promptOverride, this.env);
-			}
-
-			if (!this.template && this.config.promptName) {
-				this.template = await this.env.getTemplatePAsync(this.config.promptName);
-			}
-
 			if (!this.template) {
-				throw new Error('No template available to render');
+				throw new TemplateError('No template available to render');
 			}
 
-			return await this.template.render(mergedContext ?? {});
-		} catch (error: any) {
-			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			throw new Error(`Template rendering failed: ${errorMessage}`, { cause: error });
+			if (this.template instanceof Template) {
+				const template = this.template;
+				return await new Promise((resolve, reject) => {
+					try {
+						template.render(mergedContext, (err: Error | null, res: string | null) => {
+							if (err) {
+								reject(err);
+							} else if (res !== null) {
+								resolve(res);
+							} else {
+								reject(new TemplateError('Template render returned null result'));
+							}
+						});
+					} catch (error) {
+						reject(error instanceof Error ? error : new Error(String(error)));
+					}
+				});
+			}
+
+			return await this.template.render(mergedContext);
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new TemplateError(`Template render failed: ${error.message}`, error);
+			} else if (typeof error === 'string') {
+				throw new TemplateError(`Template render failed: ${error}`);
+			}
+			throw new TemplateError('Template render failed due to an unknown error');
 		}
 	}
 }

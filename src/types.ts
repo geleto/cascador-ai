@@ -57,18 +57,18 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 	? (event: { [K in keyof E]: K extends 'object' ? T | undefined : E[K] }) => R
 	: never;
 
-// Template config without the prompt
-export interface TemplateOnlyBaseConfig {
+// Define the possible prompt types
+export type PromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';
+
+// Config for the template engine with type safety for loader requirement
+export interface TemplateOnlyConfig {
+	prompt: string;
+	promptType?: PromptType;
 	context?: Context;
 	filters?: Filters;
-	loader?: ILoaderAny | ILoaderAny[] | null;
 	options?: ConfigureOptions;
+	loader?: ILoaderAny | ILoaderAny[] | null;
 }
-
-// Config for the template engine
-export type TemplateOnlyConfig =
-	| (TemplateOnlyBaseConfig & { prompt: string; promptName?: undefined })
-	| (TemplateOnlyBaseConfig & { promptName: string; prompt?: undefined });
 
 // This is the base config
 // It is a Partial, all properties are optional
