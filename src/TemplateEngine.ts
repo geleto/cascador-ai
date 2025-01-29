@@ -2,10 +2,10 @@
 
 import { Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
 import { Context, TemplateOnlyConfig } from './types';
+import { ConfigProvider } from './ConfigData';
 
-export interface TemplateCallSignature<TConfig extends TemplateOnlyConfig> {
+export interface TemplateCallSignature<TConfig extends TemplateOnlyConfig> extends ConfigProvider<TConfig> {
 	(promptOrContext?: string | Context, context?: Context): Promise<string>;
-	config: TConfig;
 }
 
 class TemplateError extends Error {
@@ -75,30 +75,15 @@ export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> {
 		}
 	}
 
-
-
-	// Overloaded call methods with proper type checking
-	call(context?: Context): TConfig extends { prompt: string } ? Promise<string> : never;
-	call(prompt: string, context?: Context): Promise<string>;
-	async call(
-		promptOrContext?: string | Context,
-		maybeContext?: Context
-	): Promise<string> {
-		const prompt = typeof promptOrContext === 'string' ? promptOrContext : undefined;
-		const context = typeof promptOrContext === 'string' ? maybeContext : promptOrContext;
-
-		// Runtime check for missing prompt
-		if (!prompt && !this.config.prompt) {
-			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
-		}
-
-		return this.render(prompt, context);
-	}
-
-	protected async render(
+	async render(
 		promptOverride?: string,
 		contextOverride?: Context
 	): Promise<string> {
+		// Runtime check for missing prompt
+		if (!promptOverride && !this.config.prompt) {
+			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
+		}
+
 		try {
 			const mergedContext = contextOverride
 				? { ...this.config.context ?? {}, ...contextOverride }

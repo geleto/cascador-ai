@@ -1,8 +1,7 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial } from 'ai';
-import { ConfigData, ConfigDataWithTools, mergeConfigs } from './ConfigData';
+import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel } from 'ai';
+import { ConfigData, ConfigDataWithTools, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
 import {
-	LLMCallSignature,
 	SchemaType, Context,
 	ObjectGeneratorOutputType, ObjectStreamOutputType,
 
@@ -55,6 +54,24 @@ type HasLoader<T> = T extends { loader: ILoaderAny | ILoaderAny[] } ? true : fal
 // Type error to show when loader is required but missing
 type LoaderRequiredError = "Error: A loader is required when promptType is 'template-name', 'async-template-name', or undefined. Either config or parent must have a loader.";
 
+/**
+ * Function signature for LLM generation/streaming calls.
+ * If base config has no model, requires model in call arguments.
+ * If base config has model, accepts any call signature.
+ * @todo - make sure output/schema/enum can't be in the call config
+ */
+interface LLMCallSignature<
+	TStoredConfig extends BaseConfig,
+	TArgumentConfig,
+	TResult,
+> extends ConfigProvider<TStoredConfig> {
+	(promptOrConfig?: TStoredConfig extends { model: LanguageModel }
+		? TArgumentConfig | string | Context // Model in config - any form ok
+		: TArgumentConfig & { model: LanguageModel }, // No model in config - must provide model
+		context?: Context
+	): Promise<TResult>;
+}
+
 // Type to validate loader requirements
 type ValidateLoader<
 	TConfig extends TemplateOnlyConfig,
@@ -66,6 +83,15 @@ type ValidateLoader<
 	? TConfig // Parent has loader
 	: LoaderRequiredError // Neither has loader - error!
 	: TConfig; // No loader required
+
+
+// In Factory.ts, add the new type helper before TemplateRenderer:
+type SafeConfig<T, P> = ValidateLoader<T, P> extends string
+	? never
+	: T extends TemplateOnlyConfig
+	? T
+	: never;
+
 
 
 //ConfigData classes have config property
@@ -88,7 +114,7 @@ export class Factory {
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
-	): ConfigData<TConfig>;
+	): ConfigProvider<TConfig>;
 
 	Config<
 		TConfig extends BaseConfig,
@@ -96,7 +122,7 @@ export class Factory {
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
-		parent: ConfigData<TParentConfig>
+		parent: ConfigProvider<TParentConfig>
 	): ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
 
 	Config<
@@ -105,7 +131,7 @@ export class Factory {
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
-		parent?: ConfigData<TParentConfig>
+		parent?: ConfigProvider<TParentConfig>
 	): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -122,24 +148,30 @@ export class Factory {
 		return new ConfigData(config);
 	}
 
+	/**
+	 * Config/ConfigTools create configuration objects that can have model and/or tool properties.
+	 * Child configs inherit their parent's tools and model settings - if the parent has tools config object,
+	 * the child will be tool-enabled; if the parent has a model property set, the child will
+	 * be a ModelIsSet config as well.
+	 */
 	TemplateRenderer<TConfig extends TemplateOnlyConfig>(
-		config: TConfig
+		config: SafeConfig<TConfig, TemplateOnlyConfig>
 	): TemplateCallSignature<TConfig>;
 
 	TemplateRenderer<
 		TConfig extends TemplateOnlyConfig,
 		TParentConfig extends TemplateOnlyConfig
 	>(
-		config: TConfig,
-		parent: ConfigData<TParentConfig>
+		config: SafeConfig<TConfig, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig & TParentConfig>;
 
 	TemplateRenderer<
 		TConfig extends TemplateOnlyConfig,
 		TParentConfig extends TemplateOnlyConfig = TemplateOnlyConfig
 	>(
-		config: ValidateLoader<TConfig, TParentConfig> extends string ? never : TConfig,
-		parent?: ConfigData<TParentConfig>
+		config: SafeConfig<TConfig, TParentConfig>,
+		parent?: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig | (TConfig & TParentConfig)> {
 		const merged = parent ? mergeConfigs(config, parent.config) : config;
 
@@ -156,14 +188,16 @@ export class Factory {
 
 		const renderer = new TemplateEngine(merged);
 
-		const callable = ((promptOrContext?: string | Context, context?: Record<string, unknown>): Promise<string> => {
-			if (typeof promptOrContext === 'string') {
-				return renderer.call(promptOrContext, context);
-			}
-			return renderer.call(promptOrContext);
-		});
-
-		callable.config = merged;
+		// Create an object that implements TemplateCallSignature
+		const callable = Object.assign(
+			async (promptOrContext?: string | Context, context?: Context): Promise<string> => {
+				if (typeof promptOrContext === 'string') {
+					return renderer.render(promptOrContext, context);
+				}
+				return renderer.render(undefined, context);
+			},
+			{ config: merged }
+		);
 		return callable;
 	}
 

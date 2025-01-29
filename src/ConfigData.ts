@@ -1,10 +1,12 @@
 import { CoreTool } from 'ai';
 import { BaseConfig, BaseConfigWithTools } from './types';
 
+export interface ConfigProvider<T extends BaseConfig> {
+	readonly config: T;
+}
 
-export class ConfigData<ConfigType extends BaseConfig> {
-	constructor(public readonly config: ConfigType) {
-	}
+export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider<ConfigType> {
+	constructor(public readonly config: ConfigType) { }
 }
 
 export class ConfigDataWithTools<TOOLS extends Record<string, CoreTool>> extends ConfigData<BaseConfigWithTools<TOOLS>> {

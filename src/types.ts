@@ -17,26 +17,6 @@ import { z } from 'zod';
 export type VercelLLMFunction<TConfig, TResult> =
 	(config: TConfig & { model: LanguageModel }) => Promise<TResult> | TResult;
 
-
-/**
- * Function signature for LLM generation/streaming calls.
- * If base config has no model, requires model in call arguments.
- * If base config has model, accepts any call signature.
- * @todo - make sure output/schema/enum can't be in the call config
- */
-export interface LLMCallSignature<
-	TStoredConfig,
-	TArgumentConfig,
-	TResult,
-> {
-	(promptOrConfig?: TStoredConfig extends { model: LanguageModel }
-		? TArgumentConfig | string | Context // Model in config - any form ok
-		: TArgumentConfig & { model: LanguageModel }, // No model in config - must provide model
-		context?: Context
-	): Promise<TResult>; // The function's call signature
-	config: TStoredConfig;
-};
-
 // Template types
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
