@@ -45,9 +45,27 @@ type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
-// Helper type to determine if a promptType requires a loader
+// Helper type to check if a promptType requires a loader
 type RequiresLoader<T extends PromptType | undefined> =
 	T extends 'template-name' | 'async-template-name' | undefined ? true : false;
+
+// Helper type to check if a config has a loader
+type HasLoader<T> = T extends { loader: ILoaderAny | ILoaderAny[] } ? true : false;
+
+// Type error to show when loader is required but missing
+type LoaderRequiredError = "Error: A loader is required when promptType is 'template-name', 'async-template-name', or undefined. Either config or parent must have a loader.";
+
+// Type to validate loader requirements
+type ValidateLoader<
+	TConfig extends TemplateOnlyConfig,
+	TParentConfig extends TemplateOnlyConfig
+> = RequiresLoader<(TConfig & TParentConfig)['promptType']> extends true
+	? HasLoader<TConfig> extends true
+	? TConfig // Config has loader
+	: HasLoader<TParentConfig> extends true
+	? TConfig // Parent has loader
+	: LoaderRequiredError // Neither has loader - error!
+	: TConfig; // No loader required
 
 
 //ConfigData classes have config property
@@ -118,56 +136,34 @@ export class Factory {
 
 	TemplateRenderer<
 		TConfig extends TemplateOnlyConfig,
-		TParentConfig extends TemplateOnlyConfig
+		TParentConfig extends TemplateOnlyConfig = TemplateOnlyConfig
 	>(
-		config: RequiresLoader<TConfig['promptType']> extends true
-			? TConfig & { loader: ILoaderAny | ILoaderAny[] }
-			: TConfig,
+		config: ValidateLoader<TConfig, TParentConfig> extends string ? never : TConfig,
 		parent?: ConfigData<TParentConfig>
 	): TemplateCallSignature<TConfig | (TConfig & TParentConfig)> {
 		const merged = parent ? mergeConfigs(config, parent.config) : config;
 
-		// Type assertion is safe here because we've validated the type at the method level
+		// Runtime validation matches our type-level guarantees
+		if (
+			(merged.promptType === 'template-name' ||
+				merged.promptType === 'async-template-name' ||
+				merged.promptType === undefined) &&
+			!merged.loader &&
+			(!parent?.config.loader)
+		) {
+			throw new Error('A loader is required when promptType is "template-name", "async-template-name", or undefined. Either config or parent must have a loader.');
+		}
+
 		const renderer = new TemplateEngine(merged);
 
-		// Create a properly typed callable function
-		type FinalConfig = RequiresLoader<TConfig['promptType']> extends true
-			? TConfig & { loader: ILoaderAny | ILoaderAny[] }
-			: TConfig;
-
-		type CallableParam = string | FinalConfig | Record<string, unknown> | undefined;
-
-		function isContext(value: unknown): value is Record<string, unknown> {
-			return value != null &&
-				typeof value === 'object' &&
-				!Array.isArray(value) &&
-				!('prompt' in value);
-		}
-
-		function isConfig(value: unknown): value is FinalConfig {
-			return value != null &&
-				typeof value === 'object' &&
-				!Array.isArray(value) &&
-				'prompt' in value;
-		}
-
-		const callable = ((promptOrConfig: CallableParam, context?: Record<string, unknown>): Promise<string> => {
-			if (promptOrConfig === undefined) {
-				return renderer.call();
+		const callable = ((promptOrContext?: string | Context, context?: Record<string, unknown>): Promise<string> => {
+			if (typeof promptOrContext === 'string') {
+				return renderer.call(promptOrContext, context);
 			}
-			if (typeof promptOrConfig === 'string') {
-				return renderer.call(promptOrConfig, context);
-			}
-			if (isConfig(promptOrConfig)) {
-				return renderer.call(promptOrConfig, context);
-			}
-			if (isContext(promptOrConfig)) {
-				return renderer.call(promptOrConfig);
-			}
-			return renderer.call(undefined);
+			return renderer.call(promptOrContext);
 		});
 
-		callable.config = merged as FinalConfig;
+		callable.config = merged;
 		return callable;
 	}
 

@@ -1,7 +1,12 @@
 // TemplateEngine.ts
 
 import { Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
-import { TemplateOnlyConfig } from './types';
+import { Context, TemplateOnlyConfig } from './types';
+
+export interface TemplateCallSignature<TConfig extends TemplateOnlyConfig> {
+	(promptOrContext?: string | Context, context?: Context): Promise<string>;
+	config: TConfig;
+}
 
 class TemplateError extends Error {
 	constructor(message: string, cause?: Error) {
@@ -70,5 +75,95 @@ export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> {
 		}
 	}
 
-	// Rest of the class implementation remains the same...
+
+
+	// Overloaded call methods with proper type checking
+	call(context?: Context): TConfig extends { prompt: string } ? Promise<string> : never;
+	call(prompt: string, context?: Context): Promise<string>;
+	async call(
+		promptOrContext?: string | Context,
+		maybeContext?: Context
+	): Promise<string> {
+		const prompt = typeof promptOrContext === 'string' ? promptOrContext : undefined;
+		const context = typeof promptOrContext === 'string' ? maybeContext : promptOrContext;
+
+		// Runtime check for missing prompt
+		if (!prompt && !this.config.prompt) {
+			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
+		}
+
+		return this.render(prompt, context);
+	}
+
+	protected async render(
+		promptOverride?: string,
+		contextOverride?: Context
+	): Promise<string> {
+		try {
+			const mergedContext = contextOverride
+				? { ...this.config.context ?? {}, ...contextOverride }
+				: this.config.context ?? {};
+
+			// If we have a prompt override, use renderString directly
+			if (promptOverride) {
+				if (this.env instanceof PAsyncEnvironment) {
+					return await this.env.renderString(promptOverride, mergedContext);
+				}
+				return await new Promise((resolve, reject) => {
+					const env = this.env as Environment;
+					try {
+						env.renderString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
+							if (err) {
+								reject(err);
+							} else if (res !== null) {
+								resolve(res);
+							} else {
+								reject(new TemplateError('Template render returned null result'));
+							}
+						});
+					} catch (error) {
+						reject(new Error(error instanceof Error ? error.message : String(error)));
+					}
+				});
+			}
+
+			// Otherwise use the compiled template
+			if (!this.template && this.templatePromise) {
+				this.template = await this.templatePromise;
+				this.templatePromise = undefined;
+			}
+
+			if (!this.template) {
+				throw new TemplateError('No template available to render');
+			}
+
+			if (this.template instanceof Template) {
+				const template = this.template;
+				return await new Promise((resolve, reject) => {
+					try {
+						template.render(mergedContext, (err: Error | null, res: string | null) => {
+							if (err) {
+								reject(err);
+							} else if (res !== null) {
+								resolve(res);
+							} else {
+								reject(new TemplateError('Template render returned null result'));
+							}
+						});
+					} catch (error) {
+						reject(error instanceof Error ? error : new Error(String(error)));
+					}
+				});
+			}
+
+			return await this.template.render(mergedContext);
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new TemplateError(`Template render failed: ${error.message}`, error);
+			} else if (typeof error === 'string') {
+				throw new TemplateError(`Template render failed: ${error}`);
+			}
+			throw new TemplateError('Template render failed due to an unknown error');
+		}
+	}
 }
