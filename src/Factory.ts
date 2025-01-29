@@ -27,8 +27,10 @@ import {
 	ConfigWithTools,
 	AnyConfig,
 	TemplateOnlyConfig,
+	PromptType,
 	//GenerateTextToolsOnlyConfig
 } from './types';
+import { ILoaderAny } from 'cascada-tmpl';
 
 //@todo - remove TemplateOnlyConfig from BaseConfig, add it to AnyConfig
 
@@ -42,6 +44,10 @@ type StrictUnionSubtype<T, U> = U extends any
 	? Exclude<keyof T, keyof U> extends never ? T : never
 	: never
 	: never;
+
+// Helper type to determine if a promptType requires a loader
+type RequiresLoader<T extends PromptType | undefined> =
+	T extends 'template-name' | 'async-template-name' | undefined ? true : false;
 
 
 //ConfigData classes have config property
@@ -114,17 +120,54 @@ export class Factory {
 		TConfig extends TemplateOnlyConfig,
 		TParentConfig extends TemplateOnlyConfig
 	>(
-		config: TConfig,
+		config: RequiresLoader<TConfig['promptType']> extends true
+			? TConfig & { loader: ILoaderAny | ILoaderAny[] }
+			: TConfig,
 		parent?: ConfigData<TParentConfig>
-	): TemplateCallSignature<TConfig> | TemplateCallSignature<TConfig & TParentConfig> {
+	): TemplateCallSignature<TConfig | (TConfig & TParentConfig)> {
 		const merged = parent ? mergeConfigs(config, parent.config) : config;
+
+		// Type assertion is safe here because we've validated the type at the method level
 		const renderer = new TemplateEngine(merged);
 
-		const callable = ((promptOrConfig?: string | TemplateOnlyConfig, context?: Context) => {
-			return renderer.call(promptOrConfig, context);
-		}) as TemplateCallSignature<typeof merged>;
+		// Create a properly typed callable function
+		type FinalConfig = RequiresLoader<TConfig['promptType']> extends true
+			? TConfig & { loader: ILoaderAny | ILoaderAny[] }
+			: TConfig;
 
-		callable.config = renderer.config;
+		type CallableParam = string | FinalConfig | Record<string, unknown> | undefined;
+
+		function isContext(value: unknown): value is Record<string, unknown> {
+			return value != null &&
+				typeof value === 'object' &&
+				!Array.isArray(value) &&
+				!('prompt' in value);
+		}
+
+		function isConfig(value: unknown): value is FinalConfig {
+			return value != null &&
+				typeof value === 'object' &&
+				!Array.isArray(value) &&
+				'prompt' in value;
+		}
+
+		const callable = ((promptOrConfig: CallableParam, context?: Record<string, unknown>): Promise<string> => {
+			if (promptOrConfig === undefined) {
+				return renderer.call();
+			}
+			if (typeof promptOrConfig === 'string') {
+				return renderer.call(promptOrConfig, context);
+			}
+			if (isConfig(promptOrConfig)) {
+				return renderer.call(promptOrConfig, context);
+			}
+			if (isContext(promptOrConfig)) {
+				return renderer.call(promptOrConfig);
+			}
+			return renderer.call(undefined);
+		});
+
+		callable.config = merged as FinalConfig;
 		return callable;
 	}
 
