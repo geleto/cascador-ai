@@ -3,10 +3,12 @@ import { Factory } from "./Factory";
 
 export const create = new Factory();
 
-/*
+
 import { openai } from '@ai-sdk/openai';
+import { ILoader, LoaderSource } from "cascada-tmpl";
 import { z } from 'zod';
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 (async (): Promise<void> => {
 
 	const schema = z.object({
@@ -14,7 +16,6 @@ import { z } from 'zod';
 		age: z.number(),
 		hobbies: z.array(z.string()),
 	});
-	console.log(schema);
 
 	const tools = {
 		cityAttractions: {
@@ -26,55 +27,147 @@ import { z } from 'zod';
 			},
 		},
 	};
-	console.log(tools);
 
-	const conf1 = create.Config({ model: openai('gpt-4') });
-	const gen1 = create.TextGenerator({}, conf1);
+	class StringLoader implements ILoader {
+		templates: Map<string, string>;
+		constructor() {
+			this.templates = new Map();
+		}
+		getSource(name: string) {
+			if (!this.templates.has(name)) return null;
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const source: LoaderSource = { src: this.templates.get(name)!, path: name, noCache: false };
+			return source;
+		}
 
-	const conf2 = create.Config({});
-	const gen2 = create.TextGenerator({ model: openai('gpt-4') }, conf2);
+		addTemplate(name: string, content: string) {
+			this.templates.set(name, content);
+		}
+	};
+	const someLoader = new StringLoader();
+	someLoader.addTemplate('template1', 'Hello {name}');
 
-	const conf3 = create.Config({});
-	const gen3 = create.TextGenerator({}, conf3);
+	// Test Configuration Variations
 
-	const gen4 = create.TextGenerator({});
+	// 1. Basic prompt configurations
+	const confWithPrompt = create.Config({ prompt: "Hello {name}" });
+	const t1 = create.TemplateRenderer({}, confWithPrompt);
+	// Should compile:
+	await t1(); // ✓ Has prompt in config
+	await t1({ name: "Bob" }); // ✓ Has prompt, context only
+	await t1("Hi {name}"); // ✓ Override prompt
+	await t1("Hi {name}", { x: 1 }); // ✓ Override + context
+	// Should NOT compile:
+	await t1("Hi", {}, "extra"); // ✗ Too many args
+	await t1(123); // ✗ Wrong type - must be string
 
-	const gen5 = create.Config({ prompt: 'hi' }, gen1);
+	// 2. Empty configurations
+	const confEmpty = create.Config({});
+	const t2 = create.TemplateRenderer({}, confEmpty);
+	// Should NOT compile:
+	await t2(); // ✗ No prompt
+	await t2({ name: "Bob" }); // ✗ No prompt, context only not allowed
+	// Should compile:
+	await t2("Hi {name}"); // ✓ Provides required prompt
+	await t2("Hi {name}", { x: 1 }); // ✓ Provides prompt and context
 
-	console.log(conf1, conf2, conf3, gen1, gen2, gen3, gen4, gen5);
+	// 3. Loader configurations
+	const confWithLoader = create.Config({
+		promptType: 'template-name',
+		loader: someLoader
+	});
+	const t3 = create.TemplateRenderer({}, confWithLoader);
+	// Should NOT compile:
+	await t3(); // ✗ No prompt
+	// Should compile:
+	await t3("template-name"); // ✓ Provides required prompt
 
-	const textConf = create.Config({ model: openai('gpt-4'), tools });
+	// 4. Prompt + Loader configurations
+	const confWithPromptAndLoader = create.Config({
+		prompt: "Hello {name}",
+		promptType: 'template-name',
+		loader: someLoader
+	});
 
-	console.log(textConf);
+	const t4 = create.TemplateRenderer({}, confWithPromptAndLoader);
+	// Should all compile:
+	await t4(); // ✓ Has prompt in config
+	await t4({ name: "Bob" }); // ✓ Has prompt, context only
+	await t4("template-name"); // ✓ Override prompt
+	await t4("template-name", { x: 1 }); // ✓ Override + context
 
-	const parent = create.Config({ model: openai('gpt-4') });
-	const gen1 = create.TextGenerator({}, parent);
+	// 5. Child overriding parent
+	const parentBasic = create.Config({ prompt: "Parent {name}" });
+	const t5 = create.TemplateRenderer({ prompt: "Child {name}" }, parentBasic);
+	// Should all compile:
+	await t5(); // ✓ Has prompt in config
+	await t5({ name: "Bob" }); // ✓ Has prompt, context only
+	await t5("Override {name}"); // ✓ Override prompt
 
-	// Return type checks
+	// 6. Loader inheritance
+	const parentWithLoader = create.Config({
+		promptType: 'template-name',
+		loader: someLoader
+	});
+	const t6 = create.TemplateRenderer({ prompt: "Child {name}" }, parentWithLoader);
+	// Should all compile:
+	await t6(); // ✓ Has prompt in child config
+	await t6({ name: "Bob" }); // ✓ Has prompt, context only
 
-	let result = await gen1('test');
-	const result2 = await gen1({ prompt: 'test' });
-	const result3 = await gen1({ prompt: 'test', model: openai('gpt-4') });
+	// 7. Invalid loader configurations
+	// Should NOT compile at creation:
+	const t7 = create.TemplateRenderer({
+		promptType: 'template-name' // ✗ No loader
+	});
+	await t7(); // ✗ No loader
 
-	conf = create.Config({});
-	gen = create.TextGenerator({}, conf);
-	result = await gen('test');
+	// 8. Mixed configurations
 
-	const text: string = result.text; // should compile
-	console.log(text);
-	console.log(result2.text);
+	const test = create.Config({ prompt: "Parent {name}", promptType: 'template-name' });
 
-	const wrongProp: any = result.wrong; // should NOT compile
+	const parentWithPrompt = create.Config({ prompt: "Parent {name}" });
+	const t8 = create.TemplateRenderer({
+		promptType: 'template-name',
+		loader: someLoader
+	}, parentWithPrompt);
+	// Should all compile:
+	await t8(); // ✓ Has prompt from parent
+	await t8("template-name"); // ✓ Override prompt
+	await t8("template-name", { x: 1 }); // ✓ Override + context
 
-	// Deep inheritance with return types
+	// 9. Type checking
+	const t9 = create.TemplateRenderer({}, confWithPrompt);
+	const conf = t9.config; // ✓ Should preserve exact type
+	// Should NOT compile:
+	await t9(true); // ✗ Wrong type for prompt - must be string
+	await t9("Hi", true); // ✗ Wrong type for context - must be object
+	await t9({}, {}); // ✗ First arg must be string when providing context
 
-	const genObject = create.ObjectGenerator({ schema }, 'object', parent);
+	// 10. Context variations
+	const t10 = create.TemplateRenderer({ prompt: "Hello {user.name}" }, confEmpty);
+	// Should compile:
+	await t10({ user: { name: "Bob" } }); // ✓ Valid context structure
+	await t10("Hi {user.name}", { user: { name: "Bob" } }); // ✓ Override + valid context
+	// Should NOT compile:
+	await t10({}, {}); // ✗ Invalid context structure
 
-	type MyType = z.infer<typeof schema>;
-	const arrayResult = await genObject('test');
-	const arr: MyType[] = arrayResult.object; // should compile
-	const obj: MyType = arrayResult.object; // should NOT compile
+	// 11. Nested congig inheritance
+	const grandparent = create.Config({ loader: someLoader });
+	const parent = create.Config({ promptType: 'template-name' }, grandparent);
+	const child = create.TemplateRenderer({}, parent);
 
-	console.log(arr, obj, wrongProp)//shut up unused var warnings
+	// 12. Override PromptType in Child:
+	const parentTemplate = create.Config({
+		promptType: 'template-name',
+		loader: someLoader
+	});
+	const childDirect = create.TemplateRenderer({
+		promptType: 'template' // changes to direct template
+	}, parentTemplate);
 
-})().catch(console.error);*/
+	// 13. Empty Context Validation:
+	const tContext = create.TemplateRenderer({ prompt: "Hello" });
+	await tContext({}); // should compile - empty context is valid
+	await tContext(); // should compile - undefined context is valid
+
+})().catch(console.error);
