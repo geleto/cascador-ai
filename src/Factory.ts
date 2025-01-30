@@ -1,6 +1,6 @@
 import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel } from 'ai';
-import { ConfigData, ConfigDataWithTools, ConfigProvider, mergeConfigs } from './ConfigData';
-import { TemplateCallSignature, TemplateEngine } from './TemplateEngine';
+import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
+import { TemplateEngine } from './TemplateEngine';
 import {
 	SchemaType, Context,
 	ObjectGeneratorOutputType, ObjectStreamOutputType,
@@ -31,11 +31,6 @@ import {
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 
-//@todo - remove TemplateOnlyConfig from BaseConfig, add it to AnyConfig
-
-//type AnyConfig2<TOOLS extends Record<string, CoreTool> = never> = BaseConfig | BaseConfigWithTools<TOOLS> | (BaseConfig & TemplateOnlyConfig) | (BaseConfigWithTools<TOOLS> & TemplateOnlyConfig)
-//type AnyConfig<TOOLS extends Record<string, CoreTool> = never> = BaseConfig | BaseConfigWithTools<TOOLS>;
-
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
 type StrictUnionSubtype<T, U> = U extends any
@@ -51,8 +46,29 @@ type RequiresLoader<T extends PromptType | undefined> =
 // Helper type to check if a config has a loader
 type HasLoader<T> = T extends { loader: ILoaderAny | ILoaderAny[] } ? true : false;
 
-// Type error to show when loader is required but missing
-type LoaderRequiredError = "Error: A loader is required when promptType is 'template-name', 'async-template-name', or undefined. Either config or parent must have a loader.";
+type ValidatePromtOrContext<TConfig extends Partial<TemplateOnlyConfig>> =
+	TConfig extends { prompt: string } ?
+	string | Context | undefined ://we have prompt in the config - any form is ok
+	string;//no prompt in the config - must provide string prompt
+
+type ValidatePromt<TConfig extends Partial<TemplateOnlyConfig>> =
+	TConfig extends { prompt: string } ?
+	string | undefined ://we have prompt in the config - any form is ok
+	string;//no prompt in the config - must provide string prompt
+
+type TemplateCallSignature<TConfig extends Partial<TemplateOnlyConfig>> = [TConfig] extends [never]
+	? unknown
+	: TConfig extends { prompt: string }
+	? {
+		(promptOrContext?: Context | ValidatePromtOrContext<TConfig>): Promise<string>;
+		(promptOrContext: ValidatePromt<TConfig>, context: Context): Promise<string>;
+		config: TConfig;
+	}
+	: {
+		(promptOrContext: ValidatePromtOrContext<TConfig>): Promise<string>;
+		(promptOrContext: ValidatePromt<TConfig>, context: Context): Promise<string>;
+		config: TConfig;
+	};
 
 /**
  * Function signature for LLM generation/streaming calls.
@@ -72,30 +88,12 @@ interface LLMCallSignature<
 	): Promise<TResult>;
 }
 
-// Type to validate loader requirements
-type ValidateLoader<
-	TConfig extends TemplateOnlyConfig,
-	TParentConfig extends TemplateOnlyConfig
-> = RequiresLoader<(TConfig & TParentConfig)['promptType']> extends true
-	? HasLoader<TConfig> extends true
-	? TConfig // Config has loader
-	: HasLoader<TParentConfig> extends true
-	? TConfig // Parent has loader
-	: LoaderRequiredError // Neither has loader - error!
-	: TConfig; // No loader required
-
-
-// In Factory.ts, add the new type helper before TemplateRenderer:
-type SafeConfig<T, P> = ValidateLoader<T, P> extends string
-	? never
-	: T extends TemplateOnlyConfig
-	? T
-	: never;
-
-
-
-//ConfigData classes have config property
-//type AnyConfigData<TOOLS extends Record<string, CoreTool> = never> = ConfigData | ConfigDataWithTools<TOOLS>;
+type ValidateLoaderConfig<TMergedConfig extends Partial<TemplateOnlyConfig>, TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig> =
+	RequiresLoader<TMergedConfig['promptType']> extends true
+	// Return just TConfig with loader if merged config doesn't have loader
+	? HasLoader<TMergedConfig> extends true ? TConfig : TConfig & { loader: ILoaderAny | ILoaderAny[] }
+	// no loader required:
+	: TConfig;
 
 export class Factory {
 	/**
@@ -154,51 +152,67 @@ export class Factory {
 	 * the child will be tool-enabled; if the parent has a model property set, the child will
 	 * be a ModelIsSet config as well.
 	 */
-	TemplateRenderer<TConfig extends TemplateOnlyConfig>(
-		config: SafeConfig<TConfig, TemplateOnlyConfig>
+	// Single config overload
+	TemplateRenderer<TConfig extends Partial<TemplateOnlyConfig>>(
+		config: ValidateLoaderConfig<TConfig>
 	): TemplateCallSignature<TConfig>;
 
+	// Config with parent overload - now properly returns only required properties in immediate config
 	TemplateRenderer<
-		TConfig extends TemplateOnlyConfig,
-		TParentConfig extends TemplateOnlyConfig
+		TConfig extends Partial<TemplateOnlyConfig>,
+		TParentConfig extends Partial<TemplateOnlyConfig>
 	>(
-		config: SafeConfig<TConfig, TParentConfig>,
+		config: ValidateLoaderConfig<TConfig & TParentConfig, TConfig>,
 		parent: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig & TParentConfig>;
 
 	TemplateRenderer<
-		TConfig extends TemplateOnlyConfig,
-		TParentConfig extends TemplateOnlyConfig = TemplateOnlyConfig
+		TConfig extends Partial<TemplateOnlyConfig>,
+		TParentConfig extends Partial<TemplateOnlyConfig>
 	>(
-		config: SafeConfig<TConfig, TParentConfig>,
+		config: TConfig,
 		parent?: ConfigProvider<TParentConfig>
-	): TemplateCallSignature<TConfig | (TConfig & TParentConfig)> {
-		const merged = parent ? mergeConfigs(config, parent.config) : config;
+	): [typeof parent] extends [undefined]
+		? TemplateCallSignature<TConfig>
+		: TemplateCallSignature<TConfig & TParentConfig> {
 
-		// Runtime validation matches our type-level guarantees
-		if (
-			(merged.promptType === 'template-name' ||
-				merged.promptType === 'async-template-name' ||
-				merged.promptType === undefined) &&
-			!merged.loader &&
-			(!parent?.config.loader)
+		// Merge configs if parent exists, otherwise use provided config
+		const merged = parent
+			? mergeConfigs(config, parent.config)
+			: config;
+
+		if ((merged.promptType === 'template-name' ||
+			merged.promptType === 'async-template-name' ||
+			merged.promptType === undefined) &&
+			!merged.loader
 		) {
-			throw new Error('A loader is required when promptType is "template-name", "async-template-name", or undefined. Either config or parent must have a loader.');
+			throw new Error('A loader is required when promptType is "template-name", "async-template-name", or undefined.');
 		}
 
 		const renderer = new TemplateEngine(merged);
 
-		// Create an object that implements TemplateCallSignature
-		const callable = Object.assign(
-			async (promptOrContext?: string | Context, context?: Context): Promise<string> => {
-				if (typeof promptOrContext === 'string') {
-					return renderer.render(promptOrContext, context);
+		// Define the call function that handles both cases
+		const call = async <T extends typeof parent extends undefined ? TConfig : TConfig & TParentConfig>(
+			promptOrContext: ValidatePromtOrContext<T>,
+			maybeContext?: Context
+		): Promise<string> => {
+			if (typeof promptOrContext === 'string') {
+				return renderer.render(promptOrContext, maybeContext);
+			} else {
+				if (maybeContext !== undefined) {
+					throw new Error('Second argument must be undefined when not providing prompt.');
 				}
-				return renderer.render(undefined, context);
-			},
-			{ config: merged }
-		);
-		return callable;
+				return renderer.render(undefined, promptOrContext);
+			}
+		};
+
+		const callSignature = Object.assign(call, { config: merged });
+
+		type ReturnType = [typeof parent] extends [undefined]
+			? TemplateCallSignature<TConfig>
+			: TemplateCallSignature<TConfig & TParentConfig>;
+
+		return callSignature as ReturnType;
 	}
 
 	// Text functions can use tools
