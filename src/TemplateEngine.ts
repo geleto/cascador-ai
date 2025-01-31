@@ -2,11 +2,6 @@
 
 import { Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
 import { Context, TemplateOnlyConfig } from './types';
-import { ConfigProvider } from './ConfigData';
-
-export interface TemplateCallSignature<TConfig extends TemplateOnlyConfig> extends ConfigProvider<TConfig> {
-	(promptOrContext?: string | Context, context?: Context): Promise<string>;
-}
 
 class TemplateError extends Error {
 	constructor(message: string, cause?: Error) {

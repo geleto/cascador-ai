@@ -61,7 +61,7 @@ export type BaseConfig =
 	>;
 
 // Base config for generateText tools
-export type GenerateTextToolsOnlyConfig<TOOLS extends Record<string, CoreTool>> = Pick<
+type GenerateTextToolsOnlyConfig<TOOLS extends Record<string, CoreTool>> = Pick<
 	Parameters<typeof generateText<TOOLS, never, never>>[0],
 	| 'tools'
 	| 'toolChoice'
@@ -86,7 +86,7 @@ export type ToolsOnlyConfig<TOOLS extends Record<string, CoreTool>> = Omit<Strea
 	toolChoice?: CoreToolChoice<TOOLS>;
 };
 
-export type BaseConfigWithTools<TOOLS extends Record<string, CoreTool>> = BaseConfig & BaseToolsOnlyConfig<TOOLS>;
+//export type BaseConfigWithTools<TOOLS extends Record<string, CoreTool>> = BaseConfig & BaseToolsOnlyConfig<TOOLS>;
 export type ConfigWithTools<TOOLS extends Record<string, CoreTool>> = BaseConfig & ToolsOnlyConfig<TOOLS>;
 
 // Non-tool specific properties for generateText plus the tool config for generate text

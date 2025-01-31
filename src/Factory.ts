@@ -7,7 +7,6 @@ import {
 
 	//Base Config types, all properties are optional
 	BaseConfig, //a base config common for all generators and streamers
-	//BaseConfigWithTools, //a base config with tools, can not be used for streamers
 
 	//Type guards functions
 	isToolsConfig,
@@ -96,17 +95,6 @@ type ValidateLoaderConfig<TMergedConfig extends Partial<TemplateOnlyConfig>, TCo
 	: TConfig;
 
 export class Factory {
-	/**
-   * Config/ConfigTools create configuration objects that can have model and/or tool properties.
-   * Child configs inherit their parent's tools and model settings - if the parent has tools config object,
-   * the child will be tool-enabled; if the parent has a model property set, the child will
-   * be a ModelIsSet config as well.
-   * There are two types of configs:
-   * - BaseConfig: the most generic config that has properties common to all generators and streamers
-   * - BaseConfigWithTools: a config that has tools property, can only be used for generators
-   * There are variants of these configs depending on whether a model is set or not.
-   */
-
 	Config<
 		TConfig extends BaseConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
