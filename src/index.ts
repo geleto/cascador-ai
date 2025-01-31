@@ -167,7 +167,7 @@ import { z } from 'zod';
 
 	// 13. Empty Context Validation:
 	const tContext = create.TemplateRenderer({ prompt: "Hello" });
-	await tContext({}); // should compile - empty context is valid
-	await tContext(); // should compile - undefined context is valid
+	await tContext({}); // ✓ should compile - empty context is valid
+	await tContext(); // ✓ should compile - undefined context is valid
 
 })().catch(console.error);

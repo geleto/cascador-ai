@@ -1,4 +1,4 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel, CoreMessage } from 'ai';
 import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
 import {
@@ -38,60 +38,62 @@ type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
-// Helper type to check if a promptType requires a loader
-type RequiresLoader<T extends PromptType | undefined> =
-	T extends 'template-name' | 'async-template-name' | undefined ? true : false;
-
-// Helper type to check if a config has a loader
-type HasLoader<T> = T extends { loader: ILoaderAny | ILoaderAny[] } ? true : false;
-
-type ValidatePromtOrContext<TConfig extends Partial<TemplateOnlyConfig>> =
-	TConfig extends { prompt: string } ?
+type RequiredPromptOrContext<TConfig extends Partial<TemplateOnlyConfig>, TRequired = { prompt: string }> =
+	TConfig extends TRequired ?
 	string | Context | undefined ://we have prompt in the config - any form is ok
 	string;//no prompt in the config - must provide string prompt
 
-type ValidatePromt<TConfig extends Partial<TemplateOnlyConfig>> =
-	TConfig extends { prompt: string } ?
+type RequiredPrompt<TConfig extends Partial<TemplateOnlyConfig>, TRequired = { prompt: string }> =
+	TConfig extends TRequired ?
 	string | undefined ://we have prompt in the config - any form is ok
 	string;//no prompt in the config - must provide string prompt
 
-type TemplateCallSignature<TConfig extends Partial<TemplateOnlyConfig>> = [TConfig] extends [never]
-	? unknown
-	: TConfig extends { prompt: string }
+type TemplateCallSignature<TConfig extends Partial<TemplateOnlyConfig>> =
+	TConfig extends { prompt: string }
 	? {
-		(promptOrContext?: Context | ValidatePromtOrContext<TConfig>): Promise<string>;
-		(promptOrContext: ValidatePromt<TConfig>, context: Context): Promise<string>;
+		(promptOrContext?: Context | RequiredPromptOrContext<TConfig>): Promise<string>;
+		(promptOrContext: RequiredPrompt<TConfig>, context: Context): Promise<string>;
 		config: TConfig;
 	}
 	: {
-		(promptOrContext: ValidatePromtOrContext<TConfig>): Promise<string>;
-		(promptOrContext: ValidatePromt<TConfig>, context: Context): Promise<string>;
+		(promptOrContext: RequiredPromptOrContext<TConfig>): Promise<string>;
+		(promptOrContext: RequiredPrompt<TConfig>, context: Context): Promise<string>;
 		config: TConfig;
 	};
 
-/**
- * Function signature for LLM generation/streaming calls.
- * If base config has no model, requires model in call arguments.
- * If base config has model, accepts any call signature.
- * @todo - make sure output/schema/enum can't be in the call config
- */
-interface LLMCallSignature<
-	TStoredConfig extends BaseConfig,
-	TArgumentConfig,
-	TResult,
-> extends ConfigProvider<TStoredConfig> {
-	(promptOrConfig?: TStoredConfig extends { model: LanguageModel }
-		? TArgumentConfig | string | Context // Model in config - any form ok
-		: TArgumentConfig & { model: LanguageModel }, // No model in config - must provide model
-		context?: Context
-	): Promise<TResult>;
-}
+type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
 
-type ValidateLoaderConfig<TMergedConfig extends Partial<TemplateOnlyConfig>, TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig> =
-	RequiresLoader<TMergedConfig['promptType']> extends true
-	// Return just TConfig with loader if merged config doesn't have loader
-	? HasLoader<TMergedConfig> extends true ? TConfig : TConfig & { loader: ILoaderAny | ILoaderAny[] }
-	// no loader required:
+type LLMCallSignature<TConfig extends Partial<TemplateOnlyConfig>, TResult = Promise<string>> =
+	TConfig extends PromptOrMessage
+	? {
+		(promptOrContext?: Context | RequiredPromptOrContext<TConfig, PromptOrMessage>): TResult;
+		(promptOrContext: RequiredPrompt<TConfig>, context: Context): TResult;
+		config: TConfig;
+	}
+	: {
+		(promptOrContext: RequiredPromptOrContext<TConfig, PromptOrMessage>): TResult;
+		(promptOrContext: RequiredPrompt<TConfig>, context: Context): TResult;
+		config: TConfig;
+	};
+
+type RequireProperties<
+	// Type containing all required properties
+	TRequired,
+	// Config that may already have some required properties
+	TMergedConfig extends Partial<TemplateOnlyConfig>,
+	// This is the returned config that we'll add missing required properties to
+	TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig
+> = TConfig & Pick<TRequired, Exclude<keyof TRequired, keyof TMergedConfig>>;
+
+type RequireLoaderIfNeeded<
+	TMergedConfig extends Partial<TemplateOnlyConfig>,
+	TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig
+> = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
+	? RequireProperties<
+		{ loader: ILoaderAny | ILoaderAny[] },
+		TMergedConfig,
+		TConfig
+	>
 	: TConfig;
 
 export class Factory {
@@ -142,7 +144,7 @@ export class Factory {
 	 */
 	// Single config overload
 	TemplateRenderer<TConfig extends Partial<TemplateOnlyConfig>>(
-		config: ValidateLoaderConfig<TConfig>
+		config: RequireLoaderIfNeeded<TConfig>
 	): TemplateCallSignature<TConfig>;
 
 	// Config with parent overload - now properly returns only required properties in immediate config
@@ -150,7 +152,7 @@ export class Factory {
 		TConfig extends Partial<TemplateOnlyConfig>,
 		TParentConfig extends Partial<TemplateOnlyConfig>
 	>(
-		config: ValidateLoaderConfig<TConfig & TParentConfig, TConfig>,
+		config: RequireLoaderIfNeeded<TConfig & TParentConfig, TConfig>,
 		parent: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig & TParentConfig>;
 
@@ -181,7 +183,7 @@ export class Factory {
 
 		// Define the call function that handles both cases
 		const call = async <T extends typeof parent extends undefined ? TConfig : TConfig & TParentConfig>(
-			promptOrContext: ValidatePromtOrContext<T>,
+			promptOrContext: RequiredPromptOrContext<T>,
 			maybeContext?: Context
 		): Promise<string> => {
 			if (typeof promptOrContext === 'string') {
