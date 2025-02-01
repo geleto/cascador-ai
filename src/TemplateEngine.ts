@@ -1,7 +1,7 @@
 // TemplateEngine.ts
 
 import { Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
-import { Context, TemplateOnlyConfig } from './types';
+import { Context, TemplateConfig } from './types';
 
 class TemplateError extends Error {
 	constructor(message: string, cause?: Error) {
@@ -11,7 +11,7 @@ class TemplateError extends Error {
 	}
 }
 
-export class TemplateEngine<TConfig extends Partial<TemplateOnlyConfig>> {
+export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 	protected env: Environment | PAsyncEnvironment;
 	protected templatePromise?: Promise<PAsyncTemplate>;
 	protected template?: Template | PAsyncTemplate;

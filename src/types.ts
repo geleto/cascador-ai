@@ -37,28 +37,31 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 	? (event: { [K in keyof E]: K extends 'object' ? T | undefined : E[K] }) => R
 	: never;
 
+
 // Define the possible prompt types
-export type PromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';
+export type TemplatePromptType = 'template' | 'async-template' | 'callback-template' | 'template-name' | 'async-template-name' | 'callback-template-name';
+export type LLMPromptType = TemplatePromptType | 'text';
 
 // Config for the template engine with type safety for loader requirement
-export interface TemplateOnlyConfig {
+export interface TemplateConfig {
 	prompt: string;
-	promptType?: PromptType;
+	promptType?: TemplatePromptType;
 	context?: Context;
 	filters?: Filters;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
 
+export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
+
+
 // This is the base config
 // It is a Partial, all properties are optional
 // It omits all specific properties for each function/overload, leaving only the common ones
-// It adds the template engine configuration properties
-// To get it : The generateText specific config is removed for the generateText function config
+// To get it : The generateText specific config was removed for the generateText function config
 export type BaseConfig =
 	Partial<Omit<Parameters<typeof generateText>[0], keyof GenerateTextSpecificConfig<any>>
-		& TemplateOnlyConfig
-	>;
+	> & { promptType?: LLMPromptType };
 
 // Base config for generateText tools
 type GenerateTextToolsOnlyConfig<TOOLS extends Record<string, CoreTool>> = Pick<
@@ -172,8 +175,7 @@ export type StreamObjectNoSchemaConfig = BaseConfig & {
 	onFinish?: OnFinishCallback<JSONValue>;
 }
 
-export type AnyConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
-	| TemplateOnlyConfig
+export type AnyNoTemplateConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
 	| GenerateTextConfig<TOOLS, OUTPUT>
 	| StreamTextConfig<TOOLS, OUTPUT>
 	| GenerateObjectObjectConfig<TSchema>
@@ -183,6 +185,15 @@ export type AnyConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, E
 	| StreamObjectObjectConfig<T>
 	| StreamObjectArrayConfig<T>
 	| StreamObjectNoSchemaConfig;
+
+export type AnyTemplateConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> = {
+	[K in keyof AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>]:
+	AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>[K] & TemplateConfig
+}[keyof AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>]
+
+export type AnyConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
+	| AnyTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>
+	| AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>
 
 
 // Result types

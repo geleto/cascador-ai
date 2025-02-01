@@ -1,4 +1,4 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel, CoreMessage } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel } from 'ai';
 import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
 import {
@@ -24,11 +24,15 @@ import {
 	hasModel,
 	ConfigWithTools,
 	AnyConfig,
-	TemplateOnlyConfig,
-	PromptType,
+	TemplateConfig,
+	TemplatePromptType,
+	OptionalTemplateConfig,
+	LLMPromptType,
 	//GenerateTextToolsOnlyConfig
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
+
+
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
@@ -38,75 +42,100 @@ type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
-type RequiredPromptOrContext<TConfig extends Partial<TemplateOnlyConfig>, TRequired = { prompt: string }> =
+interface PromptTest {
+	prompt?: string;
+	promptType?: LLMPromptType;
+}
+
+type RequiredPromptOrContext<
+	TConfig extends Partial<PromptTest>,
+	TRequired
+> =
 	TConfig extends TRequired ?
 	string | Context | undefined ://we have prompt in the config - any form is ok
 	string;//no prompt in the config - must provide string prompt
 
-type RequiredPrompt<TConfig extends Partial<TemplateOnlyConfig>, TRequired = { prompt: string }> =
-	TConfig extends TRequired ?
-	string | undefined ://we have prompt in the config - any form is ok
-	string;//no prompt in the config - must provide string prompt
-
-type TemplateCallSignature<TConfig extends Partial<TemplateOnlyConfig>> =
+//If it's a vanilla non-async/callback template - return string, otherwise return Promise<string>
+type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	TConfig extends { prompt: string }
 	? {
-		(promptOrContext?: Context | RequiredPromptOrContext<TConfig>): Promise<string>;
-		(promptOrContext: RequiredPrompt<TConfig>, context: Context): Promise<string>;
+		//TConfig has prompt, no prompt argument is needed
+		(promptOrContext?: Context | string): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//one optional argument, prompt or context
+		(prompt: string, context: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//two arguments, prompt and context
 		config: TConfig;
 	}
 	: {
-		(promptOrContext: RequiredPromptOrContext<TConfig>): Promise<string>;
-		(promptOrContext: RequiredPrompt<TConfig>, context: Context): Promise<string>;
+		//TConfig has no prompt, prompt argument is needed
+		(prompt: string, context?: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//prompt is a must, context is optional
 		config: TConfig;
 	};
 
 type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
 
-type LLMCallSignature<TConfig extends Partial<TemplateOnlyConfig>, TResult = Promise<string>> =
-	TConfig extends PromptOrMessage
-	? {
-		(promptOrContext?: Context | RequiredPromptOrContext<TConfig, PromptOrMessage>): TResult;
-		(promptOrContext: RequiredPrompt<TConfig>, context: Context): TResult;
-		config: TConfig;
-	}
-	: {
-		(promptOrContext: RequiredPromptOrContext<TConfig, PromptOrMessage>): TResult;
-		(promptOrContext: RequiredPrompt<TConfig>, context: Context): TResult;
-		config: TConfig;
-	};
 
-type RequireProperties<
+type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
+
+type LLMCallSignature<
+	TConfig extends Partial<BaseConfig & OptionalTemplateConfig>,
+	TResult
+> = TConfig extends { promptType: 'text' }
+	? (
+		//TConfig has no template, no context argument is needed
+		TConfig extends PromptOrMessage
+		? {
+			(prompt?: string): TResult;//TConfig has prompt, prompt is optional
+			config: TConfig;
+		}
+		: {
+			(prompt: string): TResult;//TConfig has no prompt, prompt argument is required
+			config: TConfig;
+		}
+	)
+	: (
+
+		// TConfig has template, an optional context argument can be used
+		// and the return type is always a promise because we wait for the result unless promptType is vanilla non-async/callback 'template'
+		TConfig extends PromptOrMessage
+		? {
+			//TConfig has prompt, prompt is optional
+			(promptOrContext?: Context | string): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//one optional argument, prompt or context
+			(prompt: string, context: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//two arguments, prompt and context
+			config: TConfig;
+		}
+		: {
+			//TConfig has no prompt, prompt argument is required
+			(prompt: string, context?: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//prompt is a must, context is optional
+			config: TConfig;
+		}
+	);
+
+type RequireMissing<
 	// Type containing all required properties
 	TRequired,
 	// Config that may already have some required properties
-	TMergedConfig extends Partial<TemplateOnlyConfig>,
-	// This is the returned config that we'll add missing required properties to
-	TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig
-> = TConfig & Pick<TRequired, Exclude<keyof TRequired, keyof TMergedConfig>>;
+	TRefConfig extends Partial<OptionalTemplateConfig>,
+> = & Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;
 
 type RequireLoaderIfNeeded<
-	TMergedConfig extends Partial<TemplateOnlyConfig>,
-	TConfig extends Partial<TemplateOnlyConfig> = TMergedConfig
+	TMergedConfig extends Partial<OptionalTemplateConfig & BaseConfig>
 > = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
-	? RequireProperties<
+	? RequireMissing<
 		{ loader: ILoaderAny | ILoaderAny[] },
-		TMergedConfig,
-		TConfig
+		TMergedConfig
 	>
-	: TConfig;
+	: object;
 
 export class Factory {
 	Config<
-		TConfig extends BaseConfig,
+		TConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
 	): ConfigProvider<TConfig>;
 
 	Config<
-		TConfig extends BaseConfig,
-		TParentConfig extends BaseConfig,
+		TConfig extends BaseConfig & TemplateConfig,
+		TParentConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
@@ -114,15 +143,15 @@ export class Factory {
 	): ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
 
 	Config<
-		TConfig extends BaseConfig,
-		TParentConfig extends BaseConfig,
+		TConfig extends BaseConfig & TemplateConfig,
+		TParentConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
 		parent?: ConfigProvider<TParentConfig>
 	): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
 		if (!config || typeof config !== 'object') {
 			throw new Error('Invalid config object');
 		}
@@ -136,29 +165,23 @@ export class Factory {
 		return new ConfigData(config);
 	}
 
-	/**
-	 * Config/ConfigTools create configuration objects that can have model and/or tool properties.
-	 * Child configs inherit their parent's tools and model settings - if the parent has tools config object,
-	 * the child will be tool-enabled; if the parent has a model property set, the child will
-	 * be a ModelIsSet config as well.
-	 */
 	// Single config overload
-	TemplateRenderer<TConfig extends Partial<TemplateOnlyConfig>>(
-		config: RequireLoaderIfNeeded<TConfig>
+	TemplateRenderer<TConfig extends Partial<TemplateConfig>>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig>
 	): TemplateCallSignature<TConfig>;
 
 	// Config with parent overload - now properly returns only required properties in immediate config
 	TemplateRenderer<
-		TConfig extends Partial<TemplateOnlyConfig>,
-		TParentConfig extends Partial<TemplateOnlyConfig>
+		TConfig extends Partial<TemplateConfig>,
+		TParentConfig extends Partial<TemplateConfig>
 	>(
-		config: RequireLoaderIfNeeded<TConfig & TParentConfig, TConfig>,
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig>,
 		parent: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig & TParentConfig>;
 
 	TemplateRenderer<
-		TConfig extends Partial<TemplateOnlyConfig>,
-		TParentConfig extends Partial<TemplateOnlyConfig>
+		TConfig extends Partial<TemplateConfig>,
+		TParentConfig extends Partial<TemplateConfig>
 	>(
 		config: TConfig,
 		parent?: ConfigProvider<TParentConfig>
@@ -183,7 +206,7 @@ export class Factory {
 
 		// Define the call function that handles both cases
 		const call = async <T extends typeof parent extends undefined ? TConfig : TConfig & TParentConfig>(
-			promptOrContext: RequiredPromptOrContext<T>,
+			promptOrContext: RequiredPromptOrContext<T, { prompt: string }>,
 			maybeContext?: Context
 		): Promise<string> => {
 			if (typeof promptOrContext === 'string') {
@@ -205,34 +228,96 @@ export class Factory {
 		return callSignature as ReturnType;
 	}
 
+	//add promptType to all configs
+	//TConfig extends RequireTemplate<TConfig>
+
+	// Single config overload
+	TextGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig>
+			& { model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }
+	): LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
+
+	// Config with parent
+	TextGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig>
+			& RequireMissing<{ model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, GenerateTextResult<TOOLS, OUTPUT>>;
+
+	// ---- do not extend templateOnlyConfig if promptType is text
+	TextGenerator<
+		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
+	>(
+		config: TConfig,
+		parent?: ConfigProvider<TParentConfig>
+	): [typeof parent] extends [undefined]
+		? LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>
+		: LLMCallSignature<TConfig & TParentConfig, GenerateTextResult<TOOLS, OUTPUT>> {
+
+		const merged = parent
+			? mergeConfigs(config, parent.config)
+			: config;
+
+		let call: LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
+		if (merged.promptType && merged.promptType !== 'text') {
+			const renderer = this.TemplateRenderer(merged as TemplateConfig & { promptType: TemplatePromptType });
+			renderer();
+		} else {
+
+
+		}
+
+		// Define the call function that handles both cases
+
+
+		const callSignature = Object.assign(call, { config: merged });
+
+		type ReturnType = [typeof parent] extends [undefined]
+			? LLMCallSignature<TConfig>
+			: LLMCallSignature<TConfig & TParentConfig>;
+
+		return callSignature as ReturnType;
+	}
+
+
+
 	// Text functions can use tools
 	//config, parent, exp_schema
-	TextGenerator<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
 		config: TConfig,
 		parent: TParent,
 		experimentalSchema: SchemaType<OUTPUT>
 	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
 
 	//config, exp_schema
-	TextGenerator<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
 		config: TConfig,
 		experimentalSchema: SchemaType<OUTPUT>
 	): LLMCallSignature<TConfig, GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
 
 	//config, parent
-	TextGenerator<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
 		config: TConfig,
 		parent?: TParent
 	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, undefined>>;
 
 	//parent, todo - update implementation
-	TextGenerator<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
+	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
 		parent?: TParent
 	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, undefined>>;
 
 	// Implementation
 	//@todo - check if all overloads are handled
-	TextGenerator<
+	TextGeneratorOld<
 		//stored config
 		TConfig extends GenerateTextConfig<TOOLS, OUTPUT>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
