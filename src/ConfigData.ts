@@ -1,4 +1,4 @@
-import { BaseConfig, TemplateConfig, TemplateOnlyConfig } from './types';
+import { BaseConfig, TemplateConfig } from './types';
 
 export interface ConfigProvider<T extends BaseConfig> {
 	readonly config: T;
@@ -13,8 +13,6 @@ export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider
  * The return type is exactly the union of P & C (with child overriding parent).
  */
 export function mergeConfigs<
-	//TParent extends Partial<BaseConfig & TemplateConfig>,
-	//TChild extends Partial<BaseConfig & TemplateConfig>
 	TParent extends Partial<BaseConfig & Omit<TemplateConfig, 'promptType'>>,
 	TChild extends Partial<BaseConfig & Omit<TemplateConfig, 'promptType'>>
 >(

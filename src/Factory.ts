@@ -22,13 +22,10 @@ import {
 	StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
 	VercelLLMFunction,
 	hasModel,
-	ConfigWithTools,
 	AnyConfig,
 	TemplateConfig,
 	TemplatePromptType,
 	OptionalTemplateConfig,
-	LLMPromptType,
-	//GenerateTextToolsOnlyConfig
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 
@@ -42,31 +39,17 @@ type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
-interface PromptTest {
-	prompt?: string;
-	promptType?: LLMPromptType;
-}
-
-type RequiredPromptOrContext<
-	TConfig extends Partial<PromptTest>,
-	TRequired
-> =
-	TConfig extends TRequired ?
-	string | Context | undefined ://we have prompt in the config - any form is ok
-	string;//no prompt in the config - must provide string prompt
-
-//If it's a vanilla non-async/callback template - return string, otherwise return Promise<string>
 type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	TConfig extends { prompt: string }
 	? {
 		//TConfig has prompt, no prompt argument is needed
-		(promptOrContext?: Context | string): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//one optional argument, prompt or context
-		(prompt: string, context: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//two arguments, prompt and context
+		(promptOrContext?: Context | string): Promise<string>;//one optional argument, prompt or context
+		(prompt: string, context: Context): Promise<string>;//two arguments, prompt and context
 		config: TConfig;
 	}
 	: {
 		//TConfig has no prompt, prompt argument is needed
-		(prompt: string, context?: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? string : Promise<string>);//prompt is a must, context is optional
+		(prompt: string, context?: Context): Promise<string>;//prompt is a must, context is optional
 		config: TConfig;
 	};
 
@@ -92,19 +75,18 @@ type LLMCallSignature<
 		}
 	)
 	: (
-
 		// TConfig has template, an optional context argument can be used
-		// and the return type is always a promise because we wait for the result unless promptType is vanilla non-async/callback 'template'
+		// and the return type is always a promise because we wait for the result
 		TConfig extends PromptOrMessage
 		? {
 			//TConfig has prompt, prompt is optional
-			(promptOrContext?: Context | string): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//one optional argument, prompt or context
-			(prompt: string, context: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//two arguments, prompt and context
+			(promptOrContext?: Context | string): EnsurePromise<TResult>;//one optional argument, prompt or context
+			(prompt: string, context: Context): EnsurePromise<TResult>;//two arguments, prompt and context
 			config: TConfig;
 		}
 		: {
 			//TConfig has no prompt, prompt argument is required
-			(prompt: string, context?: Context): (TConfig extends { promptType: 'template' | 'template-name' } ? TResult : EnsurePromise<TResult>);//prompt is a must, context is optional
+			(prompt: string, context?: Context): EnsurePromise<TResult>;//prompt is a must, context is optional
 			config: TConfig;
 		}
 	);
@@ -205,10 +187,7 @@ export class Factory {
 		const renderer = new TemplateEngine(merged);
 
 		// Define the call function that handles both cases
-		const call = async <T extends typeof parent extends undefined ? TConfig : TConfig & TParentConfig>(
-			promptOrContext: RequiredPromptOrContext<T, { prompt: string }>,
-			maybeContext?: Context
-		): Promise<string> => {
+		const call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<string> => {
 			if (typeof promptOrContext === 'string') {
 				return renderer.render(promptOrContext, maybeContext);
 			} else {
@@ -251,7 +230,6 @@ export class Factory {
 		parent: ConfigProvider<TParentConfig>
 	): LLMCallSignature<TConfig & TParentConfig, GenerateTextResult<TOOLS, OUTPUT>>;
 
-	// ---- do not extend templateOnlyConfig if promptType is text
 	TextGenerator<
 		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
 		TParentConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
@@ -259,94 +237,58 @@ export class Factory {
 	>(
 		config: TConfig,
 		parent?: ConfigProvider<TParentConfig>
-	): [typeof parent] extends [undefined]
-		? LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>
-		: LLMCallSignature<TConfig & TParentConfig, GenerateTextResult<TOOLS, OUTPUT>> {
+	):
+		LLMCallSignature<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> |
+		LLMCallSignature<TConfig & TParentConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> {
 
-		const merged = parent
-			? mergeConfigs(config, parent.config)
-			: config;
-
-		let call: LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
-		if (merged.promptType && merged.promptType !== 'text') {
-			const renderer = this.TemplateRenderer(merged as TemplateConfig & { promptType: TemplatePromptType });
-			renderer();
+		if (parent) {
+			return this.createLLMRenderer<TConfig & TParentConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>, TOOLS, OUTPUT>(
+				mergeConfigs(config, parent.config),
+				generateText
+			);
 		} else {
-
-
+			return this.createLLMRenderer<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>, TOOLS, OUTPUT>(
+				config,
+				generateText
+			);
 		}
-
-		// Define the call function that handles both cases
-
-
-		const callSignature = Object.assign(call, { config: merged });
-
-		type ReturnType = [typeof parent] extends [undefined]
-			? LLMCallSignature<TConfig>
-			: LLMCallSignature<TConfig & TParentConfig>;
-
-		return callSignature as ReturnType;
 	}
 
-
-
-	// Text functions can use tools
-	//config, parent, exp_schema
-	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: TConfig,
-		parent: TParent,
-		experimentalSchema: SchemaType<OUTPUT>
-	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
-
-	//config, exp_schema
-	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: TConfig,
-		experimentalSchema: SchemaType<OUTPUT>
-	): LLMCallSignature<TConfig, GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;
-
-	//config, parent
-	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: TConfig,
-		parent?: TParent
-	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, undefined>>;
-
-	//parent, todo - update implementation
-	TextGeneratorOld<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		parent?: TParent
-	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, undefined>>;
-
-	// Implementation
-	//@todo - check if all overloads are handled
-	TextGeneratorOld<
-		//stored config
-		TConfig extends GenerateTextConfig<TOOLS, OUTPUT>,
-		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
-		OUTPUT = never,
+	private createLLMRenderer<
+		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TResult,
+		TOOLS extends Record<string, CoreTool>, OUTPUT
 	>(
 		config: TConfig,
-		parentOrExperimentalSchema?: ConfigDataWithTools<TOOLS> | SchemaType<OUTPUT>,
-		experimentalSchema?: SchemaType<OUTPUT>//this allows to use tools + schema in the same call, unlike generateObject which has no tools
-	): LLMCallSignature<
-		//stored config
-		ConfigWithTools<TOOLS>,
-		//accepted argument config
-		GenerateTextConfig<TOOLS, OUTPUT>,
-		//return type
-		GenerateTextResult<TOOLS, OUTPUT>
-	> {
-		let parent: ConfigDataWithTools<TOOLS> | undefined;
-		let schema: SchemaType<OUTPUT> | undefined;
-
-		if (parentOrExperimentalSchema instanceof ConfigData || parentOrExperimentalSchema instanceof ConfigDataWithTools) {
-			parent = parentOrExperimentalSchema;
-			schema = experimentalSchema;
+		func: (config: TConfig & { model: LanguageModel, prompt: string, context?: Context }) => TResult
+	): LLMCallSignature<TConfig, TResult> {
+		let call;
+		if (config.promptType && config.promptType !== 'text') {
+			// We have to run the prompt through a template first.
+			const renderer = this.TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
+			call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TResult> => {
+				let renderedPrompt: string;
+				if (maybeContext !== undefined) {
+					if (typeof promptOrContext === 'string') {
+						renderedPrompt = await renderer(promptOrContext, maybeContext);
+					} else {
+						renderedPrompt = await renderer(promptOrContext);
+					}
+				} else {
+					renderedPrompt = await renderer(promptOrContext);
+				}
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				return await func({ ...config, prompt: renderedPrompt, model: config.model! });
+			};
 		} else {
-			schema = parentOrExperimentalSchema;
+			// No need to run the prompt through a template.
+			call = async (prompt: string, context?: Context): Promise<TResult> => {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				return await func({ ...config, prompt, model: config.model!, context });
+			};
 		}
-
-		const finalConfig = { ...config, ...(parent?.config ?? {}), ...(schema ? { experimental_output: Output.object({ schema }) } : {}) };
-
-		return Factory.createLLMRenderer(finalConfig, generateText);//<ConfigWithTools<TOOLS>, GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>
+		const callSignature = Object.assign(call, { config });
+		return callSignature as LLMCallSignature<TConfig, TResult>;
 	}
 
 	// Text functions can use tools
@@ -624,7 +566,7 @@ export class Factory {
 		experimentalSchema: SchemaType<OUTPUT>
 	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;*/
 
-	private static createLLMRenderer<
+	private static createLLMRendererOld<
 		TStoredConfig extends BaseConfig,
 		TArgumentConfig extends BaseConfig,
 		TResult,

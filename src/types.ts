@@ -39,7 +39,7 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 
 
 // Define the possible prompt types
-export type TemplatePromptType = 'template' | 'async-template' | 'callback-template' | 'template-name' | 'async-template-name' | 'callback-template-name';
+export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';
 export type LLMPromptType = TemplatePromptType | 'text';
 
 // Config for the template engine with type safety for loader requirement
