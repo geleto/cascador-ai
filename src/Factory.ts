@@ -9,7 +9,6 @@ import {
 	BaseConfig, //a base config common for all generators and streamers
 
 	//Type guards functions
-	isToolsConfig,
 
 	//Intermediate configs
 	GenerateTextConfig,
@@ -28,8 +27,6 @@ import {
 	OptionalTemplateConfig,
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
-
-
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
@@ -54,7 +51,6 @@ type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	};
 
 type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
-
 
 type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
 
@@ -133,7 +129,7 @@ export class Factory {
 		parent?: ConfigProvider<TParentConfig>
 	): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
-
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 		if (!config || typeof config !== 'object') {
 			throw new Error('Invalid config object');
 		}
@@ -207,9 +203,6 @@ export class Factory {
 		return callSignature as ReturnType;
 	}
 
-	//add promptType to all configs
-	//TConfig extends RequireTemplate<TConfig>
-
 	// Single config overload
 	TextGenerator<
 		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
@@ -254,6 +247,55 @@ export class Factory {
 		}
 	}
 
+	// Single config overload
+	TextStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
+		OUTPUT = never
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig>
+			& { model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }
+	): LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>>;
+
+	// Config with parent
+	TextStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
+		OUTPUT = never
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig>
+			& RequireMissing<{ model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, StreamTextResult<TOOLS, OUTPUT>>;
+
+	TextStreamer<
+		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & StreamTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & StreamTextConfig<TOOLS, OUTPUT>>,
+		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
+		OUTPUT = never
+	>(
+		config: TConfig,
+		parent?: ConfigProvider<TParentConfig>
+	):
+		LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>> |
+		LLMCallSignature<TConfig & TParentConfig, StreamTextResult<TOOLS, OUTPUT>> {
+
+		if (parent) {
+			return this.createLLMRenderer<
+				TConfig & TParentConfig,
+				StreamTextResult<TOOLS, OUTPUT>,
+				TOOLS, OUTPUT
+			>(mergeConfigs(config, parent.config), streamText);
+		} else {
+			return this.createLLMRenderer<
+				TConfig,
+				StreamTextResult<TOOLS, OUTPUT>,
+				TOOLS, OUTPUT
+			>(config, streamText);
+		}
+	}
+
 	private createLLMRenderer<
 		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
 		TResult,
@@ -289,49 +331,6 @@ export class Factory {
 		}
 		const callSignature = Object.assign(call, { config });
 		return callSignature as LLMCallSignature<TConfig, TResult>;
-	}
-
-	// Text functions can use tools
-	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: StreamTextConfig<TOOLS, OUTPUT>,
-		parent: AnyConfigData,
-		experimentalSchema: SchemaType<OUTPUT>
-	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>>;
-
-	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: StreamTextConfig<TOOLS, OUTPUT>,
-		experimentalSchema: SchemaType<OUTPUT>
-	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>>;
-
-	TextStreamer<TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: StreamTextConfig<TOOLS, OUTPUT>,
-		parent?: AnyConfigData
-	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, undefined>>;
-
-	// Implementation
-	TextStreamer<
-		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
-		OUTPUT = never
-	>(
-		config: StreamTextConfig<TOOLS, OUTPUT>,
-		parentOrSchema?: AnyConfigData | SchemaType<OUTPUT>,
-		experimentalSchema?: SchemaType<OUTPUT>//this allows to use tools + schema in the same call, unlike generateObject which has no tools
-	): LLMCallSignature<StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, DeepPartial<OUTPUT>>> {
-		let parent: AnyConfigData | undefined;
-		let schema: SchemaType<OUTPUT> | undefined;
-
-		if (parentOrSchema instanceof ConfigData || parentOrSchema instanceof ConfigDataWithTools) {
-			parent = parentOrSchema;
-			schema = experimentalSchema;
-		} else {
-			schema = parentOrSchema;
-		}
-
-		const finalConfig = schema
-			? { ...config, experimental_output: Output.object({ schema }) }
-			: config;
-
-		return Factory.createLLMRenderer(finalConfig, streamText, parent);
 	}
 
 	// Object functions can't use tools and need model (either in config or call)
