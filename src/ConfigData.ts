@@ -1,10 +1,10 @@
 import { BaseConfig, TemplateConfig } from './types';
 
-export interface ConfigProvider<T extends BaseConfig> {
+export interface ConfigProvider<T extends Partial<BaseConfig>> {
 	readonly config: T;
 }
 
-export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider<ConfigType> {
+export class ConfigData<ConfigType extends Partial<BaseConfig>> implements ConfigProvider<ConfigType> {
 	constructor(public readonly config: ConfigType) { }
 }
 

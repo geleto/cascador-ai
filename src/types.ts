@@ -39,7 +39,7 @@ type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infe
 
 
 // Define the possible prompt types
-export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';
+export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name' | undefined;
 export type LLMPromptType = TemplatePromptType | 'text';
 
 // Config for the template engine with type safety for loader requirement
@@ -55,7 +55,7 @@ export interface TemplateConfig {
 export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
 
 //to get BaseConfig, omit the GenerateTextConfig specific values from GenerateTextConfig
-export type BaseConfig = Partial<Omit<GenerateTextConfig,
+export type BaseConfig = Omit<GenerateTextConfig,
 	| 'stopSequences'
 	| 'experimental_continueSteps'
 	| 'experimental_output'
@@ -65,7 +65,7 @@ export type BaseConfig = Partial<Omit<GenerateTextConfig,
 	| 'experimental_activeTools'
 	| 'experimental_repairToolCall'
 	| 'onStepFinish'
->> & { promptType?: LLMPromptType };
+> & { promptType?: LLMPromptType };
 
 export type GenerateTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
@@ -77,7 +77,17 @@ export type StreamTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };;
+> = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
+
+/*export type GenerateObjectConfig<TSchema, ENUM extends string> =
+	| GenerateObjectObjectConfig<TSchema>
+	| GenerateObjectArrayConfig<TSchema>
+	| GenerateObjectEnumConfig<ENUM>
+	| GenerateObjectNoSchemaConfig;*/
+
+//export type GenerateObjectBaseConfig = BaseConfig & {
+//	output: 'object' | 'array' | 'enum' | 'no-schema';
+//}
 
 export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
 	output: 'object';
@@ -154,10 +164,21 @@ export type {
 } from 'ai';
 
 //these are returned in a Promise
+export type GenerateObjectResult<T, ENUM extends string> =
+	| GenerateObjectObjectResult<T>
+	| GenerateObjectArrayResult<T>
+	| GenerateObjectEnumResult<ENUM>
+	| GenerateObjectNoSchemaResult;
+
 export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
 export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
 export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
+
+export type StreamObjectResult<T> =
+	| StreamObjectObjectResult<T>
+	| StreamObjectArrayResult<T>
+	| StreamObjectNoSchemaResult;
 
 //These are returned as is without a promise, many of the properties are promises,
 //this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.

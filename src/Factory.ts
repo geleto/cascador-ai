@@ -1,9 +1,8 @@
-import { generateText, generateObject, streamText, CoreTool, streamObject, Output, DeepPartial, LanguageModel } from 'ai';
+import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel } from 'ai';
 import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
 import {
 	SchemaType, Context,
-	ObjectGeneratorOutputType, ObjectStreamOutputType,
 
 	//Base Config types, all properties are optional
 	BaseConfig, //a base config common for all generators and streamers
@@ -19,12 +18,13 @@ import {
 	GenerateTextResult, StreamTextResult,
 	GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
 	StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
-	VercelLLMFunction,
-	hasModel,
+
 	AnyConfig,
 	TemplateConfig,
 	TemplatePromptType,
 	OptionalTemplateConfig,
+	GenerateObjectResult,
+	StreamObjectResult,
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 
@@ -104,14 +104,14 @@ type RequireLoaderIfNeeded<
 	: object;
 
 export class Factory {
-	Config<
+	static Config<
 		TConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 	>(
 		config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
 	): ConfigProvider<TConfig>;
 
-	Config<
+	static Config<
 		TConfig extends BaseConfig & TemplateConfig,
 		TParentConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
@@ -120,7 +120,7 @@ export class Factory {
 		parent: ConfigProvider<TParentConfig>
 	): ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
 
-	Config<
+	static Config<
 		TConfig extends BaseConfig & TemplateConfig,
 		TParentConfig extends BaseConfig & TemplateConfig,
 		TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
@@ -144,12 +144,12 @@ export class Factory {
 	}
 
 	// Single config overload
-	TemplateRenderer<TConfig extends Partial<TemplateConfig>>(
+	static TemplateRenderer<TConfig extends Partial<TemplateConfig>>(
 		config: TConfig & RequireLoaderIfNeeded<TConfig>
 	): TemplateCallSignature<TConfig>;
 
 	// Config with parent overload - now properly returns only required properties in immediate config
-	TemplateRenderer<
+	static TemplateRenderer<
 		TConfig extends Partial<TemplateConfig>,
 		TParentConfig extends Partial<TemplateConfig>
 	>(
@@ -157,7 +157,7 @@ export class Factory {
 		parent: ConfigProvider<TParentConfig>
 	): TemplateCallSignature<TConfig & TParentConfig>;
 
-	TemplateRenderer<
+	static TemplateRenderer<
 		TConfig extends Partial<TemplateConfig>,
 		TParentConfig extends Partial<TemplateConfig>
 	>(
@@ -204,28 +204,28 @@ export class Factory {
 	}
 
 	// Single config overload
-	TextGenerator<
+	static TextGenerator<
 		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 	>(
 		config: TConfig & RequireLoaderIfNeeded<TConfig>
-			& { model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }
+			& { model: LanguageModel }
 	): LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
 
 	// Config with parent
-	TextGenerator<
+	static TextGenerator<
 		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-		TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>> = object,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 	>(
 		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig>
-			& RequireMissing<{ model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }, TParentConfig>,
-		parent: ConfigProvider<TParentConfig>
+			& RequireMissing<{ model: LanguageModel }, TParentConfig>,
+		parent?: ConfigProvider<TParentConfig>
 	): LLMCallSignature<TConfig & TParentConfig, GenerateTextResult<TOOLS, OUTPUT>>;
 
-	TextGenerator<
-		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
-		TParentConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
+	static TextGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 	>(
 		config: TConfig,
@@ -234,44 +234,41 @@ export class Factory {
 		LLMCallSignature<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> |
 		LLMCallSignature<TConfig & TParentConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> {
 
-		if (parent) {
-			return this.createLLMRenderer<TConfig & TParentConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>, TOOLS, OUTPUT>(
-				mergeConfigs(config, parent.config),
-				generateText
-			);
-		} else {
-			return this.createLLMRenderer<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>, TOOLS, OUTPUT>(
-				config,
-				generateText
-			);
-		}
+		type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
+			? TConfig & TParentConfig
+			: TConfig;
+
+		return Factory.createLLMRenderer<
+			CombinedType,
+			GenerateTextConfig<TOOLS, OUTPUT>, Promise<GenerateTextResult<TOOLS, OUTPUT>>
+		>(parent ? mergeConfigs(config, parent.config) : config, generateText);
 	}
 
 	// Single config overload
-	TextStreamer<
+	static TextStreamer<
 		TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 		OUTPUT = never
 	>(
 		config: TConfig & RequireLoaderIfNeeded<TConfig>
-			& { model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }
+			& { model: LanguageModel }
 	): LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>>;
 
 	// Config with parent
-	TextStreamer<
+	static TextStreamer<
 		TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
 		TParentConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 		OUTPUT = never
 	>(
 		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig>
-			& RequireMissing<{ model: LanguageModel, promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' }, TParentConfig>,
+			& RequireMissing<{ model: LanguageModel }, TParentConfig>,
 		parent: ConfigProvider<TParentConfig>
 	): LLMCallSignature<TConfig & TParentConfig, StreamTextResult<TOOLS, OUTPUT>>;
 
-	TextStreamer<
-		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & StreamTextConfig<TOOLS, OUTPUT>>,
-		TParentConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & StreamTextConfig<TOOLS, OUTPUT>>,
+	static TextStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
 		TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 		OUTPUT = never
 	>(
@@ -281,34 +278,202 @@ export class Factory {
 		LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>> |
 		LLMCallSignature<TConfig & TParentConfig, StreamTextResult<TOOLS, OUTPUT>> {
 
-		if (parent) {
-			return this.createLLMRenderer<
-				TConfig & TParentConfig,
-				StreamTextResult<TOOLS, OUTPUT>,
-				TOOLS, OUTPUT
-			>(mergeConfigs(config, parent.config), streamText);
-		} else {
-			return this.createLLMRenderer<
-				TConfig,
-				StreamTextResult<TOOLS, OUTPUT>,
-				TOOLS, OUTPUT
-			>(config, streamText);
-		}
+		type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
+			? TConfig & TParentConfig
+			: TConfig;
+
+		return Factory.createLLMRenderer<
+			CombinedType,
+			StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>
+		>(parent ? mergeConfigs(config, parent.config) : config, streamText);
 	}
 
-	private createLLMRenderer<
-		TConfig extends Partial<Omit<OptionalTemplateConfig, 'promptType'> & GenerateTextConfig<TOOLS, OUTPUT>>,
-		TResult,
-		TOOLS extends Record<string, CoreTool>, OUTPUT
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'object' | undefined, schema: SchemaType<TSchema>, model: LanguageModel }
+	): LLMCallSignature<TConfig, Promise<GenerateObjectObjectResult<TSchema>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'array', schema: SchemaType<TSchema>, model: LanguageModel }
+	): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<TSchema>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>>,
+		ENUM extends string = string
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'enum', enum: ENUM[], model: LanguageModel }
+	): LLMCallSignature<TConfig, Promise<GenerateObjectEnumResult<ENUM>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectNoSchemaConfig>
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'no-schema', model: LanguageModel }
+	): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
+
+	// Config with parent overloads for different output types
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<TSchema>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'object' | undefined, schema: SchemaType<TSchema>, model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectObjectResult<TSchema>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<TSchema>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'array', schema: SchemaType<TSchema>, model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectArrayResult<TSchema>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>>,
+		ENUM extends string = string
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'enum', enum: ENUM[], model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectEnumResult<ENUM>>>;
+
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & GenerateObjectNoSchemaConfig>,
+		TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectNoSchemaConfig>
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'no-schema', model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectNoSchemaResult>>;
+
+	// Implementation
+	static ObjectGenerator<
+		TConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
+		TParentConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
+		TSchema = any,
+		ENUM extends string = string
 	>(
 		config: TConfig,
-		func: (config: TConfig & { model: LanguageModel, prompt: string, context?: Context }) => TResult
-	): LLMCallSignature<TConfig, TResult> {
+		parent?: ConfigProvider<TParentConfig>
+	):
+		LLMCallSignature<TConfig, Promise<GenerateObjectResult<TSchema, ENUM>>> |
+		LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectResult<TSchema, ENUM>>> {
+
+		type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
+			? TConfig & TParentConfig
+			: TConfig;
+
+		// One of several possible overloads (config.output = undefined which defaults to 'object'), but they all compile to the same thing
+		return Factory.createLLMRenderer<
+			CombinedType,
+			GenerateObjectObjectConfig<TSchema>,
+			Promise<GenerateObjectObjectResult<TSchema>>
+		>(parent ? mergeConfigs(config, parent.config) : config, generateObject);
+	}
+
+	// Single config overloads
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'object' | undefined, schema: SchemaType<TSchema>, model: LanguageModel }
+	): LLMCallSignature<TConfig, StreamObjectObjectResult<TSchema>>;
+
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'array', schema: SchemaType<TSchema>, model: LanguageModel }
+	): LLMCallSignature<TConfig, StreamObjectArrayResult<TSchema>>;
+
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectNoSchemaConfig>
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig> &
+		{ output: 'no-schema', model: LanguageModel }
+	): LLMCallSignature<TConfig, StreamObjectNoSchemaResult>;
+
+	// Config with parent overloads for different output types
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<TSchema>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'object' | undefined, schema: SchemaType<TSchema>, model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, StreamObjectObjectResult<TSchema>>;
+
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<TSchema>>,
+		TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<TSchema>>,
+		TSchema = any
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'array', schema: SchemaType<TSchema>, model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, StreamObjectArrayResult<TSchema>>;
+
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & StreamObjectNoSchemaConfig>,
+		TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectNoSchemaConfig>
+	>(
+		config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+			RequireMissing<{ output: 'no-schema', model: LanguageModel }, TParentConfig>,
+		parent: ConfigProvider<TParentConfig>
+	): LLMCallSignature<TConfig & TParentConfig, StreamObjectNoSchemaResult>;
+
+	// Implementation
+	static ObjectStreamer<
+		TConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
+		TParentConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
+		TSchema = any
+	>(
+		config: TConfig,
+		parent?: ConfigProvider<TParentConfig>
+	):
+		LLMCallSignature<TConfig, StreamObjectResult<TSchema>> |
+		LLMCallSignature<TConfig & TParentConfig, StreamObjectResult<TSchema>> {
+
+		type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
+			? TConfig & TParentConfig
+			: TConfig;
+
+		return Factory.createLLMRenderer<
+			CombinedType,
+			StreamObjectObjectConfig<TSchema>,
+			StreamObjectObjectResult<TSchema>
+		>(parent ? mergeConfigs(config, parent.config) : config, streamObject);
+	}
+
+	private static createLLMRenderer<
+		TConfig extends Partial<OptionalTemplateConfig & TFunctionConfig>, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+		TFunctionConfig extends BaseConfig,
+		TFunctionResult,
+	>(
+		config: TConfig,
+		vercelFunc: (config: TFunctionConfig) => TFunctionResult
+	): LLMCallSignature<TConfig, TFunctionResult> {
 		let call;
 		if (config.promptType && config.promptType !== 'text') {
 			// We have to run the prompt through a template first.
-			const renderer = this.TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
-			call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TResult> => {
+			const renderer = Factory.TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
+			call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
 				let renderedPrompt: string;
 				if (maybeContext !== undefined) {
 					if (typeof promptOrContext === 'string') {
@@ -319,317 +484,17 @@ export class Factory {
 				} else {
 					renderedPrompt = await renderer(promptOrContext);
 				}
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				return await func({ ...config, prompt: renderedPrompt, model: config.model! });
+
+				return await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
 			};
 		} else {
 			// No need to run the prompt through a template.
-			call = async (prompt: string, context?: Context): Promise<TResult> => {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				return await func({ ...config, prompt, model: config.model!, context });
+			call = async (prompt: string): Promise<TFunctionResult> => {
+
+				return await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 			};
 		}
 		const callSignature = Object.assign(call, { config });
-		return callSignature as LLMCallSignature<TConfig, TResult>;
-	}
-
-	// Object functions can't use tools and need model (either in config or call)
-	ObjectGenerator<TSchema>(
-		config: GenerateObjectObjectConfig<TSchema>,
-		parent: ConfigData, //Exclude<ConfigData, IConfigDataHasTools>,
-		output: 'object',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<GenerateObjectObjectConfig<TSchema>, GenerateObjectObjectResult<TSchema>, { output: 'object', schema: SchemaType<TSchema> }>;
-
-	ObjectGenerator<TSchema>(
-		config: GenerateObjectObjectConfig<TSchema>,
-		output: 'object',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<GenerateObjectObjectConfig<TSchema>, GenerateObjectObjectResult<TSchema>, { output: 'object', schema: SchemaType<TSchema> }>;
-
-	ObjectGenerator<TSchema>(
-		config: GenerateObjectArrayConfig<TSchema>,
-		parent: ConfigData,
-		output: 'array',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<GenerateObjectArrayConfig<TSchema>, GenerateObjectArrayResult<TSchema>, { output: 'array', schema: SchemaType<TSchema> }>;
-
-	ObjectGenerator<TSchema>(
-		config: GenerateObjectArrayConfig<TSchema>,
-		output: 'array',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<GenerateObjectArrayConfig<TSchema>, GenerateObjectArrayResult<TSchema>, { output: 'array', schema: SchemaType<TSchema> }>;
-
-	ObjectGenerator<ENUM extends string>(
-		config: GenerateObjectEnumConfig<ENUM>,
-		parent: ConfigData,
-		output: 'enum',
-		enumValues: ENUM[]
-	): LLMCallSignature<GenerateObjectEnumConfig<ENUM>, GenerateObjectEnumResult<ENUM>, { output: 'enum', enum: ENUM[] }>;
-
-	ObjectGenerator<ENUM extends string>(
-		config: GenerateObjectEnumConfig<ENUM>,
-		output: 'enum',
-		enumValues: ENUM[]
-	): LLMCallSignature<GenerateObjectEnumConfig<ENUM>, GenerateObjectEnumResult<ENUM>, { output: 'enum', enum: ENUM[] }>;
-
-	ObjectGenerator(
-		config: GenerateObjectNoSchemaConfig,
-		parent: ConfigData,
-		output: 'no-schema'
-	): LLMCallSignature<GenerateObjectNoSchemaConfig, GenerateObjectNoSchemaResult, { output: 'no-schema' }>;
-
-	ObjectGenerator(
-		config: GenerateObjectNoSchemaConfig,
-		output: 'no-schema'
-	): LLMCallSignature<GenerateObjectNoSchemaConfig, GenerateObjectNoSchemaResult, { output: 'no-schema' }>;
-
-	// Implementation
-	ObjectGenerator<TSchema, ENUM extends string>(
-		config: GenerateObjectObjectConfig<TSchema> | GenerateObjectArrayConfig<TSchema> | GenerateObjectEnumConfig<ENUM> | GenerateObjectNoSchemaConfig,
-		parentOrOutputType: ConfigData | ObjectGeneratorOutputType,
-		outputOrEnumOrSchema?: ObjectGeneratorOutputType | SchemaType<TSchema> | ENUM[],
-		schemaOrEnum?: SchemaType<TSchema> | ENUM[]
-	) {
-		let parent: ConfigData | undefined;
-		let output: ObjectGeneratorOutputType;
-		let schema: SchemaType<TSchema> | ENUM[] | undefined;
-
-		if (parentOrOutputType instanceof ConfigData) {
-			// Called as: config, parent, output, schema
-			parent = parentOrOutputType;
-			output = outputOrEnumOrSchema as ObjectGeneratorOutputType;
-			schema = schemaOrEnum;
-		} else {
-			// Called as: config, output, schema
-			output = parentOrOutputType;
-			schema = outputOrEnumOrSchema as SchemaType<TSchema> | ENUM[];
-		}
-
-		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object generators cannot use tools...');
-		}
-
-		switch (output) {
-			case 'object':
-				return Factory.createLLMRenderer<
-					GenerateObjectObjectConfig<TSchema>,
-					GenerateObjectObjectResult<TSchema>,
-					{ output: 'object', schema: SchemaType<TSchema> }
-				>(
-					{ ...config as GenerateObjectObjectConfig<TSchema>, output: 'object', schema: schema as SchemaType<TSchema> },
-					generateObject,
-					parent
-				);
-			case 'array':
-				return Factory.createLLMRenderer<
-					GenerateObjectArrayConfig<TSchema>,
-					GenerateObjectArrayResult<TSchema>,
-					{ output: 'array', schema: SchemaType<TSchema> }
-				>(
-					{ ...config as GenerateObjectArrayConfig<TSchema>, output: 'array', schema: schema as SchemaType<TSchema> },
-					generateObject,
-					parent
-				);
-			case 'enum':
-				return Factory.createLLMRenderer<
-					GenerateObjectEnumConfig<ENUM>,
-					GenerateObjectEnumResult<ENUM>,
-					{ output: 'enum', enum: ENUM[] }
-				>(
-					{ ...config as GenerateObjectEnumConfig<ENUM>, output: 'enum', enum: schema as ENUM[] },
-					generateObject,
-					parent
-				);
-			case 'no-schema':
-				return Factory.createLLMRenderer<
-					GenerateObjectNoSchemaConfig,
-					GenerateObjectNoSchemaResult,
-					{ output: 'no-schema' }
-				>(
-					{ ...config as GenerateObjectNoSchemaConfig, output: 'no-schema' },
-					generateObject,
-					parent
-				);
-			default:
-				throw new Error(`Invalid output type: ${output as string}`);
-		}
-	}
-
-	// Object functions can't use tools and need model (either in config or call)
-	ObjectStreamer<TSchema>(
-		config: StreamObjectObjectConfig<TSchema>,
-		parent: ConfigData,
-		output: 'object',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<StreamObjectObjectConfig<TSchema>, StreamObjectObjectResult<TSchema>, { output: 'object', schema: SchemaType<TSchema> }>;
-
-	ObjectStreamer<TSchema>(
-		config: StreamObjectObjectConfig<TSchema>,
-		output: 'object',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<StreamObjectObjectConfig<TSchema>, StreamObjectObjectResult<TSchema>, { output: 'object', schema: SchemaType<TSchema> }>;
-
-	ObjectStreamer<TSchema>(
-		config: StreamObjectArrayConfig<TSchema>,
-		parent: ConfigData,
-		output: 'array',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<StreamObjectArrayConfig<TSchema>, StreamObjectArrayResult<TSchema>, { output: 'array', schema: SchemaType<TSchema> }>;
-
-	ObjectStreamer<TSchema>(
-		config: StreamObjectArrayConfig<TSchema>,
-		output: 'array',
-		schema: SchemaType<TSchema>
-	): LLMCallSignature<StreamObjectArrayConfig<TSchema>, StreamObjectArrayResult<TSchema>, { output: 'array', schema: SchemaType<TSchema> }>;
-
-	ObjectStreamer(
-		config: StreamObjectNoSchemaConfig,
-		parent: ConfigData,
-		output: 'no-schema'
-	): LLMCallSignature<StreamObjectNoSchemaConfig, StreamObjectNoSchemaResult, { output: 'no-schema' }>;
-
-	ObjectStreamer(
-		config: StreamObjectNoSchemaConfig,
-		output: 'no-schema'
-	): LLMCallSignature<StreamObjectNoSchemaConfig, StreamObjectNoSchemaResult, { output: 'no-schema' }>;
-
-	// Implementation
-	ObjectStreamer<TSchema>(
-		config: StreamObjectObjectConfig<TSchema> | StreamObjectArrayConfig<TSchema> | StreamObjectNoSchemaConfig,
-		parentOrOutputType: ConfigData | ObjectStreamOutputType,
-		outputOrSchema?: ObjectStreamOutputType | SchemaType<TSchema>,
-		schema?: SchemaType<TSchema>
-	) {
-		let parent: ConfigData | undefined;
-		let output: ObjectStreamOutputType;
-		let schemaValue: SchemaType<TSchema> | undefined;
-
-		if (parentOrOutputType instanceof ConfigData) {
-			// Called as: config, parent, output, schema
-			parent = parentOrOutputType;
-			output = outputOrSchema as ObjectStreamOutputType;
-			schemaValue = schema;
-		} else {
-			// Called as: config, output, schema
-			output = parentOrOutputType;
-			schemaValue = outputOrSchema as SchemaType<TSchema>;
-		}
-
-		if (isToolsConfig(config) || (parent && isToolsConfig(parent.config))) {
-			throw new Error('Object streamers cannot use tools - tools found in ' +
-				(isToolsConfig(config) ? 'config argument' : 'parent config'));
-		}
-
-		switch (output) {
-			case 'object':
-				return Factory.createLLMRenderer<
-					StreamObjectObjectConfig<TSchema>,
-					StreamObjectObjectResult<TSchema>,
-					{ output: 'object', schema: SchemaType<TSchema> }
-				>(
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					{ ...config as StreamObjectObjectConfig<TSchema>, output: 'object', schema: schemaValue! },
-					streamObject,
-					parent
-				);
-			case 'array':
-				return Factory.createLLMRenderer<
-					StreamObjectArrayConfig<TSchema>,
-					StreamObjectArrayResult<TSchema>,
-					{ output: 'array', schema: SchemaType<TSchema> }
-				>(
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					{ ...config as StreamObjectArrayConfig<TSchema>, output: 'array', schema: schemaValue! },
-					streamObject,
-					parent
-				);
-			case 'no-schema':
-				return Factory.createLLMRenderer<
-					StreamObjectNoSchemaConfig,
-					StreamObjectNoSchemaResult,
-					{ output: 'no-schema' }
-				>(
-					{ ...config as StreamObjectNoSchemaConfig, output: 'no-schema' },
-					streamObject,
-					parent
-				);
-			default:
-				throw new Error(`Invalid output type: ${output as string}`);
-		}
-	}
-	//return Factory.createLLMRenderer(finalConfig, generateText, parent);
-	/*TextGenerator<TConfig extends GenerateTextConfig<TOOLS, OUTPUT>, TParent extends ConfigDataWithTools<TOOLS>, TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never>(
-		config: TConfig,
-		parent: TParent,
-		experimentalSchema: SchemaType<OUTPUT>
-	): LLMCallSignature<TConfig & TParent['config'], GenerateTextConfig<TOOLS, OUTPUT>, GenerateTextResult<TOOLS, OUTPUT>>;*/
-
-	private static createLLMRendererOld<
-		TStoredConfig extends BaseConfig,
-		TArgumentConfig extends BaseConfig,
-		TResult,
-	>(
-		config: TStoredConfig,
-		func: VercelLLMFunction<TStoredConfig & TArgumentConfig, TResult>,
-	): LLMCallSignature<TStoredConfig, TArgumentConfig, TResult> {
-		const templateRenderer = new TemplateEngine(config);
-
-		const llmFn = (async (promptOrConfig?: TArgumentConfig | string | Context, context?: Context) => {
-			try {
-				// Handle case where first param is just context
-				const effectiveContext = typeof promptOrConfig === 'object' && !('prompt' in promptOrConfig)
-					? promptOrConfig as Context
-					: context;
-
-				const effectivePromptOrConfig = typeof promptOrConfig === 'object' && !('prompt' in promptOrConfig)
-					? undefined
-					: promptOrConfig;
-
-				//the rendered prompt
-				const prompt = await templateRenderer.call(effectivePromptOrConfig, effectiveContext);
-
-				let merged: TStoredConfig & TArgumentConfig;
-
-				// Object scenario - llmFn(config, context)
-				if (typeof effectivePromptOrConfig === 'object') {
-					merged = mergeConfigs(config, effectivePromptOrConfig as TArgumentConfig);
-					merged.prompt = prompt;
-					if (effectiveContext) {
-						merged.context = { ...merged.context ?? {}, ...effectiveContext };
-					}
-				}
-				// String scenario - llmFn("template string", context)
-				else if (typeof effectivePromptOrConfig === 'string') {
-					merged = mergeConfigs(config, { prompt: effectivePromptOrConfig } as TArgumentConfig);
-					if (effectiveContext) {
-						merged.context = { ...merged.context ?? {}, ...effectiveContext };
-					}
-				}
-				// Context only scenario - llmFn(context)
-				else {
-					merged = config as TStoredConfig & TArgumentConfig;//TArgumentConfig is empty
-					merged.prompt = prompt;
-					if (effectiveContext) {
-						merged.context = { ...merged.context ?? {}, ...effectiveContext };
-					}
-				}
-
-				// Check for model at runtime after all configs are merged
-				if (!hasModel(merged)) {
-					throw new Error('Model must be specified either in config, parent, or call arguments');
-				}
-
-				return (await func(merged)) as TResult;
-			} catch (error: any) {
-				const errorMessage = (error instanceof Error) ? error.message : 'Unknown error';
-				throw new Error(`${func.name || 'LLM'} execution failed: ${errorMessage}`, { cause: error });
-			}
-		}) as LLMCallSignature<TStoredConfig, TArgumentConfig, TResult>;
-
-		llmFn.config = config;
-		return llmFn;
+		return callSignature as LLMCallSignature<TConfig, TFunctionResult>;
 	}
 }
-
-export const create = new Factory();
