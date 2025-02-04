@@ -23,8 +23,8 @@ import {
 	TemplateConfig,
 	TemplatePromptType,
 	OptionalTemplateConfig,
-	GenerateObjectResult,
-	StreamObjectResult,
+	GenerateObjectResultAll,
+	StreamObjectResultAll,
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 
@@ -368,8 +368,8 @@ export function ObjectGenerator<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, Promise<GenerateObjectResult<TSchema, ENUM>>> |
-	LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectResult<TSchema, ENUM>>> {
+	LLMCallSignature<TConfig, Promise<GenerateObjectResultAll<TSchema, ENUM>>> |
+	LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectResultAll<TSchema, ENUM>>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? TConfig & TParentConfig
@@ -446,8 +446,8 @@ export function ObjectStreamer<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, StreamObjectResult<TSchema>> |
-	LLMCallSignature<TConfig & TParentConfig, StreamObjectResult<TSchema>> {
+	LLMCallSignature<TConfig, StreamObjectResultAll<TSchema>> |
+	LLMCallSignature<TConfig & TParentConfig, StreamObjectResultAll<TSchema>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? TConfig & TParentConfig

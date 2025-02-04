@@ -164,7 +164,7 @@ export type {
 } from 'ai';
 
 //these are returned in a Promise
-export type GenerateObjectResult<T, ENUM extends string> =
+export type GenerateObjectResultAll<T, ENUM extends string> =
 	| GenerateObjectObjectResult<T>
 	| GenerateObjectArrayResult<T>
 	| GenerateObjectEnumResult<ENUM>
@@ -175,7 +175,7 @@ export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
 export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
-export type StreamObjectResult<T> =
+export type StreamObjectResultAll<T> =
 	| StreamObjectObjectResult<T>
 	| StreamObjectArrayResult<T>
 	| StreamObjectNoSchemaResult;
