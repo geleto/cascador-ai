@@ -104,27 +104,27 @@ type RequireLoaderIfNeeded<
 	: object;
 
 export function Config<
-	TConfig extends BaseConfig & TemplateConfig,
+	TConfig extends Partial<BaseConfig & TemplateConfig>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 >(
-	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
+	config: StrictUnionSubtype<TConfig, Partial<AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>,
 ): ConfigProvider<TConfig>;
 
 export function Config<
-	TConfig extends BaseConfig & TemplateConfig,
-	TParentConfig extends BaseConfig & TemplateConfig,
+	TConfig extends Partial<BaseConfig & TemplateConfig>,
+	TParentConfig extends Partial<BaseConfig & TemplateConfig>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 >(
-	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
+	config: StrictUnionSubtype<TConfig, Partial<AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>,
 	parent: ConfigProvider<TParentConfig>
 ): ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
 
 export function Config<
-	TConfig extends BaseConfig & TemplateConfig,
-	TParentConfig extends BaseConfig & TemplateConfig,
+	TConfig extends Partial<BaseConfig & TemplateConfig>,
+	TParentConfig extends Partial<BaseConfig & TemplateConfig>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
 >(
-	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
+	config: StrictUnionSubtype<TConfig, Partial<AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>,
 	parent?: ConfigProvider<TParentConfig>
 ): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
