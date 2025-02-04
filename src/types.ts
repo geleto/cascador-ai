@@ -13,10 +13,6 @@ import { z } from 'zod';
 // Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
-// The vercel function as passed to createLLMRenderer
-export type VercelLLMFunction<TConfig, TResult> =
-	(config: TConfig & { model: LanguageModel }) => Promise<TResult> | TResult;
-
 // Template types
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
@@ -24,10 +20,6 @@ export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
-
-// Valid output types for object operations
-export type ObjectGeneratorOutputType = 'array' | 'object' | 'no-schema' | 'enum';
-export type ObjectStreamOutputType = 'array' | 'object' | 'no-schema';
 
 // Extract the base OnFinishCallback type from streamObject
 type BaseOnFinishCallback = NonNullable<Parameters<typeof streamObject>[0]['onFinish']>;
@@ -78,16 +70,6 @@ export type StreamTextConfig<
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
-
-/*export type GenerateObjectConfig<TSchema, ENUM extends string> =
-	| GenerateObjectObjectConfig<TSchema>
-	| GenerateObjectArrayConfig<TSchema>
-	| GenerateObjectEnumConfig<ENUM>
-	| GenerateObjectNoSchemaConfig;*/
-
-//export type GenerateObjectBaseConfig = BaseConfig & {
-//	output: 'object' | 'array' | 'enum' | 'no-schema';
-//}
 
 export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
 	output: 'object';

@@ -2,31 +2,19 @@ import { generateText, generateObject, streamText, CoreTool, streamObject, Langu
 import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
 import {
-	SchemaType, Context,
-
-	//Base Config types, all properties are optional
-	BaseConfig, //a base config common for all generators and streamers
-
-	//Type guards functions
-
-	//Intermediate configs
-	GenerateTextConfig,
-	GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
+	SchemaType, Context, TemplatePromptType,
+	//configs:
+	AnyConfig, BaseConfig,
+	TemplateConfig, OptionalTemplateConfig,
+	GenerateTextConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamTextConfig, StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
-
-	//Return types
-	GenerateTextResult, StreamTextResult,
-	GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
-	StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
-
-	AnyConfig,
-	TemplateConfig,
-	TemplatePromptType,
-	OptionalTemplateConfig,
-	GenerateObjectResultAll,
-	StreamObjectResultAll,
+	//Return types:
+	GenerateTextResult, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
+	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
+	GenerateObjectResultAll, StreamObjectResultAll,
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
+import { validateBaseConfig, ConfigError, validateCall } from './validate';
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
@@ -128,14 +116,12 @@ export function Config<
 	parent?: ConfigProvider<TParentConfig>
 ): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TConfig & TParentConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if (!config || typeof config !== 'object') {
-		throw new Error('Invalid config object');
-	}
+	validateBaseConfig(config);
 
 	if (parent) {
 		const merged = mergeConfigs(config, parent.config);
 		// Runtime check would go here if needed
+		validateBaseConfig(merged);
 		return new ConfigData(merged);
 	}
 
@@ -166,10 +152,18 @@ export function TemplateRenderer<
 	? TemplateCallSignature<TConfig>
 	: TemplateCallSignature<TConfig & TParentConfig> {
 
+	validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
 	const merged = parent
 		? mergeConfigs(config, parent.config)
 		: config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+
+	if ((merged.promptType === 'template-name' || merged.promptType === 'async-template-name') && !('loader' in merged)) {
+		throw new ConfigError('Template name types require a loader');
+	}
 
 	if ((merged.promptType === 'template-name' ||
 		merged.promptType === 'async-template-name' ||
@@ -237,10 +231,19 @@ export function TextGenerator<
 		? TConfig & TParentConfig
 		: TConfig;
 
+	validateBaseConfig(config);
+	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+	if (!('model' in merged)) {
+		throw new ConfigError('TextGenerator config requires model');
+	}
+
 	return createLLMRenderer<
 		CombinedType,
 		GenerateTextConfig<TOOLS, OUTPUT>, Promise<GenerateTextResult<TOOLS, OUTPUT>>
-	>(parent ? mergeConfigs(config, parent.config) : config, generateText);
+	>(merged, generateText);
 }
 
 // Single config overload
@@ -281,10 +284,20 @@ export function TextStreamer<
 		? TConfig & TParentConfig
 		: TConfig;
 
+	validateBaseConfig(config);
+	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+
+	if (!('model' in merged)) {
+		throw new ConfigError('TextStreamer config requires model');
+	}
+
 	return createLLMRenderer<
 		CombinedType,
 		StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>
-	>(parent ? mergeConfigs(config, parent.config) : config, streamText);
+	>(merged, streamText);
 }
 
 export function ObjectGenerator<
@@ -375,12 +388,18 @@ export function ObjectGenerator<
 		? TConfig & TParentConfig
 		: TConfig;
 
+	validateBaseConfig(config);
+	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+
 	// One of several possible overloads (config.output = undefined which defaults to 'object'), but they all compile to the same thing
 	return createLLMRenderer<
 		CombinedType,
 		GenerateObjectObjectConfig<TSchema>,
 		Promise<GenerateObjectObjectResult<TSchema>>
-	>(parent ? mergeConfigs(config, parent.config) : config, generateObject);
+	>(merged, generateObject);
 }
 
 // Single config overloads
@@ -453,11 +472,17 @@ export function ObjectStreamer<
 		? TConfig & TParentConfig
 		: TConfig;
 
+	validateBaseConfig(config);
+	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+
 	return createLLMRenderer<
 		CombinedType,
 		StreamObjectObjectConfig<TSchema>,
 		StreamObjectObjectResult<TSchema>
-	>(parent ? mergeConfigs(config, parent.config) : config, streamObject);
+	>(merged, streamObject);
 }
 
 function createLLMRenderer<
@@ -473,6 +498,7 @@ function createLLMRenderer<
 		// We have to run the prompt through a template first.
 		const renderer = TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
+			validateCall(config as BaseConfig, promptOrContext, maybeContext);
 			let renderedPrompt: string;
 			if (maybeContext !== undefined) {
 				if (typeof promptOrContext === 'string') {
@@ -483,13 +509,12 @@ function createLLMRenderer<
 			} else {
 				renderedPrompt = await renderer(promptOrContext);
 			}
-
 			return await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
 		};
 	} else {
 		// No need to run the prompt through a template.
 		call = async (prompt: string): Promise<TFunctionResult> => {
-
+			validateCall(config as BaseConfig, prompt);
 			return await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 		};
 	}
