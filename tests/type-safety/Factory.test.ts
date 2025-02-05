@@ -176,4 +176,101 @@ import { create } from '../../src';
 	await tContext({}); // ✓ should compile - empty context is valid
 	await tContext(); // ✓ should compile - undefined context is valid
 
+	/* Test Factory Methods */
+
+	// Text Generators
+	const tg1 = create.TextGenerator({ model: openai('gpt-4o') });
+	await tg1("Hello"); // ✓ Basic text generation
+	// @ts-expect-error
+	await tg1({ system: "Be helpful" }); // ✗ no prompt
+
+	const parentWithModel = create.Config({ model: openai('gpt-4o') });
+	const tg2 = create.TextGenerator({ prompt: "Hello" }, parentWithModel);
+	await tg2(); // ✓ Inherited model
+
+	const tg3 = create.TextGenerator({
+		model: openai('gpt-4o'),
+		messages: [{ role: 'user', content: 'Hi' }]
+	});
+	await tg3(); // ✓ Message-based
+
+	const tg4 = create.TextGenerator({
+		model: openai('gpt-4o'),
+		tools,
+		maxSteps: 3
+	});
+	await tg4("Find attractions in London"); // ✓ With tools
+
+	// Text Streamers
+	const ts1 = create.TextStreamer({ model: openai('gpt-4o') });
+	for await (const chunk of await ts1("Stream")) { } // ✓ Basic streaming
+
+	//type t =
+
+	// Object Generators
+	const og1 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema
+	});
+	await og1("Generate person"); // ✓ Object output
+
+	const og2 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'array',
+		schema
+	} as ObjectConfig<typeof schema>);
+	await og2("Generate people"); // ✓ Array output
+
+	const og3 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'enum',
+		enum: ['yes', 'no', 'maybe']
+	});
+	await og3("Should I?"); // ✓ Enum output
+
+	const og4 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'no-schema'
+	});
+	await og4("Free-form JSON"); // ✓ No schema
+
+	// Object Streamers
+	const os1 = create.ObjectStreamer({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema,
+		onFinish: (event) => console.log(event)
+	});
+	for await (const chunk of await os1("Stream person")) { } // ✓ Object streaming
+
+	// Error cases
+	// @ts-expect-error
+	const errModel = create.TextGenerator({}); // ✗ Missing model
+
+	// @ts-expect-error
+	const errSchema = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'object'
+	}); // ✗ Missing schema
+
+	// @ts-expect-error
+	const errEnum = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'enum'
+	}); // ✗ Missing enum
+
+	// Complex inheritance
+	const toolParent = create.Config({
+		model: openai('gpt-4o'),
+		tools
+	});
+
+	const schemaChild = create.ObjectGenerator({
+		output: 'object',
+		schema
+	}, toolParent);
+
+	await schemaChild("Generate person using tools"); // ✓ Inherited tools
+
 })().catch(console.error);
