@@ -64,7 +64,7 @@ translate.engine = "google";
 
 // Base configuration
 const baseConfig = new Config({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   context: {
     language: 'es', // Translation language
   },
@@ -160,7 +160,7 @@ import { TextGenerator } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
 const generator = new TextGenerator({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   prompt: 'Describe "{{ topic }}" in 3 sentences.',
   context: {
 	//The title of today's featured Wikipedia article:
@@ -191,7 +191,7 @@ import { TextStreamer } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
 const streamer = new TextStreamer({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   prompt: 'Write a poem about the sea.',
 });
 
@@ -222,7 +222,7 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 const generator = new ObjectGenerator({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   schema: z.object({
     name: z.string(),
     age: z.number(),
@@ -275,7 +275,7 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 const streamer = new ObjectStreamer({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   schema: z.array(z.object({
     name: z.string(),
     description: z.string(),
@@ -301,7 +301,7 @@ import { ObjectStreamer } from 'cascador-ai';
 import { z } from 'zod';
 
 const streamer = new ObjectStreamer({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   schema: z.object({
     name: z.string(),
     description: z.string(),
@@ -329,7 +329,7 @@ import { Config, TextGenerator } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
 const baseConfig = new Config({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   temperature: 0.7,
   context: {
     async fetchData() => fetch('https://api.example.com/data').then(res => res.json()),
@@ -425,7 +425,7 @@ import { openai } from '@ai-sdk/openai';
 import { TextGenerator } from 'cascador-ai';
 
 const generator = new TextGenerator({
-  model: openai('gpt-4'),
+  model: openai('gpt-4o'),
   prompt: 'Hello, world!',
 });
 ```
