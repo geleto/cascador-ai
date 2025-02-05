@@ -128,21 +128,21 @@ export type StreamObjectNoSchemaConfig = BaseConfig & {
 export type AnyNoTemplateConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
 > =
-	| GenerateTextConfig<TOOLS, OUTPUT>
-	| StreamTextConfig<TOOLS, OUTPUT>
-	| GenerateObjectObjectConfig<OBJECT>
-	| GenerateObjectArrayConfig<ELEMENT>
-	| GenerateObjectEnumConfig<ENUM>
-	| GenerateObjectNoSchemaConfig
-	| StreamObjectObjectConfig<OBJECT>
-	| StreamObjectArrayConfig<ELEMENT>
-	| StreamObjectNoSchemaConfig;
+	| Partial<GenerateTextConfig<TOOLS, OUTPUT>>
+	| Partial<StreamTextConfig<TOOLS, OUTPUT>>
+	| Partial<GenerateObjectObjectConfig<OBJECT>>
+	| Partial<GenerateObjectArrayConfig<ELEMENT>>
+	| Partial<GenerateObjectEnumConfig<ENUM>>
+	| Partial<GenerateObjectNoSchemaConfig>
+	| Partial<StreamObjectObjectConfig<OBJECT>>
+	| Partial<StreamObjectArrayConfig<ELEMENT>>
+	| Partial<StreamObjectNoSchemaConfig>;
 
 export type AnyConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
 > =
 	| AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT>
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & TemplateConfig);
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig>);
 
 
 // Result types
