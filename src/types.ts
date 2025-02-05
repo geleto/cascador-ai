@@ -17,9 +17,7 @@ import { z } from 'zod';
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
-export type ObjectSchemaType<OBJECT> = z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
-export type ElementSchemaType<ELEMENT> = z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
-//export type OutputSchemaType<OUTPUT> = z.Schema<OUTPUT, z.ZodTypeDef, any> | Schema<OUTPUT>;
+export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
@@ -85,7 +83,7 @@ export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
 
 export type GenerateObjectArrayConfig<ELEMENT> = BaseConfig & {
 	output: 'array';
-	schema: ElementSchemaType<ELEMENT>;
+	schema: SchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -104,7 +102,7 @@ export type GenerateObjectNoSchemaConfig = BaseConfig & {
 
 export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
 	output: 'object' | undefined;
-	schema: ObjectSchemaType<OBJECT>;
+	schema: SchemaType<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -113,7 +111,7 @@ export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
 
 export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
 	output: 'array';
-	schema: ElementSchemaType<ELEMENT>;
+	schema: SchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';

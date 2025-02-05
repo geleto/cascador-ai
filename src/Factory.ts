@@ -13,8 +13,7 @@ import {
 	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
 	GenerateObjectResultAll, StreamObjectResultAll,
 	OptionalNoPromptTemplateConfig,
-	ObjectSchemaType,
-	ElementSchemaType,
+	SchemaType
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 import { validateBaseConfig, ConfigError, validateCall } from './validate';
@@ -307,16 +306,16 @@ export function ObjectGenerator<
 	TConfig extends Partial<OptionalNoPromptTemplateConfig & GenerateObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: ObjectSchemaType<OBJECT>, model: LanguageModel }
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig> &
+	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
 export function ObjectGenerator<
 	TConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: ElementSchemaType<ELEMENT>, model: LanguageModel }
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig> &
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
 export function ObjectGenerator<
@@ -340,8 +339,8 @@ export function ObjectGenerator<
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
-		RequireMissing<{ output: 'object' | undefined, schema: ObjectSchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+		RequireMissing<{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
 ): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
@@ -350,8 +349,8 @@ export function ObjectGenerator<
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
-		RequireMissing<{ output: 'array', schema: ElementSchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+		RequireMissing<{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
 ): LLMCallSignature<TConfig & TParentConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
@@ -411,16 +410,16 @@ export function ObjectStreamer<
 	TConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: ObjectSchemaType<OBJECT>, model: LanguageModel }
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig> &
+	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, StreamObjectObjectResult<OBJECT>>;
 
 export function ObjectStreamer<
 	TConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: ElementSchemaType<ELEMENT>, model: LanguageModel }
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig> &
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, StreamObjectArrayResult<ELEMENT>>;
 
 export function ObjectStreamer<
@@ -436,8 +435,8 @@ export function ObjectStreamer<
 	TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
-		RequireMissing<{ output: 'object' | undefined, schema: ObjectSchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+		RequireMissing<{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
 ): LLMCallSignature<TConfig & TParentConfig, StreamObjectObjectResult<OBJECT>>;
 
@@ -446,8 +445,8 @@ export function ObjectStreamer<
 	TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig & TParentConfig> &
-		RequireMissing<{ output: 'array', schema: ElementSchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
+	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig & TParentConfig> &
+		RequireMissing<{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
 ): LLMCallSignature<TConfig & TParentConfig, StreamObjectArrayResult<ELEMENT>>;
 
