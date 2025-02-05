@@ -203,7 +203,8 @@ import { create } from '../../src';
 
 	// Text Streamers
 	const ts1 = create.TextStreamer({ model: openai('gpt-4o') });
-	for await (const chunk of await ts1("Stream")) { } // ✓ Basic streaming
+	const res1 = await ts1("Stream");
+	for await (const chunk of res1.textStream) { } // ✓ Basic streaming
 
 	//type t =
 
@@ -219,7 +220,7 @@ import { create } from '../../src';
 		model: openai('gpt-4o'),
 		output: 'array',
 		schema
-	} as ObjectConfig<typeof schema>);
+	});
 	await og2("Generate people"); // ✓ Array output
 
 	const og3 = create.ObjectGenerator({
@@ -242,21 +243,22 @@ import { create } from '../../src';
 		schema,
 		onFinish: (event) => console.log(event)
 	});
-	for await (const chunk of await os1("Stream person")) { } // ✓ Object streaming
+	for await (const chunk of (await os1("Stream person")).partialObjectStream) { } // ✓ Object streaming
 
 	// Error cases
 	// @ts-expect-error
 	const errModel = create.TextGenerator({}); // ✗ Missing model
 
-	// @ts-expect-error
+
 	const errSchema = create.ObjectGenerator({
 		model: openai('gpt-4o'),
+		// @ts-expect-error
 		output: 'object'
 	}); // ✗ Missing schema
 
-	// @ts-expect-error
 	const errEnum = create.ObjectGenerator({
 		model: openai('gpt-4o'),
+		// @ts-expect-error
 		output: 'enum'
 	}); // ✗ Missing enum
 
