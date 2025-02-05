@@ -17,7 +17,9 @@ import { z } from 'zod';
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
-export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+export type ObjectSchemaType<OBJECT> = z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+export type ElementSchemaType<ELEMENT> = z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+//export type OutputSchemaType<OUTPUT> = z.Schema<OUTPUT, z.ZodTypeDef, any> | Schema<OUTPUT>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 
@@ -25,8 +27,8 @@ type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>
 type BaseOnFinishCallback = NonNullable<Parameters<typeof streamObject>[0]['onFinish']>;
 
 // Extract our own callback type as it's not exported
-type OnFinishCallback<T> = BaseOnFinishCallback extends (event: infer E) => infer R
-	? (event: { [K in keyof E]: K extends 'object' ? T | undefined : E[K] }) => R
+type OnFinishCallback<RESULT> = BaseOnFinishCallback extends (event: infer E) => infer R
+	? (event: { [K in keyof E]: K extends 'object' ? RESULT | undefined : E[K] }) => R
 	: never;
 
 
@@ -45,6 +47,8 @@ export interface TemplateConfig {
 }
 
 export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
+
+export type OptionalNoPromptTemplateConfig = Partial<TemplateConfig> | { promptType: 'text' };
 
 //to get BaseConfig, omit the GenerateTextConfig specific values from GenerateTextConfig
 export type BaseConfig = Omit<GenerateTextConfig,
@@ -71,17 +75,17 @@ export type StreamTextConfig<
 	PARTIAL_OUTPUT = never
 > = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
 
-export type GenerateObjectObjectConfig<TSchema> = BaseConfig & {
-	output: 'object';
-	schema: SchemaType<TSchema>;
+export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
+	output: 'object' | undefined;
+	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectArrayConfig<TSchema> = BaseConfig & {
+export type GenerateObjectArrayConfig<ELEMENT> = BaseConfig & {
 	output: 'array';
-	schema: SchemaType<TSchema>;
+	schema: ElementSchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -98,23 +102,23 @@ export type GenerateObjectNoSchemaConfig = BaseConfig & {
 	mode?: 'json';
 }
 
-export type StreamObjectObjectConfig<T> = BaseConfig & {
-	output: 'object';
-	schema: SchemaType<T>;
+export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
+	output: 'object' | undefined;
+	schema: ObjectSchemaType<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: OnFinishCallback<T>;
+	onFinish?: OnFinishCallback<OBJECT>;
 }
 
-export type StreamObjectArrayConfig<T> = BaseConfig & {
+export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
 	output: 'array';
-	schema: SchemaType<T>;
+	schema: ElementSchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: OnFinishCallback<T[]>;
-	elementStream?: AsyncIterableStream<T>;//?
+	onFinish?: OnFinishCallback<ELEMENT[]>;
+	elementStream?: AsyncIterableStream<ELEMENT>;//?
 }
 
 export type StreamObjectNoSchemaConfig = BaseConfig & {
@@ -123,20 +127,24 @@ export type StreamObjectNoSchemaConfig = BaseConfig & {
 	onFinish?: OnFinishCallback<JSONValue>;
 }
 
-type AnyNoTemplateConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
+export type AnyNoTemplateConfig<
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
+> =
 	| GenerateTextConfig<TOOLS, OUTPUT>
 	| StreamTextConfig<TOOLS, OUTPUT>
-	| GenerateObjectObjectConfig<TSchema>
-	| GenerateObjectArrayConfig<TSchema>
+	| GenerateObjectObjectConfig<OBJECT>
+	| GenerateObjectArrayConfig<ELEMENT>
 	| GenerateObjectEnumConfig<ENUM>
 	| GenerateObjectNoSchemaConfig
-	| StreamObjectObjectConfig<T>
-	| StreamObjectArrayConfig<T>
+	| StreamObjectObjectConfig<OBJECT>
+	| StreamObjectArrayConfig<ELEMENT>
 	| StreamObjectNoSchemaConfig;
 
-export type AnyConfig<TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T> =
-	| AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T>
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, TSchema, ENUM, T> & TemplateConfig);
+export type AnyConfig<
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
+> =
+	| AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT>
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & TemplateConfig);
 
 
 // Result types
@@ -146,26 +154,26 @@ export type {
 } from 'ai';
 
 //these are returned in a Promise
-export type GenerateObjectResultAll<T, ENUM extends string> =
-	| GenerateObjectObjectResult<T>
-	| GenerateObjectArrayResult<T>
+export type GenerateObjectResultAll<OBJECT, ENUM extends string, ELEMENT> =
+	| GenerateObjectObjectResult<OBJECT>
+	| GenerateObjectArrayResult<ELEMENT>
 	| GenerateObjectEnumResult<ENUM>
 	| GenerateObjectNoSchemaResult;
 
-export type GenerateObjectObjectResult<T> = GenerateObjectResult<T>;
-export type GenerateObjectArrayResult<T> = GenerateObjectResult<T[]>;
+export type GenerateObjectObjectResult<OBJECT> = GenerateObjectResult<OBJECT>;
+export type GenerateObjectArrayResult<ELEMENT> = GenerateObjectResult<ELEMENT[]>;
 export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
-export type StreamObjectResultAll<T> =
-	| StreamObjectObjectResult<T>
-	| StreamObjectArrayResult<T>
+export type StreamObjectResultAll<OBJECT, ELEMENT> =
+	| StreamObjectObjectResult<OBJECT>
+	| StreamObjectArrayResult<ELEMENT>
 	| StreamObjectNoSchemaResult;
 
 //These are returned as is without a promise, many of the properties are promises,
 //this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.
-export type StreamObjectObjectResult<T> = StreamObjectResult<DeepPartial<T>, T, never>;
-export type StreamObjectArrayResult<T> = StreamObjectResult<T[], T[], AsyncIterableStream<T>>;
+export type StreamObjectObjectResult<OBJECT> = StreamObjectResult<DeepPartial<OBJECT>, OBJECT, never>;
+export type StreamObjectArrayResult<ELEMENT> = StreamObjectResult<ELEMENT[], ELEMENT[], AsyncIterableStream<ELEMENT>>;
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
 
 // Type guards for config objects
