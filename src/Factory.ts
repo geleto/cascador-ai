@@ -16,6 +16,7 @@ import {
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
 import { validateBaseConfig, ConfigError, validateCall } from './validate';
+import { z } from 'zod';
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
@@ -42,6 +43,8 @@ type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
 
 type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
+
+type Override<A, B> = Omit<A, keyof B> & B;
 
 type OmitIfPresent<TParent, TProps, TCheck> = Omit<TParent, Extract<TProps, keyof TCheck>>;
 
@@ -83,7 +86,7 @@ type RequireMissing<
 	TRequired,
 	// Config that may already have some required properties
 	TRefConfig extends Partial<OptionalTemplateConfig>,
-> = & Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;
+> = Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;
 
 type RequireLoaderIfNeeded<
 	TMergedConfig extends Partial<OptionalTemplateConfig & BaseConfig>
@@ -108,7 +111,7 @@ export function Config<
 >(
 	config: StrictUnionSubtype<TConfig, Partial<AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>,
 	parent: ConfigProvider<TParentConfig>
-): ConfigData<StrictUnionSubtype<TParentConfig & TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
+): ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
 
 export function Config<
 	TConfig extends Partial<BaseConfig & TemplateConfig>,
@@ -117,7 +120,7 @@ export function Config<
 >(
 	config: StrictUnionSubtype<TConfig, Partial<AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>,
 	parent?: ConfigProvider<TParentConfig>
-): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<TParentConfig & TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
+): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
 
 	validateBaseConfig(config);
 
@@ -141,9 +144,9 @@ export function TemplateRenderer<
 	TConfig extends Partial<TemplateConfig>,
 	TParentConfig extends Partial<TemplateConfig>
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig>,
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<TParentConfig>
-): TemplateCallSignature<TParentConfig & TConfig>;
+): TemplateCallSignature<Override<TParentConfig, TConfig>>;
 
 export function TemplateRenderer<
 	TConfig extends Partial<TemplateConfig>,
@@ -153,7 +156,7 @@ export function TemplateRenderer<
 	parent?: ConfigProvider<TParentConfig>
 ): [typeof parent] extends [undefined]
 	? TemplateCallSignature<TConfig>
-	: TemplateCallSignature<TParentConfig & TConfig> {
+	: TemplateCallSignature<Override<TParentConfig, TConfig>> {
 
 	validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
@@ -194,7 +197,7 @@ export function TemplateRenderer<
 
 	type ReturnType = [typeof parent] extends [undefined]
 		? TemplateCallSignature<TConfig>
-		: TemplateCallSignature<TParentConfig & TConfig>;
+		: TemplateCallSignature<Override<TParentConfig, TConfig>>;
 
 	return callSignature as ReturnType;
 }
@@ -214,10 +217,10 @@ export function TextGenerator<
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>> = object,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig>
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>
 		& RequireMissing<{ model: LanguageModel }, TParentConfig>,
 	parent?: ConfigProvider<TParentConfig>
-): LLMCallSignature<TParentConfig & TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, GenerateTextResult<TOOLS, OUTPUT>>;
 
 export function TextGenerator<
 	TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
@@ -228,10 +231,10 @@ export function TextGenerator<
 	parent?: ConfigProvider<TParentConfig>
 ):
 	LLMCallSignature<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> |
-	LLMCallSignature<TParentConfig & TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> {
+	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateTextResult<TOOLS, OUTPUT>>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? TParentConfig & TConfig
+		? Override<TParentConfig, TConfig>
 		: TConfig;
 
 	validateBaseConfig(config);
@@ -266,10 +269,10 @@ export function TextStreamer<
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig>
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>
 		& RequireMissing<{ model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
-): LLMCallSignature<TParentConfig & TConfig, StreamTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>>;
 
 export function TextStreamer<
 	TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
@@ -281,10 +284,10 @@ export function TextStreamer<
 	parent?: ConfigProvider<TParentConfig>
 ):
 	LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>> |
-	LLMCallSignature<TParentConfig & TConfig, StreamTextResult<TOOLS, OUTPUT>> {
+	LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? TParentConfig & TConfig
+		? Override<TParentConfig, TConfig>
 		: TConfig;
 
 	validateBaseConfig(config);
@@ -303,7 +306,7 @@ export function TextStreamer<
 	>(merged, streamText);
 }
 
-export function ObjectGenerator<
+/*export function ObjectGenerator<
 	TConfig extends Partial<OptionalNoPromptTemplateConfig & GenerateObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
@@ -332,47 +335,57 @@ export function ObjectGenerator<
 >(
 	config: TConfig & RequireLoaderIfNeeded<TConfig> &
 	{ output: 'no-schema', model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
+): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;*/
 
 // Config with parent overloads for different output types
 export function ObjectGenerator<
-	TConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>>,
+	TConfig extends Partial<GenerateObjectObjectConfig<OBJECT>>,
+	TParentConfig extends Partial<GenerateObjectObjectConfig<OBJECT>>,
+	OBJECT = any
+>(
+	config: Omit<TConfig, 'schema'> & { schema: z.Schema<OBJECT, z.ZodTypeDef, any> },
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
+
+/*export function ObjectGenerator<
+	TConfig extends Partial<BaseConfig>,
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig &// RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'schema', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
+	parent: ConfigProvider<TParentConfig>
+	//parent: ConfigProvider<Omit<TParentConfig, 'schema'>>//ConfigProvider<OmitIfOptional<TParentConfig, 'output' | 'schema'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;*/
 
-export function ObjectGenerator<
+/*export function ObjectGenerator<
 	TConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>>,
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'schema', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
+	parent: TParentConfig//ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'schema', TConfig>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
 export function ObjectGenerator<
 	TConfig extends Partial<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>>,
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>>,
 	ENUM extends string = string
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'enum', enum: ENUM[], model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'enum', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, Promise<GenerateObjectEnumResult<ENUM>>>;
+	parent: TParentConfig//ConfigProvider<Omit<TParentConfig, 'output' | 'enum'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectEnumResult<ENUM>>>;
 
 export function ObjectGenerator<
 	TConfig extends Partial<OptionalTemplateConfig & GenerateObjectNoSchemaConfig>,
 	TParentConfig extends Partial<OptionalTemplateConfig & GenerateObjectNoSchemaConfig>
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'no-schema', model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, Promise<GenerateObjectNoSchemaResult>>;
+	parent: TParentConfig//ConfigProvider<Omit<TParentConfig, 'output'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectNoSchemaResult>>;*/
 
 // Implementation
 export function ObjectGenerator<
@@ -386,10 +399,10 @@ export function ObjectGenerator<
 	parent?: ConfigProvider<TParentConfig>
 ):
 	LLMCallSignature<TConfig, Promise<GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> |
-	LLMCallSignature<TParentConfig & TConfig, Promise<GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> {
+	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? TParentConfig & TConfig
+		? Override<TParentConfig, TConfig>
 		: TConfig;
 
 	validateBaseConfig(config);
@@ -436,29 +449,29 @@ export function ObjectStreamer<
 	TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>>,
 	OBJECT = any
 >(
-	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'schema', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, StreamObjectObjectResult<OBJECT>>;
+	parent: TParentConfig//ConfigProvider<Omit<TParentConfig, 'output' | 'schema'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, StreamObjectObjectResult<OBJECT>>;
 
 export function ObjectStreamer<
 	TConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>>,
 	TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>>,
 	ELEMENT = any
 >(
-	config: Omit<TConfig, 'schema'> & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output' | 'schema', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, StreamObjectArrayResult<ELEMENT>>;
+	parent: TParentConfig//ConfigProvider<Omit<TParentConfig, 'output' | 'schema'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, StreamObjectArrayResult<ELEMENT>>;
 
 export function ObjectStreamer<
 	TConfig extends Partial<OptionalTemplateConfig & StreamObjectNoSchemaConfig>,
 	TParentConfig extends Partial<OptionalTemplateConfig & StreamObjectNoSchemaConfig>
 >(
-	config: TConfig & RequireLoaderIfNeeded<TParentConfig & TConfig> &
+	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>> &
 		RequireMissing<{ output: 'no-schema', model: LanguageModel }, TParentConfig>,
-	parent: ConfigProvider<OmitIfPresent<TParentConfig, 'output', TConfig>>
-): LLMCallSignature<TParentConfig & TConfig, StreamObjectNoSchemaResult>;
+	parent: TParentConfig//ConfigProvider<Omit<TParentConfig, 'output'>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, StreamObjectNoSchemaResult>;
 
 // Implementation
 export function ObjectStreamer<
@@ -470,10 +483,10 @@ export function ObjectStreamer<
 	parent?: ConfigProvider<TParentConfig>
 ):
 	LLMCallSignature<TConfig, StreamObjectResultAll<OBJECT, ELEMENT>> |
-	LLMCallSignature<TParentConfig & TConfig, StreamObjectResultAll<OBJECT, ELEMENT>> {
+	LLMCallSignature<Override<TParentConfig, TConfig>, StreamObjectResultAll<OBJECT, ELEMENT>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? TParentConfig & TConfig
+		? Override<TParentConfig, TConfig>
 		: TConfig;
 
 	validateBaseConfig(config);

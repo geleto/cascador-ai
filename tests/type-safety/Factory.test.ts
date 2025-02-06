@@ -2,6 +2,7 @@ import { openai } from '@ai-sdk/openai';
 import { ILoader, LoaderSource } from "cascada-tmpl";
 import { z } from 'zod';
 import { create } from '../../src';
+import { LanguageModel } from 'ai';
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (async (): Promise<void> => {
@@ -158,9 +159,12 @@ import { create } from '../../src';
 	await t10({}, {}); // ✗ Invalid context structure
 
 	// 11. Nested config inheritance
-	const grandparent = create.Config({ loader: someLoader });
-	const parent = create.Config({ promptType: 'template-name' }, grandparent);
-	const child = create.TemplateRenderer({}, parent);
+	const grandparent = create.Config({ model: openai('gpt-4o') });
+	const parent = create.Config({ prompt: 'my prompt text' }, grandparent);
+
+	const grandparent2 = create.Config({ loader: someLoader, promptType: 'template-name' });
+	const parent2 = create.Config({ prompt: 'my prompt text' }, grandparent2);
+	const child = create.TemplateRenderer({}, parent2);
 
 	// 12. Override PromptType in Child:
 	const parentTemplate = create.Config({
@@ -269,10 +273,169 @@ import { create } from '../../src';
 	});
 
 	const schemaChild = create.ObjectGenerator({
-		output: 'object',
+		// @ts-expect-error
+		output: 'object',//object can't be used with tools
 		schema
 	}, toolParent);
 
-	await schemaChild("Generate person using tools"); // ✓ Inherited tools
+	const schemaChild2 = create.TextGenerator({
+		maxSteps: 5
+	}, toolParent);
+
+	await schemaChild2("Generate person using tools"); // ✓ Inherited tools
+
+	// Complex test cases for Factory methods
+
+	// LLM Core Tests
+	const tg5 = create.TextGenerator({
+		model: openai('gpt-4o'),
+		prompt: "Hello",
+		messages: [{ role: 'system', content: 'Be helpful' }]
+	}); // ✓ Both prompt and messages
+
+	const tgParent = create.Config({
+		messages: [{ role: 'system', content: 'Be helpful' }],
+		model: openai('gpt-4o')
+	});
+	const tg6 = create.TextGenerator({ prompt: "Hello" }, tgParent); // ✓ Parent messages, child prompt
+
+	// Template Integration
+	const tg7 = create.TextGenerator({
+		model: openai('gpt-4o'),
+		promptType: 'template',
+		prompt: "Hello {name}",
+	});
+	await tg7({ name: "Bob" }); // ✓ Template with generator
+
+	const tg8 = create.TextGenerator({
+		model: openai('gpt-4o'),
+		promptType: 'template-name',
+		loader: someLoader
+	});
+	await tg4("template1", { name: "Bob" }); // ✓ Template name with generator
+
+	const ts2 = create.TextStreamer({
+		model: openai('gpt-4o'),
+		promptType: 'template',
+		prompt: "Stream {what}"
+	});
+	for await (const chunk of (await ts2({ what: "data" })).textStream) { } // ✓ Template with streaming
+
+	// Object Generation
+	const complexSchema = z.object({
+		user: z.object({
+			details: z.object({
+				name: z.string(),
+				preferences: z.array(z.string())
+			}),
+			history: z.array(z.object({
+				action: z.string(),
+				timestamp: z.number()
+			}))
+		})
+	});
+
+	const og5 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema: complexSchema
+	}); // ✓ Complex nested schema
+
+	const arrayParent = create.Config({
+		model: openai('gpt-4o'),
+		output: 'array',
+	});
+	const enumChild = create.ObjectGenerator({
+		output: 'enum',
+		enum: ['yes', 'no']
+	}, arrayParent); // ✓ Override output type
+
+	const streamEnum = create.ObjectStreamer({
+		model: openai('gpt-4o'),
+		// @ts-expect-error
+		output: 'enum',
+		enum: ['yes', 'no']
+	}); // ✗ Enum with stream
+
+	//TEMP
+	const papa = create.Config({
+		model: openai('gpt-4o'),
+	});
+
+	const baby = create.Config({
+		output: 'object',
+		schema,
+	}, papa);
+
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	//TEMP 2
+	const papa2 = create.Config({
+		model: openai('gpt-4o'),
+	});
+
+	const baby2 = create.ObjectGenerator({
+		output: 'object',
+		schema
+	}, papa2);
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	//TEMP 3
+	const papa3 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+	});
+
+	const baby3 = create.ObjectGenerator({
+		output: 'object',
+		schema,
+	}, papa);
+
+	// Complex Inheritance
+	const grandp = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		//enum: ['yes', 'no'],
+		//tools,
+		//context: { base: true }
+	});
+
+	/*const par = create.Config({
+		//filters: { upper: (s: string) => s.toUpperCase() },
+		//context: { parent: true },
+		model: openai('gpt-4o'),
+	}, grandp);*/
+
+	/*const child2a = create.ObjectGenerator({
+		promptType: 'template',
+		prompt: "Generate {what}",
+		context: { child: true }
+	}, par); // ✓ Three level inheritance*/
+
+	const child2 = create.ObjectGenerator({
+		output: 'object',
+		schema,
+
+		//promptType: 'template',
+		//prompt: "Generate {what}",
+		//context: { child: true }
+	}, grandp); // ✓ Three level inheritance
+
+	await child2({ what: "person" }); // Uses merged context, tools, filters
+
+	function myFunc<TConfig extends Partial<{ model: LanguageModel }>>(config: TConfig & { model: LanguageModel }) {
+		console.log(config.model);
+	}
+	myFunc({ model: openai('gpt-4o') }); // ✓ Should compile
+
+	// Mixed Features
+	const mixed = create.ObjectStreamer({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema,
+		promptType: 'template-name',
+		loader: someLoader,
+		tools,
+		context: { data: 123 }
+	});
+
+	for await (const chunk of await mixed("template1", { user: "Bob" })) { } // ✓ Templates + tools + streaming
 
 })().catch(console.error);
