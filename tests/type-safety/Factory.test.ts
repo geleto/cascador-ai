@@ -371,6 +371,7 @@ import { LanguageModel } from 'ai';
 	//TEMP 2
 	const papa2 = create.Config({
 		model: openai('gpt-4o'),
+		schema
 	});
 
 	const baby2 = create.ObjectGenerator({

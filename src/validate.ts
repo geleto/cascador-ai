@@ -1,6 +1,7 @@
 import { BaseConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, Context } from "./types";
 
 type ObjectConfigUnion = GenerateObjectObjectConfig<unknown> | GenerateObjectArrayConfig<unknown> | GenerateObjectEnumConfig<string> | GenerateObjectNoSchemaConfig;
+
 export class ConfigError extends Error {
 	constructor(message: string, cause?: Error) {
 		super(message);
@@ -59,7 +60,7 @@ export function validateObjectConfig(config?: BaseConfig, isStream = false) {
 		throw new ConfigError('Config must be an object');
 	}
 
-	const objConfig = config as Partial<ObjectConfigUnion>;
+	const objConfig = config as ObjectConfigUnion;
 
 	if (!('output' in config)) {
 		throw new ConfigError('Object config requires output type');

@@ -59,7 +59,12 @@ export type BaseConfig = Omit<GenerateTextConfig,
 	| 'experimental_activeTools'
 	| 'experimental_repairToolCall'
 	| 'onStepFinish'
-> & { promptType?: LLMPromptType };
+	| 'model'//remove model to make it optional
+> & { promptType?: LLMPromptType, model?: LanguageModel };
+
+// Config types
+// All of them are partials because they can be requested in pieces,
+// and because doing Partial on the zod schema property makes it do deepPartial on it's properties which breaks it
 
 export type GenerateTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
@@ -74,24 +79,24 @@ export type StreamTextConfig<
 > = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
 
 export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
-	output: 'object' | undefined;
-	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+	output?: 'object' | undefined;
+	schema?: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectArrayConfig<ELEMENT> = BaseConfig & {
-	output: 'array';
-	schema: SchemaType<ELEMENT>;
+	output?: 'array';
+	schema?: SchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectEnumConfig<ENUM extends string> = BaseConfig & {
-	output: 'enum';
-	enum: ENUM[];
+	output?: 'enum';
+	enum?: ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
@@ -101,8 +106,8 @@ export type GenerateObjectNoSchemaConfig = BaseConfig & {
 }
 
 export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
-	output: 'object' | undefined;
-	schema: SchemaType<OBJECT>;
+	output?: 'object' | undefined;
+	schema?: SchemaType<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -110,8 +115,8 @@ export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
 }
 
 export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
-	output: 'array';
-	schema: SchemaType<ELEMENT>;
+	output?: 'array';
+	schema?: SchemaType<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -120,7 +125,7 @@ export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
 }
 
 export type StreamObjectNoSchemaConfig = BaseConfig & {
-	output: 'no-schema';
+	output?: 'no-schema';
 	mode?: 'json';
 	onFinish?: OnFinishCallback<JSONValue>;
 }
@@ -128,15 +133,15 @@ export type StreamObjectNoSchemaConfig = BaseConfig & {
 export type AnyNoTemplateConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
 > =
-	| Partial<GenerateTextConfig<TOOLS, OUTPUT>>
-	| Partial<StreamTextConfig<TOOLS, OUTPUT>>
-	| Partial<GenerateObjectObjectConfig<OBJECT>>
-	| Partial<GenerateObjectArrayConfig<ELEMENT>>
-	| Partial<GenerateObjectEnumConfig<ENUM>>
-	| Partial<GenerateObjectNoSchemaConfig>
-	| Partial<StreamObjectObjectConfig<OBJECT>>
-	| Partial<StreamObjectArrayConfig<ELEMENT>>
-	| Partial<StreamObjectNoSchemaConfig>;
+	| GenerateTextConfig<TOOLS, OUTPUT>
+	| StreamTextConfig<TOOLS, OUTPUT>
+	| GenerateObjectObjectConfig<OBJECT>
+	| GenerateObjectArrayConfig<ELEMENT>
+	| GenerateObjectEnumConfig<ENUM>
+	| GenerateObjectNoSchemaConfig
+	| StreamObjectObjectConfig<OBJECT>
+	| StreamObjectArrayConfig<ELEMENT>
+	| StreamObjectNoSchemaConfig;
 
 export type AnyConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
