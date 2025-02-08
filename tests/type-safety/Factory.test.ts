@@ -3,6 +3,18 @@ import { ILoader, LoaderSource } from "cascada-tmpl";
 import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';
+import { GenerateObjectObjectConfig, OptionalTemplateConfig, StreamObjectObjectConfig, TemplateConfig } from '../../src/types';
+import { DistributiveOmit } from '../../src/Factory';
+
+type Original = { common: string, tools: string[] };
+type TypeA = Omit<Original, 'tools'>;
+type TypeB = { common: string, tools: string[] };
+
+function needsTools<T extends TypeB>(x: T) { }
+
+let a: TypeA = { common: 'a' };
+
+needsTools(a); // TypeScript allows this even though TypeA has no tools
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (async (): Promise<void> => {
@@ -266,17 +278,39 @@ import { LanguageModel } from 'ai';
 		output: 'enum'
 	}); // ✗ Missing enum
 
+	const unknownProperty = create.ObjectGenerator({
+		// @ts-expect-error
+		output: 'object',
+		schema,
+		model: openai('gpt-4o'),
+		zzz: 123
+	});
+
 	// Complex inheritance
 	const toolParent = create.Config({
 		model: openai('gpt-4o'),
 		tools
 	});
-
 	const schemaChild = create.ObjectGenerator({
 		// @ts-expect-error
 		output: 'object',//object can't be used with tools
 		schema
 	}, toolParent);
+
+	const withTools = {
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema
+	};
+
+	// Try to add tools to a GenerateObjectObjectConfig
+	const objectConfig2: GenerateObjectObjectConfig<any> = {
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema,
+		// @ts-expect-error
+		tools: {}  // Should fail
+	};
 
 	const schemaChild2 = create.TextGenerator({
 		maxSteps: 5
@@ -380,22 +414,12 @@ import { LanguageModel } from 'ai';
 	}, papa2);
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-	//TEMP 3
-	const papa3 = create.ObjectGenerator({
-		model: openai('gpt-4o'),
-	});
-
-	const baby3 = create.ObjectGenerator({
-		output: 'object',
-		schema,
-	}, papa);
-
 	// Complex Inheritance
-	const grandp = create.ObjectGenerator({
+	const grandp = create.Config({
 		model: openai('gpt-4o'),
-		//enum: ['yes', 'no'],
+		//output: 'no-schema',
 		//tools,
-		//context: { base: true }
+		context: { base: true }
 	});
 
 	/*const par = create.Config({
@@ -413,6 +437,7 @@ import { LanguageModel } from 'ai';
 	const child2 = create.ObjectGenerator({
 		output: 'object',
 		schema,
+		prompt: "Generate {what}",
 
 		//promptType: 'template',
 		//prompt: "Generate {what}",
@@ -426,16 +451,46 @@ import { LanguageModel } from 'ai';
 	}
 	myFunc({ model: openai('gpt-4o') }); // ✓ Should compile
 
-	// Mixed Features
+	// Mixed Template and Object Generation properties
 	const mixed = create.ObjectStreamer({
 		model: openai('gpt-4o'),
 		output: 'object',
 		schema,
-		promptType: 'template-name',
 		loader: someLoader,
-		tools,
-		context: { data: 123 }
+		promptType: 'template-name',
 	});
+
+	type DebugTConfig = Omit<
+		OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>,
+		'schema'
+	>
+
+	type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
+
+	type DebugTConfig0 = OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>;
+	type DebugTLoader0 = (DebugTConfig0 & { promptType: 'template' })['loader'];
+
+
+	// DistributiveOmit vs Omit
+	type DebugTConfig1 = Omit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
+	// @ts-expect-error
+	type DebugTLoader1 = (DebugTConfig1 & { promptType: 'template' })['loader'];
+
+	type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
+	type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
+
+	const mixed2 = create.ObjectStreamer({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema,
+		//promptType: 'template-name',
+		loader: someLoader
+		/*promptType: 'template-name',
+		loader: someLoader,
+		//tools,
+		context: { data: 123 }*/
+	});
+
 
 	for await (const chunk of await mixed("template1", { user: "Bob" })) { } // ✓ Templates + tools + streaming
 

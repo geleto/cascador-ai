@@ -36,7 +36,7 @@ export type LLMPromptType = TemplatePromptType | 'text';
 
 // Config for the template engine with type safety for loader requirement
 export interface TemplateConfig {
-	prompt: string;
+	prompt?: string;
 	promptType?: TemplatePromptType;
 	context?: Context;
 	filters?: Filters;
@@ -143,11 +143,17 @@ export type AnyNoTemplateConfig<
 	| StreamObjectArrayConfig<ELEMENT>
 	| StreamObjectNoSchemaConfig;
 
-export type AnyConfig<
+/*export type AnyConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
 > =
 	| AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT>
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig>);
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig>);*/
+
+export type AnyConfig<
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
+> =
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & { promptType: 'text' | undefined }) // text mode - no template props
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig> & { promptType?: TemplatePromptType }); // template modes including undefined
 
 
 // Result types
