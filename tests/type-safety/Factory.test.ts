@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';
 import { GenerateObjectObjectConfig, OptionalTemplateConfig, StreamObjectObjectConfig, TemplateConfig } from '../../src/types';
-import { DistributiveOmit } from '../../src/Factory';
+import { DistributiveOmit, RequireMissing } from '../../src/Factory';
 
 type Original = { common: string, tools: string[] };
 type TypeA = Omit<Original, 'tools'>;
@@ -43,7 +43,6 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		}
 		getSource(name: string) {
 			if (!this.templates.has(name)) return null;
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const source: LoaderSource = { src: this.templates.get(name)!, path: name, noCache: false };
 			return source;
 		}
@@ -442,7 +441,10 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		//promptType: 'template',
 		//prompt: "Generate {what}",
 		//context: { child: true }
-	}, grandp); // ✓ Three level inheritance
+	}, grandp); // ✓ Three level inheritance (todo - par)
+
+	type t = typeof child2.config.prompt;
+	type hasPrompt = typeof child2.config extends { prompt: string } ? true : false;
 
 	await child2({ what: "person" }); // Uses merged context, tools, filters
 

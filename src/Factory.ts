@@ -26,6 +26,7 @@ export type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
+// Ensures T is an exact match Ref, removing any extra properties
 type StrictType<T, Ref> = {
 	[K in keyof T]: K extends keyof Ref ? T[K] : never;
 }
@@ -104,12 +105,52 @@ type LLMCallSignature<
 
 type GetMissingProperties<TRequired, TRefConfig> = Exclude<keyof TRequired, keyof TRefConfig>;
 
-type RequireMissing<
+/*export type RequireMissing<  - before debugging
 	TConfig,
 	TRequired,
 	TRefConfig extends Partial<OptionalTemplateConfig>,
 > = Omit<TConfig, GetMissingProperties<TRequired, TRefConfig>> &
-	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
+	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;*/
+
+/*export type RequireMissing< - during debugging
+	TConfig,
+	TRequired,
+	TRefConfig,
+> = Omit<TConfig, GetMissingProperties<TRequired, TRefConfig>> &
+	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;*/
+
+/*type RequireMissing<
+	TConfig,
+	// Type containing all required properties
+	TRequired,
+	// Config that may already have some required properties
+	TRefConfig extends Partial<OptionalTemplateConfig>,
+> = (TConfig extends { schema: any } ? Omit<TConfig, 'schema'> : TConfig) & Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;*/
+
+// Regular RequireMissing removes properties from TConfig that need to be made required
+// and adds them back from TRequired.
+type RequireMissing<
+	TConfig,
+	TRequired,
+	TRefConfig,
+> = TConfig & Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
+
+// Handles schema properties specially because zod applies DeepPartial to optional schemas
+// which causes issues when intersected with non-optional schemas via &.
+// e.g. {schema?: z.Schema<...>} & {schema: z.Schema<...>}
+// Uses conditional check before we Omit schema to preserve discriminated union information
+// that would be lost with direct Omit.
+type RequireMissingWithSchema<
+	TConfig,
+	TRequired,
+	TRefConfig,
+> =
+	(
+		TConfig extends { schema: any }
+		? TRequired extends { schema: any } ? Omit<TConfig, 'schema'> : TConfig
+		: TConfig
+	)
+	& Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
 type RequireLoaderIfNeeded<
 	TMergedConfig extends Partial<OptionalTemplateConfig & BaseConfig>
@@ -341,8 +382,9 @@ export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>, 'schema'> &
-		RequireLoaderIfNeeded<TConfig> & { output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
+	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+		RequireLoaderIfNeeded<TConfig> &
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, GenerateObjectArrayConfig<ELEMENT>>
 ): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
 // Enum output
@@ -362,17 +404,18 @@ export function ObjectGenerator<
 		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
 
+
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
 	TParentConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
-	config:
-		RequireMissing<
-			StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>,
-			{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
-			TParentConfig
-		> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	config: RequireMissingWithSchema<
+		//TConfig,
+		StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>,
+		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
+		TParentConfig
+	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectObjectConfig<OBJECT>>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
@@ -382,13 +425,14 @@ export function ObjectGenerator<
 	TParentConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: RequireMissing<
+	config: RequireMissingWithSchema<
+		//TConfig,
 		StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>,
-		{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
+		{ output: 'object' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectArrayConfig<ELEMENT>>>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<ELEMENT>>>;
 
 // Enum with parent
 export function ObjectGenerator<
@@ -450,7 +494,7 @@ export function ObjectGenerator<
 }
 
 // Single config overloads
-/*export function ObjectStreamer<
+export function ObjectStreamer<
 	TConfig extends { promptType: 'text' } & StreamObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
@@ -465,7 +509,6 @@ export function ObjectStreamer<
 	config: DistributiveOmit<TConfig, 'schema'> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
-*/
 
 export function ObjectStreamer<
 	TConfig extends
@@ -478,7 +521,7 @@ export function ObjectStreamer<
 
 
 
-/*export function ObjectStreamer<
+export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
@@ -523,7 +566,7 @@ export function ObjectStreamer<
 	config: RequireMissing<TConfig, { output: 'no-schema', model: LanguageModel }, TParentConfig>
 		& RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<TParentConfig>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectNoSchemaResult>>;*/
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectNoSchemaResult>>;
 
 // Implementation
 export function ObjectStreamer<
@@ -547,15 +590,16 @@ export function ObjectStreamer<
 		validateBaseConfig(merged);
 	}
 
+	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing
 	return createLLMRenderer<
 		CombinedType,
-		StreamObjectObjectConfig<OBJECT>,
+		StreamObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
 		StreamObjectObjectResult<OBJECT>
 	>(merged, streamObject);
 }
 
 function createLLMRenderer<
-	TConfig extends Partial<OptionalTemplateConfig & TFunctionConfig>, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & Partial<TFunctionConfig>, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends BaseConfig,
 	TFunctionResult,
 >(
@@ -563,20 +607,21 @@ function createLLMRenderer<
 	vercelFunc: (config: TFunctionConfig) => TFunctionResult
 ): LLMCallSignature<TConfig, TFunctionResult> {
 	let call;
-	if (config.promptType && config.promptType !== 'text') {
+	if (config.promptType !== 'text') {
 		// We have to run the prompt through a template first.
 		const renderer = TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
 			validateCall(config as BaseConfig, promptOrContext, maybeContext);
 			let renderedPrompt: string;
-			if (maybeContext !== undefined) {
-				if (typeof promptOrContext === 'string') {
-					renderedPrompt = await renderer(promptOrContext, maybeContext);
-				} else {
-					renderedPrompt = await renderer(maybeContext);
-				}
+
+			if (typeof promptOrContext === 'string') {
+				renderedPrompt = await renderer(promptOrContext, maybeContext);
 			} else {
-				renderedPrompt = await renderer(promptOrContext);
+				renderedPrompt = await renderer(config.prompt!, promptOrContext);
+			}
+			if (config.messages) {
+				//todo: add the prompt to the messages
+				//config.messages.push(renderedPrompt);
 			}
 			return await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
 		};
