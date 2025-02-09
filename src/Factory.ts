@@ -493,79 +493,75 @@ export function ObjectGenerator<
 	>(merged, generateObject);
 }
 
-// Single config overloads
+// Object output
 export function ObjectStreamer<
-	TConfig extends { promptType: 'text' } & StreamObjectObjectConfig<OBJECT>,
+	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
-	config: DistributiveOmit<TConfig, 'schema'> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
+	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+		RequireLoaderIfNeeded<TConfig> &
+	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, StreamObjectObjectConfig<OBJECT>>
 ): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
 
-export function ObjectStreamer<
-	TConfig extends TemplateConfig & StreamObjectObjectConfig<OBJECT>,
-	OBJECT = any
->(
-	config: DistributiveOmit<TConfig, 'schema'> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
-
-export function ObjectStreamer<
-	TConfig extends
-	({ promptType: 'text' } & StreamObjectObjectConfig<OBJECT>) | (TemplateConfig & StreamObjectObjectConfig<OBJECT>),
-	OBJECT = any
->(
-	config: DistributiveOmit<TConfig, 'schema'> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
-
-
-
+// Array output
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: DistributiveOmit<TConfig, 'schema'> & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
+	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+		RequireLoaderIfNeeded<TConfig> &
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, StreamObjectArrayConfig<ELEMENT>>
 ): LLMCallSignature<TConfig, Promise<StreamObjectArrayResult<ELEMENT>>>;
 
+// No schema output
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig> &
-	{ output: 'no-schema', model: LanguageModel }
+	config: StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig> &
+		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectNoSchemaResult>>;
 
-// Config with parent overloads for different output types
+
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
 	TParentConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
-	config:
-		RequireMissing<TConfig, { output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, TParentConfig>
-		& RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<TParentConfig>
+	config: RequireMissingWithSchema<
+		//TConfig,
+		StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>,
+		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
+		TParentConfig
+	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectObjectConfig<OBJECT>>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectObjectResult<OBJECT>>>;
 
-
+// Array with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	TParentConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: RequireMissing<TConfig, { output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, TParentConfig>
-		& RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<TParentConfig>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectArrayResult<ELEMENT>>>;
+	config: RequireMissingWithSchema<
+		//TConfig,
+		StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>,
+		{ output: 'object' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
+		TParentConfig
+	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectArrayConfig<ELEMENT>>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectObjectResult<ELEMENT>>>;
 
+// No schema with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
 	TParentConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig
 >(
-	config: RequireMissing<TConfig, { output: 'no-schema', model: LanguageModel }, TParentConfig>
-		& RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<TParentConfig>
+	config: RequireMissing<
+		StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig>,
+		{ output: 'no-schema', model: LanguageModel },
+		TParentConfig
+	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectNoSchemaConfig>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectNoSchemaResult>>;
 
 // Implementation
