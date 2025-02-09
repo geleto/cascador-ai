@@ -4,17 +4,8 @@ import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';
 import { GenerateObjectObjectConfig, OptionalTemplateConfig, StreamObjectObjectConfig, TemplateConfig } from '../../src/types';
-import { DistributiveOmit, RequireMissing } from '../../src/Factory';
+import { DistributiveOmit } from '../../src/Factory';
 
-type Original = { common: string, tools: string[] };
-type TypeA = Omit<Original, 'tools'>;
-type TypeB = { common: string, tools: string[] };
-
-function needsTools<T extends TypeB>(x: T) { }
-
-let a: TypeA = { common: 'a' };
-
-needsTools(a); // TypeScript allows this even though TypeA has no tools
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (async (): Promise<void> => {
@@ -251,6 +242,14 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 	});
 	await og4("Free-form JSON"); // ✓ No schema
 
+	const toolObj = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		tools,
+		// @ts-expect-error
+		output: 'object',//object can't be used with tools
+		schema
+	});
+
 	// Object Streamers
 	const os1 = create.ObjectStreamer({
 		model: openai('gpt-4o'),
@@ -290,17 +289,6 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		model: openai('gpt-4o'),
 		tools
 	});
-	const schemaChild = create.ObjectGenerator({
-		// @ts-expect-error
-		output: 'object',//object can't be used with tools
-		schema
-	}, toolParent);
-
-	const withTools = {
-		model: openai('gpt-4o'),
-		output: 'object',
-		schema
-	};
 
 	// Try to add tools to a GenerateObjectObjectConfig
 	const objectConfig2: GenerateObjectObjectConfig<any> = {
@@ -374,34 +362,26 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		schema: complexSchema
 	}); // ✓ Complex nested schema
 
+	const og6 = create.ObjectGenerator({
+		model: openai('gpt-4o'),
+		// @ts-expect-error
+		output: 'object',
+		schema: complexSchema,
+		tools
+	}); // ✗ Can't mix tools with object output
+
+	// Override output type
 	const arrayParent = create.Config({
 		model: openai('gpt-4o'),
 		output: 'array',
+		schema
 	});
+
 	const enumChild = create.ObjectGenerator({
-		output: 'enum',
-		enum: ['yes', 'no']
+		output: 'object'
 	}, arrayParent); // ✓ Override output type
 
-	const streamEnum = create.ObjectStreamer({
-		model: openai('gpt-4o'),
-		// @ts-expect-error
-		output: 'enum',
-		enum: ['yes', 'no']
-	}); // ✗ Enum with stream
-
-	//TEMP
-	const papa = create.Config({
-		model: openai('gpt-4o'),
-	});
-
-	const baby = create.Config({
-		output: 'object',
-		schema,
-	}, papa);
-
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	//TEMP 2
+	// Override schema while defining output type
 	const papa2 = create.Config({
 		model: openai('gpt-4o'),
 		schema
@@ -411,7 +391,24 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		output: 'object',
 		schema
 	}, papa2);
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	// Override schema only
+	const papa4 = create.Config({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema
+	});
+
+	const baby4 = create.ObjectGenerator({
+		schema
+	}, papa4);
+
+	const streamEnum = create.ObjectStreamer({
+		model: openai('gpt-4o'),
+		// @ts-expect-error
+		output: 'enum',
+		enum: ['yes', 'no']
+	}); // ✗ Enum with stream
 
 	// Complex Inheritance
 	const grandp = create.Config({
@@ -493,7 +490,35 @@ needsTools(a); // TypeScript allows this even though TypeA has no tools
 		context: { data: 123 }*/
 	});
 
+	//Mix tools in config with object in parent
+	const par1 = create.Config({
+		model: openai('gpt-4o'),
+		output: 'object',
+		schema,
+		context: { base: true }
+	});
 
-	for await (const chunk of await mixed("template1", { user: "Bob" })) { } // ✓ Templates + tools + streaming
+	const ch1 = create.ObjectGenerator({
+		// @ts-expect-error
+		tools,
+		prompt: "Generate {what}",
+	}, par1); // ✗ Can't mix tools with object output
+
+	//Mix object in config with tools in parent
+	const par3 = create.Config({
+		model: openai('gpt-4o'),
+		tools
+	});
+
+	const ch3 = create.ObjectGenerator({
+		// @ts-expect-error
+		output: 'object',
+		schema,
+		context: { base: true },
+		prompt: "Generate {what}",
+	}, par3); // ✗ Can't mix tools with object output
+
+	const result = await mixed("template1", { user: "Bob" });
+	for await (const chunk of result.partialObjectStream) { } // ✓ Templates + tools + streaming
 
 })().catch(console.error);

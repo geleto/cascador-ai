@@ -31,6 +31,11 @@ type StrictType<T, Ref> = {
 	[K in keyof T]: K extends keyof Ref ? T[K] : never;
 }
 
+// @todo evaluate if I should use this instead of StrictType
+type Exact<T, Shape> = T extends Shape
+	? keyof T extends keyof Shape ? T : never
+	: never;
+
 // Helper for types that can optionally have template properties
 type StrictTypeWithTemplate<T, Ref> = T extends { promptType: 'text' }
 	? StrictType<T, Ref & { promptType: 'text' }>
@@ -96,36 +101,7 @@ type LLMCallSignature<
 		}
 	);
 
-/*type RequireMissing<
-	// Type containing all required properties
-	TRequired,
-	// Config that may already have some required properties
-	TRefConfig extends Partial<OptionalTemplateConfig>,
-> = Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;*/
-
 type GetMissingProperties<TRequired, TRefConfig> = Exclude<keyof TRequired, keyof TRefConfig>;
-
-/*export type RequireMissing<  - before debugging
-	TConfig,
-	TRequired,
-	TRefConfig extends Partial<OptionalTemplateConfig>,
-> = Omit<TConfig, GetMissingProperties<TRequired, TRefConfig>> &
-	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;*/
-
-/*export type RequireMissing< - during debugging
-	TConfig,
-	TRequired,
-	TRefConfig,
-> = Omit<TConfig, GetMissingProperties<TRequired, TRefConfig>> &
-	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;*/
-
-/*type RequireMissing<
-	TConfig,
-	// Type containing all required properties
-	TRequired,
-	// Config that may already have some required properties
-	TRefConfig extends Partial<OptionalTemplateConfig>,
-> = (TConfig extends { schema: any } ? Omit<TConfig, 'schema'> : TConfig) & Pick<TRequired, Exclude<keyof TRequired, keyof TRefConfig>>;*/
 
 // Regular RequireMissing removes properties from TConfig that need to be made required
 // and adds them back from TRequired.
@@ -158,6 +134,7 @@ type RequireLoaderIfNeeded<
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
 
+// Single config overload
 export function Config<
 	TConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
@@ -165,6 +142,8 @@ export function Config<
 	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
 ): ConfigProvider<TConfig>;
 
+// Config with parent overload
+// todo: avoid mixing config/[arent properties from different union types
 export function Config<
 	TConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
@@ -372,9 +351,9 @@ export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
-	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
 		RequireLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, GenerateObjectObjectConfig<OBJECT>>
+	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
 // Array output
@@ -382,9 +361,9 @@ export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>, 'schema'> &
 		RequireLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, GenerateObjectArrayConfig<ELEMENT>>
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
 // Enum output
@@ -400,7 +379,7 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig
 >(
-	config: StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig> &
+	config: TConfig &
 		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
 
@@ -416,6 +395,7 @@ export function ObjectGenerator<
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	//parent: ConfigProvider<TParentConfig>
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectObjectConfig<OBJECT>>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
@@ -428,7 +408,7 @@ export function ObjectGenerator<
 	config: RequireMissingWithSchema<
 		//TConfig,
 		StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>,
-		{ output: 'object' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
+		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectArrayConfig<ELEMENT>>>
@@ -498,9 +478,9 @@ export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
 	OBJECT = any
 >(
-	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>, 'schema'> &
 		RequireLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }, StreamObjectObjectConfig<OBJECT>>
+	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
 
 // Array output
@@ -508,9 +488,9 @@ export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
 >(
-	config: StrictTypeWithTemplate<DistributiveOmit<TConfig, 'schema'> &
+	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>, 'schema'> &
 		RequireLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }, StreamObjectArrayConfig<ELEMENT>>
+	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectArrayResult<ELEMENT>>>;
 
 // No schema output
@@ -545,7 +525,7 @@ export function ObjectStreamer<
 	config: RequireMissingWithSchema<
 		//TConfig,
 		StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>,
-		{ output: 'object' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
+		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectArrayConfig<ELEMENT>>>
