@@ -440,6 +440,18 @@ import { DistributiveOmit } from '../../src/Factory';
 		//context: { child: true }
 	}, grandp); // ✓ Three level inheritance (todo - par)
 
+
+
+	const p = create.Config({
+		model: openai('gpt-4o'),
+	});
+
+	const c = create.ObjectGenerator({
+		output: 'object',
+		schema,
+		prompt: "Generate {what}",
+	}, p);
+
 	type t = typeof child2.config.prompt;
 	type hasPrompt = typeof child2.config extends { prompt: string } ? true : false;
 
@@ -498,8 +510,8 @@ import { DistributiveOmit } from '../../src/Factory';
 		context: { base: true }
 	});
 
+	// @ts-expect-error
 	const ch1 = create.ObjectGenerator({
-		// @ts-expect-error
 		tools,
 		prompt: "Generate {what}",
 	}, par1); // ✗ Can't mix tools with object output
@@ -511,11 +523,11 @@ import { DistributiveOmit } from '../../src/Factory';
 	});
 
 	const ch3 = create.ObjectGenerator({
-		// @ts-expect-error
 		output: 'object',
 		schema,
 		context: { base: true },
 		prompt: "Generate {what}",
+		// @ts-expect-error
 	}, par3); // ✗ Can't mix tools with object output
 
 	const result = await mixed("template1", { user: "Bob" });

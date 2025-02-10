@@ -26,20 +26,27 @@ export type StrictUnionSubtype<T, U> = U extends any
 	: never
 	: never;
 
-// Ensures T is an exact match Ref, removing any extra properties
-type StrictType<T, Ref> = {
+// Ensures T is an exact match Ref, setting any extra properties to never
+/*type StrictType<T, Ref> = {
 	[K in keyof T]: K extends keyof Ref ? T[K] : never;
-}
+}*/
 
-// @todo evaluate if I should use this instead of StrictType
-type Exact<T, Shape> = T extends Shape
-	? keyof T extends keyof Shape ? T : never
+// Ensures T has exactly the same properties as Shape (no extra properties). Returns never if T is not a strict subtype of Shape.
+type StrictType<T, Shape, Ignore = {}> = T extends Shape
+	? keyof Omit<T, keyof Ignore> extends keyof Shape ? T : never
 	: never;
+/*type StrictType<T, Shape> = T extends Shape
+	? keyof T extends keyof Shape ? T : never
+	: never;*/
+
 
 // Helper for types that can optionally have template properties
-type StrictTypeWithTemplate<T, Ref> = T extends { promptType: 'text' }
-	? StrictType<T, Ref & { promptType: 'text' }>
-	: StrictType<T, Ref & TemplateConfig>;
+type StrictTypeWithTemplate<T, Shape, Ignore = {}> = T extends { promptType: 'text' }
+	? StrictType<T, Shape & { promptType: 'text' }, Ignore>
+	: StrictType<T, Shape & TemplateConfig, Ignore>;
+/*type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
+	? StrictType<T, Shape & { promptType: 'text' }>
+	: StrictType<T, Shape & TemplateConfig>;*/
 
 type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	TConfig extends { prompt: string }
@@ -111,28 +118,42 @@ type RequireMissing<
 	TRefConfig,
 > = TConfig & Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
+// Makes properties from TRequired required only if they don't exist in TRefConfig.
 // Handles schema properties specially because zod applies DeepPartial to optional schemas
-// which causes issues when intersected with non-optional schemas via &.
-// e.g. {schema?: z.Schema<...>} & {schema: z.Schema<...>}
-// Uses conditional check before we Omit schema to preserve discriminated union information
-// that would be lost with direct Omit.
+// which causes type issues when intersected with non-optional schemas via &.
+// For example: {schema?: z.Schema<...>} & {schema: z.Schema<...>}
+// Uses conditional type check before Omit to preserve discriminated union information
+// that would be lost with direct Omit of the schema property.
 type RequireMissingWithSchema<
 	TConfig,
 	TRequired,
 	TRefConfig,
 > =
-	(
-		TConfig extends { schema: any }
-		? TRequired extends { schema: any } ? Omit<TConfig, 'schema'> : TConfig
-		: TConfig
-	)
-	& Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
+	// Handle schema type union
+	(TConfig extends { schema: any }
+		? (Omit<TConfig, 'schema'> & {
+			schema: TConfig['schema'] extends z.Schema<infer U>
+			? z.Schema<U> & SchemaType<U>  // Add SchemaType union
+			: TConfig['schema']
+		})
+		: TConfig) &
+	// Add missing required properties
+	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
 type RequireLoaderIfNeeded<
 	TMergedConfig extends Partial<OptionalTemplateConfig & BaseConfig>
 > = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
+
+
+// Properties from Base type will either keep their original type,
+// or if they exist in Override, use Override's type instead.
+type EnforceBaseExceptOverride<Base, Override> = {
+	[K in keyof Base]: K extends keyof Override
+	? any  // Allow any type for properties that will be overridden
+	: Base[K]  // Use Base's type for other properties
+} & Record<Exclude<keyof Override, keyof Base>, never>; // Prevent extra properties
 
 // Single config overload
 export function Config<
@@ -383,10 +404,10 @@ export function ObjectGenerator<
 		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
 
-
+// Object with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectObjectConfig<OBJECT>, TConfig>,
 	OBJECT = any
 >(
 	config: RequireMissingWithSchema<
@@ -394,13 +415,13 @@ export function ObjectGenerator<
 		StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>,
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	//parent: ConfigProvider<TParentConfig>
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectObjectConfig<OBJECT>>>
+	>,
+	parent: ConfigProvider<TParentConfig>
+	//parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectObjectConfig<OBJECT>, TConfig>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
 // Array with parent
-export function ObjectGenerator<
+/*export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	TParentConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	ELEMENT = any
@@ -440,6 +461,7 @@ export function ObjectGenerator<
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectNoSchemaConfig>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectNoSchemaResult>>;
+*/
 
 // Implementation
 export function ObjectGenerator<
