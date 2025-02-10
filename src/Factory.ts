@@ -44,9 +44,6 @@ type StrictType<T, Shape, Ignore = {}> = T extends Shape
 type StrictTypeWithTemplate<T, Shape, Ignore = {}> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }, Ignore>
 	: StrictType<T, Shape & TemplateConfig, Ignore>;
-/*type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
-	? StrictType<T, Shape & { promptType: 'text' }>
-	: StrictType<T, Shape & TemplateConfig>;*/
 
 type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	TConfig extends { prompt: string }
@@ -147,13 +144,12 @@ type RequireLoaderIfNeeded<
 	: object;
 
 
-// Properties from Base type will either keep their original type,
-// or if they exist in Override, use Override's type instead.
-type EnforceBaseExceptOverride<Base, Override> = {
-	[K in keyof Base]: K extends keyof Override
-	? any  // Allow any type for properties that will be overridden
-	: Base[K]  // Use Base's type for other properties
-} & Record<Exclude<keyof Override, keyof Base>, never>; // Prevent extra properties
+type ValidateParentConfig<Shape, ChildConfig, ParentConfig> = {
+	[K in keyof ParentConfig]:  // Iterate over parent properties
+	K extends keyof ChildConfig //If property will be overridden by child
+	? any // set it to any, we don't care about the parent type it will be gone anyway
+	: K extends keyof Shape ? ParentConfig[K] : never // Not overriden, if a valid Shape property - keep parent's type, otherwise block it
+}
 
 // Single config overload
 export function Config<
@@ -407,11 +403,10 @@ export function ObjectGenerator<
 // Object with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectObjectConfig<OBJECT>, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>, TConfig, TParentConfig>,
 	OBJECT = any
 >(
 	config: RequireMissingWithSchema<
-		//TConfig,
 		StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>,
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
@@ -423,11 +418,10 @@ export function ObjectGenerator<
 // Array with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectArrayConfig<ELEMENT>, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>, TConfig, TParentConfig>,
 	ELEMENT = any
 >(
 	config: RequireMissingWithSchema<
-		//TConfig,
 		StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>,
 		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
@@ -438,7 +432,7 @@ export function ObjectGenerator<
 // Enum with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectEnumConfig<ENUM>, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>, TConfig, TConfig>,
 	ENUM extends string = string
 >(
 	config: RequireMissing<
@@ -452,7 +446,7 @@ export function ObjectGenerator<
 // No schema with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectNoSchemaConfig, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectNoSchemaConfig, TConfig, TParentConfig>,
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig>,
@@ -525,11 +519,10 @@ export function ObjectStreamer<
 
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectObjectConfig<OBJECT>, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>, TConfig, TParentConfig>,
 	OBJECT = any
 >(
 	config: RequireMissingWithSchema<
-		//TConfig,
 		StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>,
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
@@ -540,11 +533,10 @@ export function ObjectStreamer<
 // Array with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectArrayConfig<ELEMENT>, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>, TConfig, TParentConfig>,
 	ELEMENT = any
 >(
 	config: RequireMissingWithSchema<
-		//TConfig,
 		StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>,
 		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
@@ -555,7 +547,7 @@ export function ObjectStreamer<
 // No schema with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectNoSchemaConfig, TConfig>,
+	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectNoSchemaConfig, TConfig, TParentConfig>,
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig>,

@@ -510,6 +510,7 @@ import { DistributiveOmit } from '../../src/Factory';
 		context: { base: true }
 	});
 
+
 	// @ts-expect-error
 	const ch1 = create.ObjectGenerator({
 		tools,
@@ -525,10 +526,22 @@ import { DistributiveOmit } from '../../src/Factory';
 	const ch3 = create.ObjectGenerator({
 		output: 'object',
 		schema,
-		context: { base: true },
 		prompt: "Generate {what}",
 		// @ts-expect-error
 	}, par3); // ✗ Can't mix tools with object output
+
+
+	// Mix schema with TemplateConfig (e.g. context)
+	const pa = create.Config({
+		model: openai('gpt-4o'),
+	});
+
+	const ch = create.ObjectGenerator({
+		output: 'object',
+		schema,
+		prompt: "Generate {what}",
+		context: { child: true }
+	}, pa);
 
 	const result = await mixed("template1", { user: "Bob" });
 	for await (const chunk of result.partialObjectStream) { } // ✓ Templates + tools + streaming
