@@ -421,9 +421,9 @@ export function ObjectGenerator<
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
 // Array with parent
-/*export function ObjectGenerator<
+export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectArrayConfig<ELEMENT>, TConfig>,
 	ELEMENT = any
 >(
 	config: RequireMissingWithSchema<
@@ -438,7 +438,7 @@ export function ObjectGenerator<
 // Enum with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
-	TParentConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectEnumConfig<ENUM>, TConfig>,
 	ENUM extends string = string
 >(
 	config: RequireMissing<
@@ -452,7 +452,7 @@ export function ObjectGenerator<
 // No schema with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<GenerateObjectNoSchemaConfig, TConfig>,
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig>,
@@ -461,7 +461,6 @@ export function ObjectGenerator<
 	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectNoSchemaConfig>>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectNoSchemaResult>>;
-*/
 
 // Implementation
 export function ObjectGenerator<
@@ -526,7 +525,7 @@ export function ObjectStreamer<
 
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectObjectConfig<OBJECT>, TConfig>,
 	OBJECT = any
 >(
 	config: RequireMissingWithSchema<
@@ -541,7 +540,7 @@ export function ObjectStreamer<
 // Array with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectArrayConfig<ELEMENT>, TConfig>,
 	ELEMENT = any
 >(
 	config: RequireMissingWithSchema<
@@ -556,7 +555,7 @@ export function ObjectStreamer<
 // No schema with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig
+	TParentConfig extends OptionalTemplateConfig & EnforceBaseExceptOverride<StreamObjectNoSchemaConfig, TConfig>,
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig>,
