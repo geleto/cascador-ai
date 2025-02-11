@@ -32,18 +32,15 @@ export type StrictUnionSubtype<T, U> = U extends any
 }*/
 
 // Ensures T has exactly the same properties as Shape (no extra properties). Returns never if T is not a strict subtype of Shape.
-type StrictType<T, Shape, Ignore = {}> = T extends Shape
-	? keyof Omit<T, keyof Ignore> extends keyof Shape ? T : never
-	: never;
-/*type StrictType<T, Shape> = T extends Shape
+type StrictType<T, Shape> = T extends Shape
 	? keyof T extends keyof Shape ? T : never
-	: never;*/
+	: never;
 
 
 // Helper for types that can optionally have template properties
-type StrictTypeWithTemplate<T, Shape, Ignore = {}> = T extends { promptType: 'text' }
-	? StrictType<T, Shape & { promptType: 'text' }, Ignore>
-	: StrictType<T, Shape & TemplateConfig, Ignore>;
+export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
+	? StrictType<T, Shape & { promptType: 'text' }>
+	: StrictType<T, Shape & TemplateConfig>;
 
 type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
 	TConfig extends { prompt: string }
@@ -68,7 +65,7 @@ type Override<A, B> = Omit<A, keyof B> & B;
 // Regular omit flattens the type, this one retains the original union structure. The example below will not work with regular Omit
 // type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
 // type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
-export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 //type OmitIfPresent<TParent, TProps, TCheck> = Omit<TParent, Extract<TProps, keyof TCheck>>;
 
@@ -143,41 +140,34 @@ type RequireLoaderIfNeeded<
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
 
-
-type ValidateParentConfig<Shape, ChildConfig, ParentConfig> = {
-	[K in keyof ParentConfig]:  // Iterate over parent properties
-	K extends keyof ChildConfig //If property will be overridden by child
-	? any // set it to any, we don't care about the parent type it will be gone anyway
-	: K extends keyof Shape ? ParentConfig[K] : never // Not overriden, if a valid Shape property - keep parent's type, otherwise block it
-}
-
 // Single config overload
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>,
+	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>,
 ): ConfigProvider<TConfig>;
 
 // Config with parent overload
+
 // todo: avoid mixing config/[arent properties from different union types
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: TConfig,
 	parent: ConfigProvider<TParentConfig>
-): ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>>;
+): ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>>;
 
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, TSchema, ENUM extends string, T
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, TSchema, ENUM, T>>> {
+): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>> {
 
 	validateBaseConfig(config);
 
@@ -402,58 +392,90 @@ export function ObjectGenerator<
 
 // Object with parent
 export function ObjectGenerator<
-	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>, TConfig, TParentConfig>,
-	OBJECT = any
+	TConfig extends GenerateObjectObjectConfig<OBJECT>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
-		StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>,
+		StrictTypeWithTemplate<
+			TConfig,
+			GenerateObjectObjectConfig<OBJECT>
+		>,
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
 	>,
-	parent: ConfigProvider<TParentConfig>
-	//parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectObjectConfig<OBJECT>, TConfig>>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>;
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			GenerateObjectObjectConfig<OBJECT>
+		> extends never ? never : TParentConfig
+	>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>
 
 // Array with parent
 export function ObjectGenerator<
-	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>, TConfig, TParentConfig>,
-	ELEMENT = any
+	TConfig extends GenerateObjectArrayConfig<ELEMENT>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
-		StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>,
-		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
+		StrictTypeWithTemplate<
+			TConfig,
+			GenerateObjectArrayConfig<ELEMENT>
+		>,
+		{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectArrayConfig<ELEMENT>>>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<ELEMENT>>>;
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			GenerateObjectArrayConfig<ELEMENT>
+		> extends never ? never : TParentConfig
+	>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
 // Enum with parent
 export function ObjectGenerator<
-	TConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>, TConfig, TConfig>,
-	ENUM extends string = string
+	TConfig extends GenerateObjectEnumConfig<ENUM>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: RequireMissing<
-		StrictTypeWithTemplate<TConfig, GenerateObjectEnumConfig<ENUM>>,
+	config: RequireMissingWithSchema<
+		StrictTypeWithTemplate<
+			TConfig,
+			GenerateObjectEnumConfig<ENUM>
+		>,
 		{ output: 'enum', enum: ENUM[], model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectEnumConfig<ENUM>>>
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			GenerateObjectEnumConfig<ENUM>
+		> extends never ? never : TParentConfig
+	>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectEnumResult<ENUM>>>;
 
 // No schema with parent
 export function ObjectGenerator<
-	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & GenerateObjectNoSchemaConfig, TConfig, TParentConfig>,
+	TConfig extends GenerateObjectNoSchemaConfig,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: RequireMissing<
-		StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig>,
+	config: RequireMissingWithSchema<
+		StrictTypeWithTemplate<
+			TConfig,
+			GenerateObjectNoSchemaConfig
+		>,
 		{ output: 'no-schema', model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, GenerateObjectNoSchemaConfig>>
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			GenerateObjectNoSchemaConfig
+		> extends never ? never : TParentConfig
+	>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectNoSchemaResult>>;
 
 // Implementation
@@ -517,44 +539,70 @@ export function ObjectStreamer<
 ): LLMCallSignature<TConfig, Promise<StreamObjectNoSchemaResult>>;
 
 
+// Object with parent
 export function ObjectStreamer<
-	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>, TConfig, TParentConfig>,
-	OBJECT = any
+	TConfig extends StreamObjectObjectConfig<OBJECT>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
-		StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>,
+		StrictTypeWithTemplate<
+			TConfig,
+			StreamObjectObjectConfig<OBJECT>
+		>,
 		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectObjectConfig<OBJECT>>>
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			StreamObjectObjectConfig<OBJECT>
+		> extends never ? never : TParentConfig
+	>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectObjectResult<OBJECT>>>;
 
 // Array with parent
 export function ObjectStreamer<
-	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>, TConfig, TParentConfig>,
-	ELEMENT = any
+	TConfig extends StreamObjectArrayConfig<ELEMENT>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
-		StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>,
-		{ output: 'array' | undefined, schema: SchemaType<ELEMENT>, model: LanguageModel },
+		StrictTypeWithTemplate<
+			TConfig,
+			StreamObjectArrayConfig<ELEMENT>
+		>,
+		{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectArrayConfig<ELEMENT>>>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectObjectResult<ELEMENT>>>;
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			StreamObjectArrayConfig<ELEMENT>
+		> extends never ? never : TParentConfig
+	>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectArrayResult<ELEMENT>>>;
 
 // No schema with parent
 export function ObjectStreamer<
-	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
-	TParentConfig extends OptionalTemplateConfig & ValidateParentConfig<OptionalTemplateConfig & StreamObjectNoSchemaConfig, TConfig, TParentConfig>,
+	TConfig extends StreamObjectNoSchemaConfig,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: RequireMissing<
-		StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig>,
+	config: RequireMissingWithSchema<
+		StrictTypeWithTemplate<
+			TConfig,
+			StreamObjectNoSchemaConfig
+		>,
 		{ output: 'no-schema', model: LanguageModel },
 		TParentConfig
-	> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<StrictTypeWithTemplate<TParentConfig, StreamObjectNoSchemaConfig>>
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			StreamObjectNoSchemaConfig
+		> extends never ? never : TParentConfig
+	>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectNoSchemaResult>>;
 
 // Implementation

@@ -3,8 +3,6 @@ import { ILoader, LoaderSource } from "cascada-tmpl";
 import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';
-import { GenerateObjectObjectConfig, OptionalTemplateConfig, StreamObjectObjectConfig, TemplateConfig } from '../../src/types';
-import { DistributiveOmit } from '../../src/Factory';
 
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -290,15 +288,6 @@ import { DistributiveOmit } from '../../src/Factory';
 		tools
 	});
 
-	// Try to add tools to a GenerateObjectObjectConfig
-	const objectConfig2: GenerateObjectObjectConfig<any> = {
-		model: openai('gpt-4o'),
-		output: 'object',
-		schema,
-		// @ts-expect-error
-		tools: {}  // Should fail
-	};
-
 	const schemaChild2 = create.TextGenerator({
 		maxSteps: 5
 	}, toolParent);
@@ -471,25 +460,6 @@ import { DistributiveOmit } from '../../src/Factory';
 		promptType: 'template-name',
 	});
 
-	type DebugTConfig = Omit<
-		OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>,
-		'schema'
-	>
-
-	type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
-
-	type DebugTConfig0 = OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>;
-	type DebugTLoader0 = (DebugTConfig0 & { promptType: 'template' })['loader'];
-
-
-	// DistributiveOmit vs Omit
-	type DebugTConfig1 = Omit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
-	// @ts-expect-error
-	type DebugTLoader1 = (DebugTConfig1 & { promptType: 'template' })['loader'];
-
-	type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
-	type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
-
 	const mixed2 = create.ObjectStreamer({
 		model: openai('gpt-4o'),
 		output: 'object',
@@ -510,12 +480,11 @@ import { DistributiveOmit } from '../../src/Factory';
 		context: { base: true }
 	});
 
-
-	// @ts-expect-error
-	const ch1 = create.ObjectGenerator({
-		tools,
-		prompt: "Generate {what}",
-	}, par1); // ✗ Can't mix tools with object output
+	const ch1 = create.ObjectGenerator(// @ts-expect-error
+		{
+			tools,
+			prompt: "Generate {what}",
+		}, par1); // ✗ Can't mix tools with object output
 
 	//Mix object in config with tools in parent
 	const par3 = create.Config({
@@ -523,15 +492,15 @@ import { DistributiveOmit } from '../../src/Factory';
 		tools
 	});
 
+	// @ts-expect-error
 	const ch3 = create.ObjectGenerator({
 		output: 'object',
 		schema,
 		prompt: "Generate {what}",
-		// @ts-expect-error
 	}, par3); // ✗ Can't mix tools with object output
 
 
-	// Mix schema with TemplateConfig (e.g. context)
+	// Mix 'object' with TemplateConfig in config(e.g. context)
 	const pa = create.Config({
 		model: openai('gpt-4o'),
 	});
@@ -542,6 +511,70 @@ import { DistributiveOmit } from '../../src/Factory';
 		prompt: "Generate {what}",
 		context: { child: true }
 	}, pa);
+
+	// Mix 'object' with TemplateConfig in parent(e.g. context)
+	const pa2 = create.Config({
+		model: openai('gpt-4o'),
+		context: { base: true }
+	});
+
+	const ch2 = create.ObjectGenerator({
+		output: 'object',
+		schema,
+		prompt: "Generate {what}",
+	}, pa2);
+
+	// Mix promptType: 'text' in parent with TemplateConfig in config
+	const pa4 = create.Config({
+		model: openai('gpt-4o'),
+		promptType: 'text'
+	});
+	// @ts-expect-error
+	const ch4 = create.ObjectGenerator({
+		output: 'object',
+		schema,
+		prompt: "Just Generate",
+		context: { child: true }
+	}, pa4); // ✗ Can't mix promptType: 'text' with TemplateConfig
+
+	// Mix promptType: 'text' in config with TemplateConfig(context) in parent
+	const pa5 = create.Config({
+		model: openai('gpt-4o'),
+		context: { child: true }
+	});
+	// @ts-expect-error
+	const ch5 = create.ObjectGenerator({
+		output: 'object',
+		schema,
+		prompt: "Just Generate",
+		promptType: 'text'
+	}, pa5);// ✗ Can't mix promptType: 'text' with TemplateConfig
+
+
+	// Config only - Mix 'object' with TemplateConfig in parent(e.g. context)
+	const pa6 = create.Config({
+		model: openai('gpt-4o'),
+		context: { base: true }
+	});
+	// @ts-expect-error
+	const ch6 = create.Config({
+		output: 'object',
+		schema,
+		prompt: "Generate {what}",
+	}, pa2);
+
+	// Config only - Mix promptType: 'text' in parent with TemplateConfig in config
+	const pa7 = create.Config({
+		model: openai('gpt-4o'),
+		promptType: 'text'
+	});
+	// @ts-expect-error
+	const ch7 = create.Config({
+		output: 'object',
+		schema,
+		prompt: "Just Generate",
+		context: { child: true }
+	}, pa4); // ✗ Can't mix promptType: 'text' with TemplateConfig
 
 	const result = await mixed("template1", { user: "Bob" });
 	for await (const chunk of result.partialObjectStream) { } // ✓ Templates + tools + streaming
