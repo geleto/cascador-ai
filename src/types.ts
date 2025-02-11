@@ -5,6 +5,8 @@ import {
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
 import { z } from 'zod';
 
+export type Override<A, B> = Omit<A, keyof B> & B;
+
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
 // https://github.com/microsoft/TypeScript/issues/54223
 // This is a problem because generateObject and streamObject have multiple overloads with different config and return types

@@ -1,10 +1,10 @@
-import { BaseConfig, TemplateConfig } from './types';
+import { BaseConfig, Override, TemplateConfig } from './types';
 
-export interface ConfigProvider<T extends Partial<BaseConfig>> {
+export interface ConfigProvider<T extends BaseConfig> {
 	readonly config: T;
 }
 
-export class ConfigData<ConfigType extends Partial<BaseConfig>> implements ConfigProvider<ConfigType> {
+export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider<ConfigType> {
 	constructor(public readonly config: ConfigType) { }
 }
 
@@ -13,12 +13,12 @@ export class ConfigData<ConfigType extends Partial<BaseConfig>> implements Confi
  * The return type is exactly the union of P & C (with child overriding parent).
  */
 export function mergeConfigs<
-	TParent extends Partial<BaseConfig & Omit<TemplateConfig, 'promptType'>>,
-	TChild extends Partial<BaseConfig & Omit<TemplateConfig, 'promptType'>>
+	TChild extends BaseConfig & Omit<TemplateConfig, 'promptType'>,
+	TParent extends BaseConfig & Omit<TemplateConfig, 'promptType'>
 >(
 	parentConfig: TParent,
 	childConfig: TChild
-): TParent & TChild {
+): Override<TParent, TChild> {
 	// Start shallow merge
 	const merged = { ...parentConfig, ...childConfig };
 

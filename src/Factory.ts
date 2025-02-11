@@ -12,6 +12,7 @@ import {
 	GenerateTextResult, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
 	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
 	GenerateObjectResultAll, StreamObjectResultAll,
+	Override,
 
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
@@ -20,16 +21,11 @@ import { z } from 'zod';
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types
-export type StrictUnionSubtype<T, U> = U extends any
+type StrictUnionSubtype<T, U> = U extends any
 	? T extends U
 	? Exclude<keyof T, keyof U> extends never ? T : never
 	: never
 	: never;
-
-// Ensures T is an exact match Ref, setting any extra properties to never
-/*type StrictType<T, Ref> = {
-	[K in keyof T]: K extends keyof Ref ? T[K] : never;
-}*/
 
 // Ensures T has exactly the same properties as Shape (no extra properties). Returns never if T is not a strict subtype of Shape.
 type StrictType<T, Shape> = T extends Shape
@@ -38,7 +34,7 @@ type StrictType<T, Shape> = T extends Shape
 
 
 // Helper for types that can optionally have template properties
-export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
+type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & TemplateConfig>;
 
@@ -59,8 +55,6 @@ type TemplateCallSignature<TConfig extends OptionalTemplateConfig> =
 type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
 
 type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
-
-type Override<A, B> = Omit<A, keyof B> & B;
 
 // Regular omit flattens the type, this one retains the original union structure. The example below will not work with regular Omit
 // type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
@@ -149,16 +143,17 @@ export function Config<
 ): ConfigProvider<TConfig>;
 
 // Config with parent overload
-
-// todo: avoid mixing config/[arent properties from different union types
 export function Config<
 	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string,
+	TCombined extends BaseConfig = StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>
 >(
 	config: TConfig,
-	parent: ConfigProvider<TParentConfig>
-): ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>>;
+	parent: ConfigProvider<
+		TCombined extends never ? never : TParentConfig
+	>
+): ConfigData<TCombined>;
 
 export function Config<
 	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
@@ -172,7 +167,7 @@ export function Config<
 	validateBaseConfig(config);
 
 	if (parent) {
-		const merged = mergeConfigs(config, parent.config);
+		const merged = mergeConfigs(parent.config, config);
 		// Runtime check would go here if needed
 		validateBaseConfig(merged);
 		return new ConfigData(merged);
@@ -208,7 +203,7 @@ export function TemplateRenderer<
 	validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
 	const merged = parent
-		? mergeConfigs(config, parent.config)
+		? mergeConfigs(parent.config, config)
 		: config;
 	if (parent) {
 		validateBaseConfig(merged);
@@ -296,7 +291,7 @@ export function TextGenerator<
 		: TConfig;
 
 	validateBaseConfig(config);
-	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
 	}
@@ -350,7 +345,7 @@ export function TextStreamer<
 		: TConfig;
 
 	validateBaseConfig(config);
-	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
 	}
@@ -510,7 +505,7 @@ export function ObjectGenerator<
 		: TConfig;
 
 	validateBaseConfig(config);
-	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
 	}
@@ -635,7 +630,7 @@ export function ObjectStreamer<
 		: TConfig;
 
 	validateBaseConfig(config);
-	const merged = parent ? mergeConfigs(config, parent.config) : config;
+	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
 	}

@@ -578,7 +578,6 @@ import { LanguageModel } from 'ai';
 		model: openai('gpt-4o'),
 		context: { base: true }
 	});
-	// @ts-expect-error
 	const ch6 = create.Config({
 		output: 'object',
 		schema,
@@ -590,12 +589,13 @@ import { LanguageModel } from 'ai';
 		model: openai('gpt-4o'),
 		promptType: 'text'
 	});
-	// @ts-expect-error
+
 	const ch7 = create.Config({
 		output: 'object',
 		schema,
 		prompt: "Just Generate",
 		context: { child: true }
+		// @ts-expect-error
 	}, pa4); // ✗ Can't mix promptType: 'text' with TemplateConfig
 
 	const result = await mixed("template1", { user: "Bob" });
