@@ -42,7 +42,7 @@ export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & TemplateConfig>;
 
-type TemplateCallSignature<TConfig extends Partial<OptionalTemplateConfig>> =
+type TemplateCallSignature<TConfig extends OptionalTemplateConfig> =
 	TConfig extends { prompt: string }
 	? {
 		//TConfig has prompt, no prompt argument is needed
@@ -70,7 +70,7 @@ type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : nev
 //type OmitIfPresent<TParent, TProps, TCheck> = Omit<TParent, Extract<TProps, keyof TCheck>>;
 
 type LLMCallSignature<
-	TConfig extends Partial<BaseConfig & OptionalTemplateConfig>,
+	TConfig extends BaseConfig & OptionalTemplateConfig,
 	TResult
 > = TConfig extends { promptType: 'text' }
 	? (
@@ -135,7 +135,7 @@ type RequireMissingWithSchema<
 	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
 type RequireLoaderIfNeeded<
-	TMergedConfig extends Partial<OptionalTemplateConfig & BaseConfig>
+	TMergedConfig extends OptionalTemplateConfig & BaseConfig
 > = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
@@ -251,27 +251,38 @@ export function TemplateRenderer<
 
 // Single config overload
 export function TextGenerator<
-	TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig>
+	config: StrictTypeWithTemplate<TConfig, GenerateTextConfig<TOOLS, OUTPUT>> & RequireLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
 ): LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
 
 // Config with parent
 export function TextGenerator<
-	TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-	TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>> = object,
-	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
+	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>
-		& RequireMissing<TConfig, { model: LanguageModel }, TParentConfig>,
-	parent?: ConfigProvider<TParentConfig>
+	config: RequireMissing<
+		StrictTypeWithTemplate<
+			TConfig,
+			GenerateTextConfig<TOOLS, OUTPUT>
+		>,
+		{ model: LanguageModel },
+		TParentConfig
+	>,
+	parent: ConfigProvider<
+		StrictTypeWithTemplate<
+			Override<TParentConfig, TConfig>,
+			GenerateTextConfig<TOOLS, OUTPUT>
+		> extends never ? never : TParentConfig
+	>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, GenerateTextResult<TOOLS, OUTPUT>>;
 
 export function TextGenerator<
-	TConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-	TParentConfig extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
+	TParentConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 >(
 	config: TConfig,
@@ -295,13 +306,14 @@ export function TextGenerator<
 
 	return createLLMRenderer<
 		CombinedType,
-		GenerateTextConfig<TOOLS, OUTPUT>, Promise<GenerateTextResult<TOOLS, OUTPUT>>
+		GenerateTextConfig<TOOLS, OUTPUT> & { model: LanguageModel },
+		Promise<GenerateTextResult<TOOLS, OUTPUT>>
 	>(merged, generateText);
 }
 
 // Single config overload
 export function TextStreamer<
-	TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
@@ -311,8 +323,8 @@ export function TextStreamer<
 
 // Config with parent
 export function TextStreamer<
-	TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
-	TParentConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
+	TParentConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
@@ -322,8 +334,8 @@ export function TextStreamer<
 ): LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>>;
 
 export function TextStreamer<
-	TConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
-	TParentConfig extends Partial<OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
+	TParentConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
@@ -349,7 +361,8 @@ export function TextStreamer<
 
 	return createLLMRenderer<
 		CombinedType,
-		StreamTextConfig<TOOLS, OUTPUT>, StreamTextResult<TOOLS, OUTPUT>
+		StreamTextConfig<TOOLS, OUTPUT> & { model: LanguageModel },
+		StreamTextResult<TOOLS, OUTPUT>
 	>(merged, streamText);
 }
 
@@ -386,13 +399,13 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig
 >(
-	config: TConfig &
+	config: StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig> &
 		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
 
 // Object with parent
 export function ObjectGenerator<
-	TConfig extends GenerateObjectObjectConfig<OBJECT>,
+	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -414,7 +427,7 @@ export function ObjectGenerator<
 
 // Array with parent
 export function ObjectGenerator<
-	TConfig extends GenerateObjectArrayConfig<ELEMENT>,
+	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -436,7 +449,7 @@ export function ObjectGenerator<
 
 // Enum with parent
 export function ObjectGenerator<
-	TConfig extends GenerateObjectEnumConfig<ENUM>,
+	TConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -458,11 +471,11 @@ export function ObjectGenerator<
 
 // No schema with parent
 export function ObjectGenerator<
-	TConfig extends GenerateObjectNoSchemaConfig,
+	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
-	config: RequireMissingWithSchema<
+	config: RequireMissing<
 		StrictTypeWithTemplate<
 			TConfig,
 			GenerateObjectNoSchemaConfig
@@ -541,7 +554,7 @@ export function ObjectStreamer<
 
 // Object with parent
 export function ObjectStreamer<
-	TConfig extends StreamObjectObjectConfig<OBJECT>,
+	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -563,7 +576,7 @@ export function ObjectStreamer<
 
 // Array with parent
 export function ObjectStreamer<
-	TConfig extends StreamObjectArrayConfig<ELEMENT>,
+	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -585,7 +598,7 @@ export function ObjectStreamer<
 
 // No schema with parent
 export function ObjectStreamer<
-	TConfig extends StreamObjectNoSchemaConfig,
+	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
 >(
@@ -607,8 +620,8 @@ export function ObjectStreamer<
 
 // Implementation
 export function ObjectStreamer<
-	TConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
-	TParentConfig extends Partial<OptionalTemplateConfig & BaseConfig>,
+	TConfig extends OptionalTemplateConfig & BaseConfig,
+	TParentConfig extends OptionalTemplateConfig & BaseConfig,
 	OBJECT = any, ELEMENT = any
 >(
 	config: TConfig,

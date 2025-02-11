@@ -70,13 +70,13 @@ export type GenerateTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
+> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
 export type StreamTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType };
+> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
 export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
 	output?: 'object' | undefined;

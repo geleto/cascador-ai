@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';
 
+/** todo - write more through, documented and systematic tests */
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (async (): Promise<void> => {
@@ -192,17 +193,23 @@ import { LanguageModel } from 'ai';
 	// @ts-expect-error
 	const tTemplate3 = create.TemplateRenderer({ promptType: 'template' }, tplParent3);//parent miust also be TemplateConfig
 
-	/* Test Factory Methods */
-
 	// Text Generators
+	// @ts-expect-error
+	const tg0 = create.TextGenerator({ model: openai('gpt-4o'), z: 1 });//z is not part of GenerateTextConfig
+
 	const tg1 = create.TextGenerator({ model: openai('gpt-4o') });
 	await tg1("Hello"); // ✓ Basic text generation
 	// @ts-expect-error
 	await tg1({ system: "Be helpful" }); // ✗ no prompt
+	// @ts-expect-error
+	await tg1(); // ✗ no prompt
 
 	const parentWithModel = create.Config({ model: openai('gpt-4o') });
-	const tg2 = create.TextGenerator({ prompt: "Hello" }, parentWithModel);
+	const tg2 = create.TextGenerator({ prompt: "Hello", promptType: 'template' }, parentWithModel);
 	await tg2(); // ✓ Inherited model
+
+	const parentWithModelzz = create.Config({ model: openai('gpt-4o') });
+	const tg2zz = create.ObjectGenerator({ output: 'no-schema' }, parentWithModel);
 
 	const tg3 = create.TextGenerator({
 		model: openai('gpt-4o'),
@@ -213,16 +220,18 @@ import { LanguageModel } from 'ai';
 	const tg4 = create.TextGenerator({
 		model: openai('gpt-4o'),
 		tools,
-		maxSteps: 3
+		maxSteps: 3,
 	});
 	await tg4("Find attractions in London"); // ✓ With tools
+
+	const wrongParent = create.Config({ model: openai('gpt-4o'), output: 'object' });
+	// @ts-expect-error
+	const texg = create.TextGenerator({ prompt: "Hello" }, wrongParent);
 
 	// Text Streamers
 	const ts1 = create.TextStreamer({ model: openai('gpt-4o') });
 	const res1 = await ts1("Stream");
 	for await (const chunk of res1.textStream) { } // ✓ Basic streaming
-
-	//type t =
 
 	// Object Generators
 	const og1 = create.ObjectGenerator({
@@ -272,7 +281,6 @@ import { LanguageModel } from 'ai';
 	// Error cases
 	// @ts-expect-error
 	const errModel = create.TextGenerator({}); // ✗ Missing model
-
 
 	const errSchema = create.ObjectGenerator({
 		model: openai('gpt-4o'),
@@ -492,8 +500,9 @@ import { LanguageModel } from 'ai';
 		context: { base: true }
 	});
 
-	const ch1 = create.ObjectGenerator(// @ts-expect-error
+	const ch1 = create.ObjectGenerator(
 		{
+			// @ts-expect-error
 			tools,
 			prompt: "Generate {what}",
 		}, par1); // ✗ Can't mix tools with object output
@@ -504,8 +513,9 @@ import { LanguageModel } from 'ai';
 		tools
 	});
 
-	// @ts-expect-error
+
 	const ch3 = create.ObjectGenerator({
+		// @ts-expect-error
 		output: 'object',
 		schema,
 		prompt: "Generate {what}",
@@ -541,8 +551,8 @@ import { LanguageModel } from 'ai';
 		model: openai('gpt-4o'),
 		promptType: 'text'
 	});
-	// @ts-expect-error
 	const ch4 = create.ObjectGenerator({
+		// @ts-expect-error
 		output: 'object',
 		schema,
 		prompt: "Just Generate",
@@ -554,8 +564,8 @@ import { LanguageModel } from 'ai';
 		model: openai('gpt-4o'),
 		context: { child: true }
 	});
-	// @ts-expect-error
 	const ch5 = create.ObjectGenerator({
+		// @ts-expect-error
 		output: 'object',
 		schema,
 		prompt: "Just Generate",
