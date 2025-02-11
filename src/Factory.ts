@@ -183,7 +183,7 @@ export function Config<
 
 // Single config overload
 export function TemplateRenderer<TConfig extends TemplateConfig>(
-	config: TConfig & RequireLoaderIfNeeded<TConfig>
+	config: StrictType<TConfig, TemplateConfig> & RequireLoaderIfNeeded<TConfig>
 ): TemplateCallSignature<TConfig>;
 
 // Config with parent overload - now properly returns only required properties in immediate config
@@ -191,8 +191,8 @@ export function TemplateRenderer<
 	TConfig extends TemplateConfig,
 	TParentConfig extends TemplateConfig
 >(
-	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<TParentConfig>
+	config: StrictType<TConfig, TemplateConfig> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<StrictType<TParentConfig, TemplateConfig>>
 ): TemplateCallSignature<Override<TParentConfig, TConfig>>;
 
 export function TemplateRenderer<

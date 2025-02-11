@@ -180,6 +180,18 @@ import { LanguageModel } from 'ai';
 	await tContext({}); // ✓ should compile - empty context is valid
 	await tContext(); // ✓ should compile - undefined context is valid
 
+	// Require TemplateConfig and nothing else
+	// @ts-expect-error
+	const tTemplate2 = create.TemplateRenderer({ prompt: "Hello", z: 1 });//z is not part of TemplateConfig
+
+	const tplParent2 = create.Config({ prompt: "Hello" });
+	// @ts-expect-error
+	const tTemplate2 = create.TemplateRenderer({ z: 1 }, tplParent2);
+
+	const tplParent3 = create.Config({ prompt: "Hello", model: openai('gpt-4o') });
+	// @ts-expect-error
+	const tTemplate3 = create.TemplateRenderer({ promptType: 'template' }, tplParent3);//parent miust also be TemplateConfig
+
 	/* Test Factory Methods */
 
 	// Text Generators
