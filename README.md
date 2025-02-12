@@ -6,7 +6,7 @@ Here's an improved introduction for your document:
 
 ---
 
-# Cascador-AI – A Framework for Simplified AI Orchestration
+# Cascador-AI – An Agent Framework for AI Orchestration
 
 With [Cascador-AI](https://github.com/geleto/cascador-ai), you can focus on defining what your AI agents should achieve, while the framework handles the intricate details of orchestration, concurrency, and dependency management. Using an intuitive templating approach, Cascador-AI makes it easy to describe workflows in a way that’s both simple and flexible - no need to deal with complex async code or specialized constructs. Cascador-AI delivers simplicity, flexibility and performance in one package.
 
