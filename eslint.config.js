@@ -20,7 +20,7 @@ export default tseslint.config(
 		rules: {
 			// Base formatting
 			"indent": ["error", "tab", { "SwitchCase": 1 }],
-			'linebreak-style': ['error', 'unix'],
+			'linebreak-style': 'off',
 
 			// Spacing rules
 			'object-curly-spacing': ['error', 'always'],
