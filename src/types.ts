@@ -133,7 +133,7 @@ export type StreamObjectNoSchemaConfig = BaseConfig & {
 }
 
 export type AnyNoTemplateConfig<
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
 	| GenerateTextConfig<TOOLS, OUTPUT>
 	| StreamTextConfig<TOOLS, OUTPUT>
@@ -152,10 +152,10 @@ export type AnyNoTemplateConfig<
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig>);*/
 
 export type AnyConfig<
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM> & { promptType: 'text' }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM> & TemplateConfig); // template modes including undefined
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & { promptType: 'text' }) // text mode - no template props
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined
 
 
 // Result types

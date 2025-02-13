@@ -5,7 +5,7 @@ import {
 	Context, TemplatePromptType, SchemaType,
 	//configs:
 	AnyConfig, BaseConfig,
-	TemplateConfig, OptionalTemplateConfig, OptionalNoPromptTemplateConfig,
+	TemplateConfig, OptionalTemplateConfig,
 	GenerateTextConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamTextConfig, StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
 	//Return types:
@@ -38,6 +38,17 @@ type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & TemplateConfig>;
 
+type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
+
+type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
+
+// Regular omit flattens the type, this one retains the original union structure. The example below will not work with regular Omit
+// type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
+// type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+
+//type OmitIfPresent<TParent, TProps, TCheck> = Omit<TParent, Extract<TProps, keyof TCheck>>;
+
 type TemplateCallSignature<TConfig extends OptionalTemplateConfig> =
 	TConfig extends { prompt: string }
 	? {
@@ -52,16 +63,6 @@ type TemplateCallSignature<TConfig extends OptionalTemplateConfig> =
 		config: TConfig;
 	};
 
-type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
-
-type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
-
-// Regular omit flattens the type, this one retains the original union structure. The example below will not work with regular Omit
-// type DebugTConfig2 = DistributiveOmit<OptionalTemplateConfig & StreamObjectObjectConfig<typeof schema>, 'schema'>;
-// type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
-type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
-
-//type OmitIfPresent<TParent, TProps, TCheck> = Omit<TParent, Extract<TProps, keyof TCheck>>;
 
 type LLMCallSignature<
 	TConfig extends BaseConfig & OptionalTemplateConfig,
@@ -121,7 +122,7 @@ type RequireMissingWithSchema<
 	(TConfig extends { schema: any }
 		? (Omit<TConfig, 'schema'> & {
 			schema: TConfig['schema'] extends z.Schema<infer U>
-			? z.Schema<U> & SchemaType<U>  // Add SchemaType union
+			? z.Schema<U> & SchemaType<U> // Add SchemaType union
 			: TConfig['schema']
 		})
 		: TConfig) &
@@ -136,18 +137,18 @@ type RequireLoaderIfNeeded<
 
 // Single config overload
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
-	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>,
+	config: StrictUnionSubtype<TConfig, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
 ): ConfigProvider<TConfig>;
 
 // Config with parent overload
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string,
-	TCombined extends BaseConfig = StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TCombined extends BaseConfig = StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>
 >(
 	config: TConfig,
 	parent: ConfigProvider<
@@ -156,13 +157,13 @@ export function Config<
 ): ConfigData<TCombined>;
 
 export function Config<
-	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>>> {
+): ConfigData<TConfig> | ConfigData<StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>> {
 
 	validateBaseConfig(config);
 
@@ -256,8 +257,8 @@ export function TextGenerator<
 // Config with parent
 export function TextGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<
@@ -401,8 +402,8 @@ export function ObjectGenerator<
 // Object with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
@@ -423,8 +424,8 @@ export function ObjectGenerator<
 // Array with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectArrayConfig<ELEMENT>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
@@ -445,8 +446,8 @@ export function ObjectGenerator<
 // Enum with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectEnumConfig<ENUM>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
@@ -467,8 +468,8 @@ export function ObjectGenerator<
 // No schema with parent
 export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissing<
 		StrictTypeWithTemplate<
@@ -550,8 +551,8 @@ export function ObjectStreamer<
 // Object with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
@@ -572,8 +573,8 @@ export function ObjectStreamer<
 // Array with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectArrayConfig<ELEMENT>,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
@@ -594,8 +595,8 @@ export function ObjectStreamer<
 // No schema with parent
 export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig,
-	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM>,
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, TSchema, ENUM extends string
+	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: RequireMissingWithSchema<
 		StrictTypeWithTemplate<
