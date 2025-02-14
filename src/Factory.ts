@@ -215,8 +215,7 @@ export function TemplateRenderer<
 	}
 
 	if ((merged.promptType === 'template-name' ||
-		merged.promptType === 'async-template-name' ||
-		merged.promptType === undefined) &&
+		merged.promptType === 'async-template-name') &&
 		!merged.loader
 	) {
 		throw new Error('A loader is required when promptType is "template-name", "async-template-name", or undefined.');

@@ -5,7 +5,6 @@ import { create } from '../src';
 
 // Base shared configuration
 const baseConfig = create.Config({
-	context: { language: 'Spanish' },
 	temperature: 0.7,
 });
 
@@ -34,21 +33,20 @@ const mainGenerator = create.TemplateRenderer({
 	},
 	context: {
 		anguage: 'Spanish',
-		readFile: async (filePath) => await fs.readFile(filePath, 'utf-8'),
+		readFile: async (filePath: string) => await fs.readFile(filePath, 'utf-8'),
 		storylineGen,
 		critiqueGen,
+		language: 'Spanish',
 	},
 	prompt: `
-    {% set synopsis = readFile('./synopsis.txt') %}
-    {% set storyContent = (storylineGen({ synopsis })).text %}
+    {% set synopsis = readFile('./examples/synopsis.txt') %}
+    {% set storyContent = (storylineGen({ synopsis: synopsis })).text %}
+	Story: {{ storyContent }}
     {% set critiqueContent = (critiqueGen({ story: storyContent })).text %}
-
-    Story ({{ language }}): {{ storyContent | translate(language) }}
-    Critique ({{ language }}): {{ critiqueContent | translate(language) }}
-  `
+    Critique : {{ critiqueContent }}
+	Story: in {{ storyContent | translate(language) }}`
 });
 
-// Execute
 (async () => {
 	const result = await mainGenerator();
 	console.log(result);

@@ -26,8 +26,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 		// Runtime validation of loader requirement
 		if (
 			(this.config.promptType === 'template-name' ||
-				this.config.promptType === 'async-template-name' ||
-				this.config.promptType === undefined) &&
+				this.config.promptType === 'async-template-name') &&
 			!this.config.loader
 		) {
 			throw new TemplateError('A loader is required when promptType is "template-name", "async-template-name", or undefined.');
