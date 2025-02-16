@@ -2,15 +2,15 @@
 
 [Cascador-AI](https://github.com/geleto/cascador-ai) is an AI agent framework that combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). Its core strength is automatically parallelized asynchronous templating, letting you write simple templates to orchestrate concurrent Large Language Model (LLM) operations without explicit async/await handling or special constructs.
 
-**Note**: Cascador is under ongoing development. Many documented features are under development and may not be fully implemented yet.
-
+**Note:** Cascador-ai is currently under active development and is not yet ready for production use. It requires comprehensive testing, additional agent examples, and the completion of some minor features. The most significant dependency is having a production-ready version of the Cascada template engine (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
+ 
 ## Features
 
 1. **Define Workflows with Automatically Parallelized Async Templating**
 
-	The [Cascada Template Engine](https://github.com/geleto/cascada) provides seamless async templating with automatic parallelization - no special syntax or explicit promise handling required. It automatically parallelizes concurrent tasks like LLM calls, API requests, and data processing while making sure that dependencies are awaited.
+   The [Cascada Template Engine](https://github.com/geleto/cascada) provides seamless async templating with automatic parallelization - no special syntax or explicit promise handling required. It automatically parallelizes concurrent tasks like LLM calls, API requests, and data processing while making sure that dependencies are awaited.
 
-	[Cascada](https://github.com/geleto/cascada) offers advanced template features - programming constructs (variables, loops, conditionals), first-class functions and macros, complex expressions, filters, extensions, and composition through inheritance, includes, and imports.
+   [Cascada](https://github.com/geleto/cascada) offers advanced template features - programming constructs (variables, loops, conditionals), first-class functions and macros, complex expressions, filters, extensions, and composition through inheritance, includes, and imports.
 
 2. **Standardized LLM Integrations**
 
@@ -19,20 +19,22 @@
 
 3. **Rich Context Objects**
 
-	Context objects provide dynamic data and functionality to templates, supporting both static values and async sources like API calls or database queries. This makes it easy to integrate external services or encapsulate logic directly within templates for flexible and extensible workflows.
+   Context objects provide dynamic data and functionality to templates, supporting both static values and async sources like API calls or database queries. This makes it easy to integrate external services or encapsulate logic directly within templates for flexible and extensible workflows.
 
 4. **Flexible Outputs**
-
-   Generate or stream text and structured data (using [Zod](https://github.com/colinhacks/zod) or JSON Schema).
+   Generate or stream responses as text and structured data (objects/arrays) with validation through [Zod](https://github.com/colinhacks/zod) or JSON Schema.
 
 5. **Hierarchical Context and Configurations**
 
    Generators and streamers can inherit properties from a shared configuration or parent generator. This allows defining hierarchical setups such as a base configuration, individual prompts with different LLMs, orchestrating agents for complex workflows, or exposing distinct APIs and data to different agents and prompts.
 
+6. **Type Checking Support**
+   Strong TypeScript integration that helps catch configuration errors early and ensures correct usage of renderers and templates.
+
 ## Installation
 
 ```bash
-TODO
+npm install cascador-ai
 ```
 
 ## Quick Start
@@ -101,6 +103,8 @@ const mainGenerator = create.TemplateRenderer({
 	console.log(result);
 })();
 ```
+
+# Understanding the Cascador-AI API
 
 ## Renderers: The Core Concept
 
@@ -346,9 +350,38 @@ You can specify how the data should be structured by setting output to:
 - `array` - Streams complete elements from an array
 - `no-schema` - No schema validation, streams raw JSON
 
+## Callable Objects
+
+Every renderer is a callable object that can be invoked in two ways:
+
+1. Using only the configuration provided during creation:
+```typescript
+const renderer = create.TextGenerator({
+  prompt: 'Hello {{ name }}',
+  context: { name: 'World' }
+}, baseConfig);
+
+const result = await renderer(); // Uses configured prompt and context
+```
+
+2. With a new prompt and optional context:
+```typescript
+const result = await renderer('Hi {{ user }}', { user: 'Alice' });
+```
+
 ## Template Properties
 
 All renderers (except when using `promptType: 'text'`) support several properties that control template processing:
+
+### prompt
+Defines the template or text that will be used for LLM interaction. Can be specified in three places:
+- Base config: `create.Config({ prompt: 'Base prompt {{ var }}' })`
+- Renderer creation (recommended): `create.TextGenerator({ prompt: 'Main prompt {{ var }}' })`
+- Function call: `renderer('Dynamic prompt {{ var }}', context)`
+
+Prompts defined in config or renderer creation are precompiled for better performance.
+One-off prompts provided during function calls are compiled each time they're used.
+When used with `messages`, the rendered prompt is appended to the messages array. (todo)
 
 ### promptType
 Controls how the template is processed:
@@ -441,49 +474,99 @@ const renderer = create.TemplateRenderer({
 
 Template properties can be defined in either the base config or the renderer creation options. Properties defined during renderer creation take precedence over those in the base config.
 
-## Callable Objects
+## Vercel AI Properties
 
-Every renderer is a callable object that can be invoked in two ways:
+All renderers support the core properties from the Vercel AI SDK, here are the most common ones:
 
-1. Using only the configuration provided during creation:
+### model
+The language model to use. Must be provided through a provider-specific helper:
 ```typescript
+import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
+
 const renderer = create.TextGenerator({
-  prompt: 'Hello {{ name }}',
-  context: { name: 'World' }
-}, baseConfig);
-
-const result = await renderer(); // Uses configured prompt and context
-```
-
-2. With a new prompt and optional context:
-```typescript
-const result = await renderer('Hi {{ user }}', { user: 'Alice' });
-```
-
-## Prompt Definition
-
-You can specify the prompt in three places:
-
-1. In the base config:
-```typescript
-const baseConfig = create.Config({
-  prompt: 'Base prompt {{ var }}'
+  model: openai('gpt-4'),  // or anthropic('claude-3'), etc.
+  // ...
 });
 ```
 
-2. During renderer creation (recommended for frequently used prompts):
+### temperature
+Controls randomness in the model's output, from 0 (deterministic) to 1 (creative). Default is 0.7.
 ```typescript
 const renderer = create.TextGenerator({
-  prompt: 'Main prompt {{ var }}'
+  temperature: 0.3,  // More focused, consistent outputs
+  // ...
+});
+```
+
+### maxTokens
+Maximum number of tokens to generate. Helps control response length.
+```typescript
+const renderer = create.TextGenerator({
+  maxTokens: 500,
+  // ...
+});
+```
+
+### messages
+Array of messages for chat-style interactions. Each message has a role and content:
+```typescript
+const renderer = create.TextGenerator({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello!' }
+  ],
+  // ...
+});
+```
+
+### topP
+Alternative to temperature for nucleus sampling. Value between 0 and 1. Default is 1.
+
+### presencePenalty
+Penalizes new tokens based on their presence in the text so far. Value between -2.0 and 2.0. Default is 0.
+
+### frequencyPenalty  
+Penalizes new tokens based on their frequency in the text so far. Value between -2.0 and 2.0. Default is 0.
+
+### stop
+Array of sequences where the model should stop generating further tokens.
+```typescript
+const renderer = create.TextGenerator({
+  stop: ["\n", "END"],
+  // ...
+});
+```
+
+## Using Renderers in Templates
+
+Renderers can be used within templates by adding them to the context object:
+
+```typescript
+const translateRenderer = create.TextGenerator({
+  model: openai('gpt-4o'),
+  prompt: 'Translate to Spanish: {{ text }}'
+}, baseConfig);
+
+const mainRenderer = create.TemplateRenderer({
+  context: {
+    translateRenderer
+  },
+  prompt: `
+    {% set original = "Hello world" %}
+    {% set translation = (translateRenderer({ text: original })).text %}
+    
+    Original: {{ original }}
+    Spanish: {{ translation }}
+  `
 }, baseConfig);
 ```
 
-3. During the function call (good for one-off prompts):
-```typescript
-const result = await renderer('Dynamic prompt {{ var }}', context);
-```
-
-Templates are precompiled for better performance when defined in either the config or during renderer creation. If a prompt is defined in both places, the renderer creation prompt takes precedence and will be precompiled. One-off prompts provided during function calls are compiled each time they're used.
+Key points about using renderers in templates:
+- Results include Vercel SDK properties (`.text`, `.textStream`, `.object`)
+- Renderers execute automatically when their inputs are available
+- Multiple renderers in the same template run in parallel when possible
+- Any renderer type can be used (generators, streamers, template renderers)
 
 ## Type Checking
 
@@ -520,40 +603,9 @@ Required properties are enforced:
 - `prompt` must be provided in either config, creation options, or function call
 - Template properties (filters, loader, options) cannot be used with `promptType: 'text'`
 
-## Using Renderers in Templates
-
-Renderers can be used within templates by adding them to the context object:
-
-```typescript
-const translateRenderer = create.TextGenerator({
-  model: openai('gpt-4o'),
-  prompt: 'Translate to Spanish: {{ text }}'
-}, baseConfig);
-
-const mainRenderer = create.TemplateRenderer({
-  context: {
-    translateRenderer
-  },
-  prompt: `
-    {% set original = "Hello world" %}
-    {% set translation = (translateRenderer({ text: original })).text %}
-    
-    Original: {{ original }}
-    Spanish: {{ translation }}
-  `
-}, baseConfig);
-```
-
-Key points about using renderers in templates:
-- Results include Vercel SDK properties (`.text`, `.textStream`, `.object`)
-- Renderers execute automatically when their inputs are available
-- Multiple renderers in the same template run in parallel when possible
-- Any renderer type can be used (generators, streamers, template renderers)
-
-
 ## Roadmap
 
-- **Embeddings Example**
+- **Embeddings Support**
 - **Image Generation**
   Integrate image generators (e.g., DALL-E) to produce images from prompts.
 - **`onStepFinish` Callback**
