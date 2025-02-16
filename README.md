@@ -612,5 +612,3 @@ Required properties are enforced:
   Provide hooks to capture intermediate steps or partial outputs.
 - **Error Handling & Recovery**
   Implement robust retry mechanisms and upcoming Cascada try/except blocks for improved error handling.
-
-Cascador-AI aims to simplify complex AI workflows by letting you declare them in flexible, automatically parallelized templates — so you can focus on what you want the LLM to do instead of how to orchestrate it.
