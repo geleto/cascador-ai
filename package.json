@@ -43,8 +43,6 @@
 		"node": ">=18.0.0"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^1.0.8",
-		"@ai-sdk/openai": "^1.0.18",
 		"ai": "^4.0.33",
 		"cascada-tmpl": "^0.0.2"
 	}
