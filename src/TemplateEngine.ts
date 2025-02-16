@@ -1,6 +1,6 @@
 // TemplateEngine.ts
 
-import { Environment, PAsyncEnvironment, PAsyncTemplate, Template, compilePAsync, compile } from 'cascada-tmpl';
+import { Environment, AsyncEnvironment, AsyncTemplate, Template, compileAsync, compile } from 'cascada-tmpl';
 import { Context, TemplateConfig } from './types';
 
 class TemplateError extends Error {
@@ -12,9 +12,9 @@ class TemplateError extends Error {
 }
 
 export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
-	protected env: Environment | PAsyncEnvironment;
-	protected templatePromise?: Promise<PAsyncTemplate>;
-	protected template?: Template | PAsyncTemplate;
+	protected env: Environment | AsyncEnvironment;
+	protected templatePromise?: Promise<AsyncTemplate>;
+	protected template?: Template | AsyncTemplate;
 	protected config: TConfig;
 
 	constructor(config: TConfig) {
@@ -37,7 +37,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 			if (this.config.promptType === 'template' || this.config.promptType === 'template-name') {
 				this.env = new Environment(this.config.loader ?? null, this.config.options);
 			} else {
-				this.env = new PAsyncEnvironment(this.config.loader ?? null, this.config.options);
+				this.env = new AsyncEnvironment(this.config.loader ?? null, this.config.options);
 			}
 
 			// Add filters if provided
@@ -56,9 +56,9 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				} else if (this.config.promptType === 'template-name') {
 					this.template = this.env.getTemplate(this.config.prompt);
 				} else if (this.config.promptType === 'async-template') {
-					this.template = compilePAsync(this.config.prompt, this.env as PAsyncEnvironment);
+					this.template = compileAsync(this.config.prompt, this.env as AsyncEnvironment);
 				} else if (this.config.promptType === 'async-template-name') {
-					this.templatePromise = (this.env as PAsyncEnvironment).getTemplatePAsync(this.config.prompt);
+					this.templatePromise = (this.env as AsyncEnvironment).getTemplateAsync(this.config.prompt);
 				}
 			}
 		} catch (error) {
@@ -85,7 +85,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 
 			// If we have a prompt override, use renderString directly
 			if (promptOverride) {
-				if (this.env instanceof PAsyncEnvironment) {
+				if (this.env instanceof AsyncEnvironment) {
 					return await this.env.renderString(promptOverride, mergedContext);
 				}
 				return await new Promise((resolve, reject) => {
