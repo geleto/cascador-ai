@@ -1,6 +1,6 @@
-# Cascador-AI – An Agent Framework for AI Orchestration
+# Cascador-AI – A Framework for AI Agent Orchestration
 
-## Build AI agent workflows with Nunjucks-style text templates that implicitly run async tasks in parallel.
+## Build AI workflows with templates - write sequential code, get parallel execution.
 
 Cascador-AI lets you orchestrate multiple concurrent AI agents, API calls, external services and data operations using simple template syntax - no explicit async handling required. Write templates that look synchronous but execute concurrently under the hood, making it easy to create sophisticated AI pipelines without wrestling with promises or parallel execution.
 
@@ -10,29 +10,23 @@ Cascador-AI lets you orchestrate multiple concurrent AI agents, API calls, exter
  
 ## Features
 
-1. **Define Workflows with Automatically Parallelized Async Templating**
+- **Template-Based Orchestration**
+   Build AI workflows using templates that generate prompts, chain results, and control flow. [Cascada](https://github.com/geleto/cascada) templates combine programming constructs (variables, loops, conditionals), first-class functions and macros with composition features (inheritance, imports) to express complex orchestration patterns clearly.
 
-   The [Cascada Template Engine](https://github.com/geleto/cascada) provides seamless async templating with automatic parallelization - no special syntax or explicit promise handling required. It automatically parallelizes concurrent tasks like LLM calls, API requests, and data processing while making sure that dependencies are awaited.
+- **Rich Context System**
+   Context objects seamlessly integrate data and functionality into templates, from static values to async operations like API calls, external services and database queries.
 
-   [Cascada](https://github.com/geleto/cascada) offers advanced template features - programming constructs (variables, loops, conditionals), first-class functions and macros, complex expressions, filters, extensions, and composition through inheritance, includes, and imports.
-
-2. **Standardized LLM Integrations**
-
+- **Automatic Parallelization**
+   The [Cascada Template Engine](https://github.com/geleto/cascada) automatically runs independent tasks (LLM calls, API requests and data processing) in parallel while managing dependencies - no explicit async and concurrency constructs required.
+   
+- **Standardized LLM Integrations**
    Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/), which provides standardized integration with various Large Language Model providers such as:
    OpenAI, Azure, Anthropic, Amazon Bedrock, Google Generative AI, Google Vertex AI, Mistral, x.AI Grok...
 
-3. **Rich Context Objects**
-
-   Context objects provide dynamic data and functionality to templates, supporting both static values and async sources like API calls or database queries. This makes it easy to integrate external services or encapsulate logic directly within templates for flexible and extensible workflows.
-
-4. **Flexible Outputs**
+- **Flexible Outputs**
    Generate or stream responses as text and structured data (objects/arrays) with validation through [Zod](https://github.com/colinhacks/zod) or JSON Schema.
 
-5. **Hierarchical Context and Configurations**
-
-   Generators and streamers can inherit properties from a shared configuration or parent generator. This allows defining hierarchical setups such as a base configuration, individual prompts with different LLMs, orchestrating agents for complex workflows, or exposing distinct APIs and data to different agents and prompts.
-
-6. **Type Checking Support**
+- **Type Safety Support**
    Strong TypeScript integration that helps catch configuration errors early and ensures correct usage of renderers and templates.
 
 ## Installation
