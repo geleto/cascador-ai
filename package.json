@@ -1,10 +1,36 @@
 {
 	"name": "cascador-ai",
 	"version": "0.0.1",
-	"description": "",
-	"keywords": [],
-	"author": "",
+	"description": "Orchestrate AI agent workflows with Nunjucks-style text templates that implicitly run async tasks in parallel",
+	"author": "Angel Popov<geleto@gmail.com>",
 	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/geleto/cascador-ai.git"
+	},
+	"homepage": "https://github.com/geleto/cascador-ai#readme",
+	"bugs": {
+		"url": "https://github.com/geleto/cascador-ai/issues"
+	},
+	"keywords": [
+		"ai",
+		"agent",
+		"vercel",
+		"template",
+		"async",
+		"parallel",
+		"concurrency",
+		"llm",
+		"orchestration",
+		"workflow",
+		"nunjucks",
+		"templates"
+	],
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -14,9 +40,6 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
-	"files": [
-		"dist"
-	],
 	"scripts": {
 		"build": "tsc",
 		"clean": "rimraf dist",
@@ -40,7 +63,8 @@
 		"typescript-eslint": "^8.19.1"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=18.0.0",
+		"npm": ">=9.0.0"
 	},
 	"dependencies": {
 		"ai": "^4.0.33",

@@ -1,8 +1,12 @@
 # Cascador-AI – An Agent Framework for AI Orchestration
 
-[Cascador-AI](https://github.com/geleto/cascador-ai) is an AI agent framework that combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). Its core strength is automatically parallelized asynchronous templating, letting you write simple templates to orchestrate concurrent Large Language Model (LLM) operations without explicit async/await handling or special constructs.
+## Build AI agent workflows with Nunjucks-style text templates that implicitly run async tasks in parallel.
 
-**Note:** Cascador-ai is currently under active development and is not yet ready for production use. It requires comprehensive testing, additional agent examples, and the completion of some minor features. The most significant dependency is having a production-ready version of the Cascada template engine (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
+Cascador-AI lets you orchestrate multiple concurrent AI agents, API calls, external services and data operations using simple template syntax - no explicit async handling required. Write templates that look synchronous but execute concurrently under the hood, making it easy to create sophisticated AI pipelines without wrestling with promises or parallel execution.
+
+[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). Its core strength is support for templates that look synchronous but execute concurrently under the hood, while .
+
+**Note:** Cascador-ai is currently under active development and is not yet ready for production use. The most significant dependency is having the Cascada template engine reach production-ready status (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
  
 ## Features
 
@@ -350,9 +354,9 @@ You can specify how the data should be structured by setting output to:
 - `array` - Streams complete elements from an array
 - `no-schema` - No schema validation, streams raw JSON
 
-## Callable Objects
+## Callable Render Objects
 
-Every renderer is a callable object that can be invoked in two ways:
+Every renderer can be used as parent configuration and is also a callable object that can be invoked in two ways:
 
 1. Using only the configuration provided during creation:
 ```typescript
