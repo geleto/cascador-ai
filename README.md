@@ -1,33 +1,38 @@
-# Cascador-AI – A Framework for AI Agent Orchestration
+# Cascador-AI: Elegant AI Agent Orchestration
 
-## Build AI workflows with templates - write sequential code, get parallel execution.
+## Write simple templates. Get sophisticated parallel agents.
 
-Cascador-AI lets you orchestrate multiple concurrent AI agents, API calls, external services and data operations using simple template syntax - no explicit async handling required. Write templates that look synchronous but execute concurrently under the hood, making it easy to create sophisticated AI pipelines without wrestling with promises or parallel execution.
+Cascador-AI is a powerful framework that simplifies AI agent orchestration through intuitive template-based workflows. It enables developers to express complex sequences of AI operations, API calls, and data transformations using straightforward template syntax while automatically handling parallel execution under the hood.
 
-[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). Its core strength is support for templates that look synchronous but execute concurrently under the hood, while .
+[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). 
 
 **Note:** Cascador-ai is currently under active development and is not yet ready for production use. The most significant dependency is having the Cascada template engine reach production-ready status (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
  
-## Features
+# Table of Contents
+- [Features](#features)
+- [Installation](#installation)12
+- [Quick Start](#quick-start)
+- [Understanding the Cascador-AI API](#understanding-the-cascador-ai-api)
+- [Configuration Management](#configuration-management)
+- [Renderer Types](#renderer-types)
+- [Callable Render Objects](#callable-render-objects)
+- [Template Properties](#template-properties)
+- [Vercel AI Properties](#vercel-ai-properties)
+- [Using Renderers in Templates](#using-renderers-in-templates)
+- [Type Checking](#type-checking)
+- [Embedding Integration](#embedding-integration)
+- [Roadmap](#roadmap)
 
-- **Template-Based Orchestration**
-   Build AI workflows using templates that generate prompts, chain results, and control flow. [Cascada](https://github.com/geleto/cascada) templates combine programming constructs (variables, loops, conditionals), first-class functions and macros with composition features (inheritance, imports) to express complex orchestration patterns clearly.
+## Why Cascador-AI?
 
-- **Rich Context System**
-   Context objects seamlessly integrate data and functionality into templates, from static values to async operations like API calls, external services and database queries.
+* **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template syntax
+* **Powerful Template Language**: Create sophisticated workflows using variables, loops, conditionals, functions, macros, inheritance, and imports - all powered by the [Cascada](https://github.com/geleto/cascada) template engine
+* **Automatic Concurrency**: Independent operations run in parallel without explicit async code and concurrency constructs
+* **Rich Context System**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, and custom service integrations
+* **LLM Provider Flexibility**: Standardized integration with all major LLM providers through the Vercel AI SDK
+* **Type Safety**: Strong TypeScript support catches configuration errors early
 
-- **Automatic Parallelization**
-   The [Cascada Template Engine](https://github.com/geleto/cascada) automatically runs independent tasks (LLM calls, API requests and data processing) in parallel while managing dependencies - no explicit async and concurrency constructs required.
-   
-- **Standardized LLM Integrations**
-   Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/), which provides standardized integration with various Large Language Model providers such as:
-   OpenAI, Azure, Anthropic, Amazon Bedrock, Google Generative AI, Google Vertex AI, Mistral, x.AI Grok...
-
-- **Flexible Outputs**
-   Generate or stream responses as text and structured data (objects/arrays) with validation through [Zod](https://github.com/colinhacks/zod) or JSON Schema.
-
-- **Type Safety Support**
-   Strong TypeScript integration that helps catch configuration errors early and ensures correct usage of renderers and templates.
+Built on the powerful combination of [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
 
 ## Installation
 
@@ -42,7 +47,7 @@ This example demonstrates how to:
 2. Read a synopsis in the template from a file.
 3. Expand the synopsis into a story.
 4. Critique it.
-4. Translate both the story and the critique into a specified language.
+4. Translate the story into a specified language.
 
 Generating the critique and translating the story will run in parallel, as these are two independent operations, but both must wait for the story generation to complete first.
 
@@ -108,7 +113,7 @@ const mainGenerator = create.TemplateRenderer({
 
 In Cascador-AI, a renderer is any object that can process input and produce output, whether that's template rendering, LLM text generation, or structured data streaming. All Cascador objects are renderers that share these fundamental characteristics:
 
-- **Factory Creation**: They are created using factory functions from the `create` namespace. Each factory function accepts a configuration object and an optional parent configuration:
+- **Factory Creation**: They are created using factory functions from the `create` namespace. Each factory function accepts a configuration object and an optional parent configuration. The parent can be a Config object or another renderer:
   ```typescript
   import { create } from 'cascador-ai';
   import { openai } from '@ai-sdk/openai';
@@ -133,11 +138,12 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
 - **Template Properties**: Every renderer supports template processing through several key properties:
   - `promptType` - Controls the template processing mode
   - `context` - Provides data and methods for templates
-  - `filters` - Adds template transformation functions
+  - `filters` - Adds transformation functions
   - `loader` - Enables external template loading
+
   [See Template Properties](#template-properties)
 
-- **Callable Interface**: Every renderer is a callable object that can be invoked in two ways:
+- **Callable Interface**: Every renderer can be used a parent () or as a callable object that can be invoked in two ways:
   ```typescript
   // Using configured prompt and context
   const result = await renderer();
@@ -145,13 +151,13 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
   // With a one-off prompt and context
   const result = await renderer('Hello {{ name }}', { name: 'World' });
   ```
-  One-off prompts are compiled each time they're used, while prompts defined during renderer creation are precompiled for better performance. [See Callable Objects](#callable-objects)
+  One-off prompts specified in a call argument are compiled each time they're used, while prompts defined during renderer creation are precompiled for better performance. [See Callable Objects](#callable-objects)
 
-- **Template Usage**: They can be used inside templates by adding them to the context object:
+- **Template Usage**: The renderers can be used inside templates by adding them to the context object:
   ```typescript
   const mainRenderer = create.TemplateRenderer({
     context: {
-      translateRenderer,  // Add renderer to context
+      translateRenderer,
       summarizeRenderer
     },
     prompt: '{{ (translateRenderer({ text })).text }}'
@@ -565,6 +571,37 @@ Key points about using renderers in templates:
 - Renderers execute automatically when their inputs are available
 - Multiple renderers in the same template run in parallel when possible
 - Any renderer type can be used (generators, streamers, template renderers)
+
+## Embedding Integration
+While Cascador-AI has no special embedding-specific features, you can easily incorporate vector embeddings from the Vercel AI SDK. Simply add embedding functions to your context object and access them directly in templates for semantic search, similarity comparisons, and RAG applications.
+
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { embed, cosineSimilarity } from 'ai';
+import { create } from 'cascador-ai';
+import fs from 'fs/promises';
+
+const documentFinder = create.TemplateRenderer({
+  context: {
+    userQuery: "machine learning applications",
+    readFile: async (filePath) => await fs.readFile(filePath, 'utf-8'),
+    embedText: async (text) => (await embed({model: openai.embedding('text-embedding-3-small'), value: text})).embedding,
+    compareSimilarity: cosineSimilarity
+  },
+  prompt: `
+    {% set queryEmbedding = embedText(userQuery) %}
+    {% set docs = [] %}
+    {% for i in range(1, 11) %}
+      {{- docs.push({
+        filename: 'document' + i + '.txt',
+        similarity: compareSimilarity(queryEmbedding, embedText(readFile('document' + i + '.txt')))
+      }) | reject() }}
+    {% endfor %}
+    Most similar document to "{{ userQuery }}":
+    {{ (docs | sort(true, false, 'similarity') | first).filename }}`
+});
+documentFinder().then(result => console.log(result));
+```
 
 ## Type Checking
 
