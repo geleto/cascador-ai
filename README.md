@@ -4,10 +4,10 @@
 
 Cascador-AI is a powerful framework that simplifies AI agent orchestration through intuitive template-based workflows. It enables developers to express complex sequences of AI operations, API calls, and data transformations using straightforward template syntax while automatically handling parallel execution under the hood.
 
-[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)). 
+[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)).
 
 **Note:** Cascador-ai is currently under active development and is not yet ready for production use. The most significant dependency is having the Cascada template engine reach production-ready status (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
- 
+
 # Table of Contents
 - [Features](#features)
 - [Installation](#installation)12
@@ -117,19 +117,19 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
   ```typescript
   import { create } from 'cascador-ai';
   import { openai } from '@ai-sdk/openai';
-  
+
   // Create with direct configuration
   const simpleRenderer = create.TextGenerator({
     model: openai('gpt-4o'),
     prompt: 'Hello {{ name }}'
   });
-  
+
   // Create with configuration and parent
   const baseConfig = create.Config({
     model: openai('gpt-4o'),
     temperature: 0.7
   });
-  
+
   const inheritingRenderer = create.TextGenerator({
     prompt: 'Greet {{ name }}'
   }, baseConfig);
@@ -147,7 +147,7 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
   ```typescript
   // Using configured prompt and context
   const result = await renderer();
-  
+
   // With a one-off prompt and context
   const result = await renderer('Hello {{ name }}', { name: 'World' });
   ```
@@ -530,7 +530,7 @@ Alternative to temperature for nucleus sampling. Value between 0 and 1. Default 
 ### presencePenalty
 Penalizes new tokens based on their presence in the text so far. Value between -2.0 and 2.0. Default is 0.
 
-### frequencyPenalty  
+### frequencyPenalty
 Penalizes new tokens based on their frequency in the text so far. Value between -2.0 and 2.0. Default is 0.
 
 ### stop
@@ -559,7 +559,7 @@ const mainRenderer = create.TemplateRenderer({
   prompt: `
     {% set original = "Hello world" %}
     {% set translation = (translateRenderer({ text: original })).text %}
-    
+
     Original: {{ original }}
     Spanish: {{ translation }}
   `
@@ -603,6 +603,81 @@ const documentFinder = create.TemplateRenderer({
 documentFinder().then(result => console.log(result));
 ```
 
+## RAG Integration
+The Cascador-AI template-based approach makes it easy to incorporate external libraries like LlamaIndex for retrieval-augmented generation workflows:
+
+```typescript
+import { create } from 'cascador-ai';
+import { Document, VectorStoreIndex, OpenAIEmbedding } from 'llamaindex';
+import { openai } from '@ai-sdk/openai';
+import fs from 'fs/promises';
+
+(async () => {
+
+  const docs = [];
+  for (let i = 1; i <= 10; i++) {
+    const text = await fs.readFile(`document${i}.txt`, 'utf-8');
+    docs.push(new Document({ text, id_: `doc${i}` }));
+  }
+
+  const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
+    embedModel: new OpenAIEmbedding({ model: 'text-embedding-3-small' })
+  });
+
+  const answerGenerator = create.TextGenerator({
+    model: openai('gpt-4o'),
+    prompt: 'Summarize the latest advancements in machine learning for cancer detection based on: {{ context }}'
+  });
+
+  const ragGenerator = create.TemplateRenderer({
+    context: {
+      query: "What are the latest advancements in machine learning for cancer detection?",
+      searchIndex: async (queryText) => {
+        const queryEngine = vectorIndex.asQueryEngine({ similarityTopK: 3 });
+        const response = await queryEngine.query(queryText);
+        return response.sourceNodes.map(n => n.text).join('\n');
+      },
+      answerGenerator
+    },
+    prompt: `
+      Query: {{ query }}
+      Answer: {{ (answerGenerator({ context: searchIndex(query) })).text }}
+    `
+  });
+
+  console.log(await ragGenerator());
+})();
+```
+
+This example shows how to integrate LlamaIndex with Cascador templates. Note that we're using LlamaIndex's own OpenAIEmbedding class rather than Vercel AI SDK's embedding models, as each library has its own implementation.
+Alternatively, you could create an adapter to use Vercel AI SDK embeddings with LlamaIndex:
+
+```typescript
+import { BaseEmbedding } from 'llamaindex';
+import { embed } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+class VercelEmbeddingAdapter extends BaseEmbedding {
+  constructor(private vercelModel: any) {
+    super();
+  }
+
+  async getTextEmbedding(text: string): Promise<number[]> {
+    const response = await embed({ model: this.vercelModel, value: text });
+    return response.embedding;
+  }
+
+  async getQueryEmbedding(text: string): Promise<number[]> {
+    return this.getTextEmbedding(text);
+  }
+}
+
+// Then use it like this:
+const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
+  embedModel: new VercelEmbeddingAdapter(openai.embedding('text-embedding-3-small'))
+});
+```
+
 ## Type Checking
 
 Cascador-AI's type system enforces strict configuration rules to prevent runtime errors:
@@ -639,11 +714,10 @@ Required properties are enforced:
 - Template properties (filters, loader, options) cannot be used with `promptType: 'text'`
 
 ## Roadmap
-
-- **Embeddings Support**
 - **Image Generation**
   Integrate image generators (e.g., DALL-E) to produce images from prompts.
 - **`onStepFinish` Callback**
   Provide hooks to capture intermediate steps or partial outputs.
+- **Versioned prompt loader**
 - **Error Handling & Recovery**
   Implement robust retry mechanisms and upcoming Cascada try/except blocks for improved error handling.
