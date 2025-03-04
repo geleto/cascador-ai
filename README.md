@@ -1,16 +1,16 @@
-# Cascador-AI: Elegant AI Agent Orchestration
+# Cascador-AI: Simplify Complex AI Workflows and Agents with Powerful Templates
 
-## Write simple templates. Get sophisticated parallel agents.
+## Effortless Orchestration, Built-In Concurrency
 
-Cascador-AI is a powerful framework that simplifies AI agent orchestration through intuitive template-based workflows. It enables developers to express complex sequences of AI operations, API calls, and data transformations using straightforward template syntax while automatically handling parallel execution under the hood.
+Imagine crafting sophisticated AI workflows—blending language models, API calls, and data transformations—without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex sequences in a simple syntax while automatically optimizing for parallel execution.
 
-[Cascador-AI](https://github.com/geleto/cascador-ai) combines the [Vercel AI SDK](https://sdk.vercel.ai/) with the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)).
+Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous feel and asynchronous power. It’s TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
 
-**Note:** Cascador-ai is currently under active development and is not yet ready for production use. The most significant dependency is having the Cascada template engine reach production-ready status (for more details, refer to the [Cascada Development Status and Roadmap](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) ).
+**Note:** *Cascador-AI* is under active development and not yet production-ready, pending the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity.
 
 # Table of Contents
 - [Features](#features)
-- [Installation](#installation)12
+- [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Understanding the Cascador-AI API](#understanding-the-cascador-ai-api)
 - [Configuration Management](#configuration-management)
@@ -26,11 +26,11 @@ Cascador-AI is a powerful framework that simplifies AI agent orchestration throu
 ## Why Cascador-AI?
 
 * **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template syntax
-* **Powerful Template Language**: Create sophisticated workflows using variables, loops, conditionals, functions, macros, inheritance, and imports - all powered by the [Cascada](https://github.com/geleto/cascada) template engine
-* **Automatic Concurrency**: Independent operations run in parallel without explicit async code and concurrency constructs
-* **Rich Context System**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, and custom service integrations
-* **LLM Provider Flexibility**: Standardized integration with all major LLM providers through the Vercel AI SDK
-* **Type Safety**: Strong TypeScript support catches configuration errors early
+- **Parallel by Default**: Independent operations run concurrently—no extra effort required
+- **Powerful Template Language**: Leverage variables, loops, conditionals, and more via [Cascada](https://github.com/geleto/cascada)
+- **Flexible Context**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, and custom service integrations
+- **LLM Provider Flexibility**: Works with any major provider through the Vercel AI SDK
+- **Type-Safe**: Catch errors early with robust TypeScript support
 
 Built on the powerful combination of [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
 
@@ -39,17 +39,13 @@ Built on the powerful combination of [Vercel AI SDK](https://sdk.vercel.ai/) and
 ```bash
 npm install cascador-ai
 ```
+Ensure you have Node.js installed and, if you plan to use specific LLM providers, their respective SDKs (e.g., `@ai-sdk/openai` for OpenAI). Check the [Vercel AI SDK documentation](https://sdk.vercel.ai/) for provider-specific setup details
 
 ## Quick Start
 
-This example demonstrates how to:
-1. Define a base configuration that is shared across all generators.
-2. Read a synopsis in the template from a file.
-3. Expand the synopsis into a story.
-4. Critique it.
-4. Translate the story into a specified language.
+This example walks you through generating a story from a synopsis, critiquing it, and translating it—all orchestrated with a single template. Independent tasks (critique and translation) run in parallel automatically, waiting only for the story to finish.
 
-Generating the critique and translating the story will run in parallel, as these are two independent operations, but both must wait for the story generation to complete first.
+Here’s how it works:
 
 ```js
 import { anthropic } from '@ai-sdk/anthropic';
@@ -86,7 +82,7 @@ const mainGenerator = create.TemplateRenderer({
 		translate: async (text: string, lang: string) => (await translateGen({ text, language: lang })).text
 	},
 	context: {
-		anguage: 'Spanish',
+		language: 'Spanish',
 		readFile: async (filePath: string) => await fs.readFile(filePath, 'utf-8'),
 		storylineGen,
 		critiqueGen,
@@ -98,38 +94,44 @@ const mainGenerator = create.TemplateRenderer({
 	Story: {{ storyContent }}
     {% set critiqueContent = (critiqueGen({ story: storyContent })).text %}
     Critique : {{ critiqueContent }}
-	Story: in {{ storyContent | translate(language) }}`
+	Story in {{language}}: {{ storyContent | translate(language) }}`
 });
 
-(async () => {
-	const result = await mainGenerator();
-	console.log(result);
-})();
+(async () => console.log(await mainGenerator()))();
 ```
+
+This snippet:
+
+1. Sets up a reusable base configuration.
+2. Loads a synopsis from a file.
+3. Expands it into a story using Claude 3.
+4. Generates a critique with GPT-4.
+5. Translates the story into Spanish—concurrently with the critique.
+
+The result? A seamless workflow with minimal code, showcasing Cascador-AI’s power to orchestrate tasks effortlessly.
 
 # Understanding the Cascador-AI API
 
-## Renderers: The Core Concept
+## Renderers: The Heart of Cascador-AI
 
-In Cascador-AI, a renderer is any object that can process input and produce output, whether that's template rendering, LLM text generation, or structured data streaming. All Cascador objects are renderers that share these fundamental characteristics:
+At the core of *Cascador-AI* are **renderers**—versatile objects that transform inputs into outputs, whether that’s rendering templates, generating text with LLMs, or streaming structured data. Think of them as the building blocks for your workflows, designed to be both powerful and easy to use. Every renderer shares a few key traits:
 
-- **Factory Creation**: They are created using factory functions from the `create` namespace. Each factory function accepts a configuration object and an optional parent configuration. The parent can be a Config object or another renderer:
+- **Created with Factories**: Use the `create` namespace to spin up renderers with custom configurations, optionally inheriting from a parent (like a `Config` object or another renderer):
   ```typescript
   import { create } from 'cascador-ai';
   import { openai } from '@ai-sdk/openai';
 
-  // Create with direct configuration
+  // Standalone renderer
   const simpleRenderer = create.TextGenerator({
     model: openai('gpt-4o'),
     prompt: 'Hello {{ name }}'
   });
 
-  // Create with configuration and parent
+  // Inheriting from a base config
   const baseConfig = create.Config({
     model: openai('gpt-4o'),
     temperature: 0.7
   });
-
   const inheritingRenderer = create.TextGenerator({
     prompt: 'Greet {{ name }}'
   }, baseConfig);
@@ -143,7 +145,7 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
 
   [See Template Properties](#template-properties)
 
-- **Callable Interface**: Every renderer can be used a parent () or as a callable object that can be invoked in two ways:
+- **Callable Interface**: Invoke renderers in two ways: with their built-in setup or with one-off prompts and contexts. Precompiled prompts (set during creation) run faster, while on-the-fly prompts offer flexibility:
   ```typescript
   // Using configured prompt and context
   const result = await renderer();
@@ -153,7 +155,7 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
   ```
   One-off prompts specified in a call argument are compiled each time they're used, while prompts defined during renderer creation are precompiled for better performance. [See Callable Objects](#callable-objects)
 
-- **Template Usage**: The renderers can be used inside templates by adding them to the context object:
+- **Nested in Templates**: Drop renderers into your `context` to use them within templates, chaining tasks effortlessly:
   ```typescript
   const mainRenderer = create.TemplateRenderer({
     context: {
@@ -163,7 +165,9 @@ In Cascador-AI, a renderer is any object that can process input and produce outp
     prompt: '{{ (translateRenderer({ text })).text }}'
   }, baseConfig);
   ```
-  [See Using Renderers in Templates](#using-renderers-in-templates)
+  [Check out Using Renderers in Templates](#using-renderers-in-templates) for examples.
+
+Renderers tie together *Cascador-AI*’s simplicity and concurrency magic, letting you orchestrate complex workflows with minimal fuss. Whether you’re generating text, streaming data, or rendering pure templates, they’ve got you covered.
 
 ## Configuration Management
 
@@ -190,30 +194,37 @@ const renderer = create.TextGenerator({
 // The renderer inherits model, temperature, and context from baseConfig
 ```
 
-## Renderer Types
+## The Cascador Renderers
+
+### Your Toolkit for Every Task
+
+*Cascador-AI* offers a suite of renderers, each tailored to a specific job—whether it’s rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation but shine in their own ways. Here’s the lineup:
 
 ### TemplateRenderer
-Pure template processing without LLM involvement. Unlike other renderers, it doesn't wrap any Vercel function and operates solely on templates:
+**What it does**: Pure template processing, no LLMs involved. Perfect for stitching together dynamic content from data or async sources.
 
 ```typescript
 import { create } from 'cascador-ai';
 
-const asyncTemplatedRenderer = create.TemplateRenderer({
+const baseConfig = create.Config({ /* shared settings */ });
+const templatedRenderer = create.TemplateRenderer({
   prompt: 'Hi {{ name }}! Today is {{ currentDay }}.',
   context: {
     name: async () => (await sql.query('SELECT name FROM users LIMIT 1')).rows[0].name,
-    currentDay: new Date().toLocaleDateString(),
+    currentDay: new Date().toLocaleDateString()
   }
 }, baseConfig);
 
 (async () => {
-  const result = await asyncTemplatedRenderer();
-  console.log('Async templated output:', result);
+  const result = await templatedRenderer();
+  console.log('Output:', result);
 })();
 ```
 
+**Use it for**: Dynamic reports, email templates, or any task needing flexible, non-LLM rendering.
+
 ### TextGenerator
-Wraps Vercel's `generateText` function. Used for generating text completions from LLMs. See [Vercel generateText documentation](<link-to-vercel-docs>) for detailed return type information:
+**What it does**: Generates text via LLMs using Vercel’s `generateText`. Ideal for one-shot outputs like summaries or creative writing.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -223,7 +234,6 @@ const generator = create.TextGenerator({
   model: openai('gpt-4o'),
   prompt: 'Describe "{{ topic }}" in 3 sentences.',
   context: {
-    // The title of today's featured Wikipedia article:
     topic: async () => {
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
       const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`;
@@ -238,8 +248,10 @@ const generator = create.TextGenerator({
 })();
 ```
 
+**Use it for**: Article generation, quick answers, or API-driven content. [See Vercel docs](<link-to-vercel-docs>) for return details.
+
 ### TextStreamer
-Wraps Vercel's `streamText` function. Provides real-time streaming of LLM responses, making it ideal for chat interfaces, live updates, or progressive text rendering. See [Vercel streamText documentation](<link-to-vercel-docs>) for streaming interface details:
+**What it does**: Streams LLM text in real time with Vercel’s `streamText`. Great for live updates or chat-style interfaces.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -258,66 +270,53 @@ const streamer = create.TextStreamer({
 })();
 ```
 
+**Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs](<link-to-vercel-docs>) for streaming specifics.
+
 ### ObjectGenerator
-Wraps Vercel's `generateObject` function. Generates structured data with schema validation. See [Vercel generateObject documentation](<link-to-vercel-docs>) for output modes and validation:
+**What it does**: Produces structured data with Vercel’s `generateObject`, complete with schema validation. Think JSON outputs or classifications.
 
 ```typescript
 import { create } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-// Example 1: Structured Data with Schema
 const profileGenerator = create.ObjectGenerator({
   model: openai('gpt-4o'),
   schema: z.object({
     name: z.string(),
     age: z.number(),
-    hobbies: z.array(z.string()),
+    hobbies: z.array(z.string())
   }),
   prompt: 'Generate a random person profile in JSON format.'
 }, baseConfig);
 
 (async () => {
   const { object: person } = await profileGenerator();
-  console.log('Generated Person:', person);
-})();
-
-// Example 2: Classification with Enum
-const genreClassifier = create.ObjectGenerator({
-  model: openai('gpt-4o'),
-  output: 'enum',
-  enum: ['action', 'comedy', 'drama', 'horror', 'sci-fi'],
-  prompt: 'Classify the genre of this movie plot: {{ plot }}'
-}, baseConfig);
-
-(async () => {
-  const { object: genre } = await genreClassifier({
-    plot: 'A group of astronauts travel through a wormhole...'
-  });
-  console.log('Genre:', genre);
+  console.log('Person:', person);
 })();
 ```
 
-You can specify how the data should be structured by setting output to:
+You can specify how the data should be structured by setting `output` to:
 - `object` (default) - Returns a single object matching the schema
 - `array` - Returns an array of objects matching the schema
 - `enum` - For classification tasks with a discrete set of possible values
 - `no-schema` - No schema validation, returns raw JSON
 
+**Use it for**: Data extraction, structured responses, or enum-based classification.
+
 ### ObjectStreamer
-Wraps Vercel's `streamObject` function. Streams structured data with incremental updates. See [Vercel streamObject documentation](<link-to-vercel-docs>) for streaming modes:
+**What it does**: Streams structured data incrementally via Vercel’s `streamObject`. Perfect for real-time data feeds or partial updates.
 
 ```typescript
 import { create } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-// Example 1: Streaming Array Elements
 const characterStreamer = create.ObjectStreamer({
   model: openai('gpt-4o'),
   schema: z.array(z.object({
     name: z.string(),
-    description: z.string(),
+    description: z.string()
   })),
   output: 'array',
   prompt: 'Generate 3 character descriptions.'
@@ -326,254 +325,389 @@ const characterStreamer = create.ObjectStreamer({
 (async () => {
   const { elementStream } = await characterStreamer();
   for await (const character of elementStream) {
-    console.log('New character:', character);
-  }
-})();
-
-// Example 2: Streaming Partial Object Updates
-const detailedStreamer = create.ObjectStreamer({
-  model: openai('gpt-4o'),
-  schema: z.object({
-    name: z.string(),
-    description: z.string(),
-    abilities: z.array(z.string())
-  }),
-  prompt: 'Generate a character description.'
-}, baseConfig);
-
-(async () => {
-  const { partialObjectStream } = await detailedStreamer();
-  for await (const partial of partialObjectStream) {
-    console.log('Update:', partial);
+    console.log('Character:', character);
   }
 })();
 ```
 
-You can specify how the data should be structured by setting output to:
+You can specify how the data should be structured by setting `output` to:
 - `object` (default) - Streams partial updates to a single object
 - `array` - Streams complete elements from an array
 - `no-schema` - No schema validation, streams raw JSON
 
+**Use it for**: Live dashboards, incremental JSON builds, or array streaming.
+
 ## Callable Render Objects
 
-Every renderer can be used as parent configuration and is also a callable object that can be invoked in two ways:
+### Flexibility at Your Fingertips
 
-1. Using only the configuration provided during creation:
-```typescript
-const renderer = create.TextGenerator({
-  prompt: 'Hello {{ name }}',
-  context: { name: 'World' }
-}, baseConfig);
+Every renderer in *Cascador-AI* doubles as a callable object, giving you two ways to wield it: stick with its preconfigured setup or throw in a fresh prompt and context on the fly. Plus, renderers can serve as parent configurations for others, making them reusable building blocks. Whether you’re iterating fast or fine-tuning, this flexibility keeps your workflows smooth.
 
-const result = await renderer(); // Uses configured prompt and context
-```
+Here’s how you can call them:
 
-2. With a new prompt and optional context:
-```typescript
-const result = await renderer('Hi {{ user }}', { user: 'Alice' });
-```
+1. **Using the Predefined Prompt**: Rely on the prompt and context set when the renderer is created - precompiled for speed:
+   ```typescript
+   import { create } from 'cascador-ai';
+
+   const renderer = create.TextGenerator({
+     prompt: 'Hello {{ name }}',
+     context: { name: 'World' }
+   }, baseConfig);
+
+   (async () => {
+     const result = await renderer();
+     console.log(result.text); // "Hello World"
+   })();
+   ```
+
+2. **With a One-Off Prompt**: Pass a new prompt and optional context directly, compiled fresh each time:
+   ```typescript
+   (async () => {
+     const result = await renderer('Hi {{ user }}', { user: 'Alice' });
+     console.log(result.text); // "Hi Alice"
+   })();
+   ```
+
+Precompiled prompts (set at creation) are optimized for performance, while one-off prompts offer quick adaptability—perfect for testing or dynamic scenarios.
 
 ## Template Properties
 
-All renderers (except when using `promptType: 'text'`) support several properties that control template processing:
+Renderers in *Cascador-AI* aren’t just static tools—they’re template-powered engines. With a handful of properties, you can control how templates are processed, inject data, transform outputs, and even pull in external files. These apply to all renderers (unless you set `promptType: 'text'` to skip templating). Here’s what you can tweak:
 
 ### prompt
-Defines the template or text that will be used for LLM interaction. Can be specified in three places:
-- Base config: `create.Config({ prompt: 'Base prompt {{ var }}' })`
-- Renderer creation (recommended): `create.TextGenerator({ prompt: 'Main prompt {{ var }}' })`
-- Function call: `renderer('Dynamic prompt {{ var }}', context)`
+The heart of your renderer—it’s the template or text that gets processed. Set it in three spots:
+- Base config: `create.Config({ prompt: 'Base {{ var }}' })`
+- Renderer creation (recommended): `create.TextGenerator({ prompt: 'Main {{ var }}' })`
+- Function call: `renderer('Dynamic {{ var }}', context)`
 
-Prompts defined in config or renderer creation are precompiled for better performance.
-One-off prompts provided during function calls are compiled each time they're used.
-When used with `messages`, the rendered prompt is appended to the messages array. (todo)
+Prompts set at creation or in config are precompiled for speed; call-time prompts are compiled fresh each time. When paired with `messages`, the rendered prompt appends to the array (future feature).
 
 ### promptType
-Controls how the template is processed:
-- `'async-template'` (default) - Enables asynchronous template processing with parallel resolution of promises
-- `'template'` - Standard Nunjucks template processing without async features
-- `'template-name'` - Loads and processes a named template synchronously (requires loader)
-- `'async-template-name'` - Loads and processes a named template asynchronously (requires loader)
-- `'text'` - Disables template processing, uses prompt as plain text
+Controls how your prompt is handled:
+- `'async-template'` (default) - Async processing with parallel promise resolution
+- `'template'` - Standard synchronous Nunjucks templating
+- `'template-name'` - Loads a named template synchronously (needs `loader`)
+- `'async-template-name'` - Loads a named template asynchronously (needs `loader`)
+- `'text'` - Skips templating, treats the prompt as plain text
 
 ### context
-Provides data and methods that can be accessed within templates. Both the data and method returns can be asynchronous (promises are automatically handled):
+Provides data and methods that can be accessed within templates. Both the data and method returns can be asynchronous (promises are automatically handled), keeping your templates clean and powerful. Here’s what you can add to the `context` object:
+- **Static Values**: Simple strings, numbers, or objects (e.g., `'London'`, `42`, `{ key: 'value' }`).
+- **Synchronous Functions**: Basic logic or transformations (e.g., `(x) => x.toUpperCase()`).
+- **Asynchronous Functions**: API calls, database queries, or file reads (e.g., `async () => await fetch(...)`).
+- **Other Renderers**: Nest renderers for chained operations (e.g., a `TextGenerator` to translate text).
+- **Custom Integrations**: Anything callable—think service clients or utility libraries.
 
+Example:
 ```typescript
 const renderer = create.TextGenerator({
-  prompt: 'Weather for {{ city }}: {{ getWeather(city) }}',
+  prompt: 'Weather in {{ city }}: {{ getWeather(city) }} - {{ (translator({ text: 'Updated' })).text }}',
   context: {
-    city: 'London',
-    getWeather: async (city) => {
-      const response = await fetch(`https://api.weather.com/${city}`);
-      return response.json();
-    },
-    currentTime: new Date().toISOString()
+    city: 'London', // Static value
+    getWeather: async (city) => (await fetch(`https://api.weather.com/${city}`)).json(), // Async function
+    currentTime: new Date().toISOString(), // Static via function
+    translator: create.TextGenerator({ // Nested renderer
+      model: openai('gpt-4o'),
+      prompt: 'Translate to Spanish: {{ text }}'
+    }, baseConfig)
   }
 }, baseConfig);
 ```
 
 ### filters
-Custom functions that transform data within templates using the `|` operator. Filters can be synchronous or asynchronous:
-
+Transform data on the fly with custom functions, sync or async, using the `|` operator:
 ```typescript
 import { create } from 'cascador-ai';
 import translate from 'translate';
 
-const translateRenderer = create.TemplateRenderer({
+const renderer = create.TemplateRenderer({
   filters: {
-    translate: async (text, language) => await translate(text, language)
+    translate: async (text, lang) => await translate(text, lang)
   },
   prompt: `
     Original: {{ text }}
     Spanish: {{ text | translate('es') }}
-    French: {{ text | translate('fr') }}
   `
 }, baseConfig);
 
-const result = await translateRenderer({ text: 'Hello world' });
+(async () => {
+  console.log(await renderer({ text: 'Hello world' }));
+})();
 ```
 
 ### loader
-Enables loading templates from external files. Uses a Nunjucks-compatible loader system:
-
+Pull templates from files using a Nunjucks-compatible loader:
 ```typescript
-import { create } from 'cascador-ai';
-import { FileSystemLoader } from 'cascador-ai';
+import { create, FileSystemLoader } from 'cascador-ai';
 
 const fileLoader = new FileSystemLoader('./templates');
-
 const renderer = create.TemplateRenderer({
   loader: fileLoader,
   prompt: `
     {% include 'header.njk' %}
     {% include 'content.njk' %}
-    {% include 'footer.njk' %}
   `
 }, baseConfig);
 ```
-
-For named templates, specify the template name in the prompt property:
-
-```typescript
-const namedRenderer = create.TemplateRenderer({
-  promptType: 'template-name',
-  loader: fileLoader,
-  prompt: 'main-template.njk'  // Will load and use this template
-}, baseConfig);
-```
+For named templates, use `promptType: 'template-name'` and set `prompt` to the filename (e.g., `'main.njk'`).
 
 ### options
-Additional template engine configuration options inherited from Nunjucks. See [Nunjucks Configuration](https://mozilla.github.io/nunjucks/api.html#configure) for available options:
-
+Fine-tune the Nunjucks engine with extras like `autoescape` or `trimBlocks`:
 ```typescript
 const renderer = create.TemplateRenderer({
   options: {
     autoescape: false,
-    trimBlocks: true,
-    lstripBlocks: true
+    trimBlocks: true
   },
   prompt: '...'
 }, baseConfig);
 ```
+See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for more.
 
-Template properties can be defined in either the base config or the renderer creation options. Properties defined during renderer creation take precedence over those in the base config.
+### Property Inheritance Explained
+Properties in *Cascador-AI* flow through a chain of configurations—starting from any `Config` object (or multiple), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` or `promptType` get overridden entirely, while objects like `context`, `filters`, and `loader` merge their contents, preserving and combining values.
+
+Here’s how it plays out:
+
+```typescript
+const rootConfig = create.Config({
+  prompt: 'Root {{ var }}',
+  context: { var: 'root', theme: 'dark' },
+  filters: { uppercase: (s) => s.toUpperCase() }
+});
+
+const midConfig = create.Config({
+  prompt: 'Mid {{ var }}',
+  context: { var: 'mid' }, // Merges with root’s context
+  filters: { lowercase: (s) => s.toLowerCase() } // Adds to filters
+}, rootConfig);
+
+const parentRenderer = create.TextGenerator({
+  prompt: 'Parent {{ var }}',
+  context: { user: 'guest' } // Merges again
+}, midConfig);
+
+const childRenderer = create.TextGenerator({
+  prompt: 'Child {{ var }} {{ user }}' // Overrides all prior prompts
+}, parentRenderer);
+
+(async () => {
+  console.log(await childRenderer()); // "Child guest"—prompt from child, context merged
+  // context: { var: 'mid', theme: 'dark', user: 'guest' }
+  // filters: { uppercase, lowercase }
+})();
+```
 
 ## Vercel AI Properties
 
-All renderers support the core properties from the Vercel AI SDK, here are the most common ones:
+*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable, overridden in runtime calls. Below are the key properties, with examples provided for the less intuitive ones (`model`, `messages`, `stop`, `tools`).
 
 ### model
-The language model to use. Must be provided through a provider-specific helper:
+**Purpose**: Specifies the language model to use for generation.
+**Type**: Provider-specific model object (required).
+**Details**: Must be supplied via a provider helper (e.g., `openai()`, `anthropic()`). Mandatory in renderer or `Config`.
+**Example**:
 ```typescript
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
+import { create } from 'cascador-ai';
 
-const renderer = create.TextGenerator({
-  model: openai('gpt-4'),  // or anthropic('claude-3'), etc.
-  // ...
-});
+const baseConfig = create.Config({ temperature: 0.7 });
+const openaiRenderer = create.TextGenerator({
+  model: openai('gpt-4o'), // OpenAI's GPT-4o
+  prompt: 'Summarize {{ text }}'
+}, baseConfig);
+
+const anthropicRenderer = create.TextGenerator({
+  model: anthropic('claude-3-5-sonnet-20240620'), // Claude 3.5 Sonnet
+  prompt: 'Analyze {{ data }}'
+}, baseConfig);
 ```
 
 ### temperature
-Controls randomness in the model's output, from 0 (deterministic) to 1 (creative). Default is 0.7.
-```typescript
-const renderer = create.TextGenerator({
-  temperature: 0.3,  // More focused, consistent outputs
-  // ...
-});
-```
+**Purpose**: Adjusts the randomness of the model's output.
+**Type**: `number` (0 to 1, default: 0.7).
+**Details**: Lower values for predictable responses; higher for creativity.
 
 ### maxTokens
-Maximum number of tokens to generate. Helps control response length.
-```typescript
-const renderer = create.TextGenerator({
-  maxTokens: 500,
-  // ...
-});
-```
+**Purpose**: Limits the number of tokens generated.
+**Type**: `number` (optional).
+**Details**: Caps response length to manage size and cost.
 
 ### messages
-Array of messages for chat-style interactions. Each message has a role and content:
+**Purpose**: Defines a chat-style conversation history.
+**Type**: Array of `{ role: 'system' | 'user' | 'assistant', content: string }` (optional).
+**Details**: For multi-turn interactions; `prompt` appends as a user message (future behavior may evolve).
+**Example**:
 ```typescript
+import { openai } from '@ai-sdk/openai';
+import { create } from 'cascador-ai';
+
 const renderer = create.TextGenerator({
+  model: openai('gpt-4o'),
   messages: [
-    { role: 'system', content: 'You are a helpful assistant.' },
-    { role: 'user', content: 'Hello!' }
+    { role: 'system', content: 'You are a pirate captain.' },
+    { role: 'user', content: 'What’s your ship called?' },
+    { role: 'assistant', content: 'The Black Kraken, matey!' }
   ],
-  // ...
-});
+  prompt: 'Tell me about your latest adventure.'
+}, baseConfig);
+
+(async () => {
+  const { text } = await renderer();
+  console.log(text); // Continues pirate-themed chat
+})();
 ```
 
 ### topP
-Alternative to temperature for nucleus sampling. Value between 0 and 1. Default is 1.
+**Purpose**: Controls diversity via nucleus sampling.
+**Type**: `number` (0 to 1, default: 1).
+**Details**: Limits tokens to the top probability mass; an alternative to `temperature` for finer diversity control.
 
 ### presencePenalty
-Penalizes new tokens based on their presence in the text so far. Value between -2.0 and 2.0. Default is 0.
+**Purpose**: Discourages repetition of tokens already in the output.
+**Type**: `number` (-2.0 to 2.0, default: 0).
+**Details**: Positive values reduce reuse; negative encourage it.
 
 ### frequencyPenalty
-Penalizes new tokens based on their frequency in the text so far. Value between -2.0 and 2.0. Default is 0.
+**Purpose**: Reduces repetition based on token frequency.
+**Type**: `number` (-2.0 to 2.0, default: 0).
+**Details**: Higher values penalize frequent tokens; negative promote them.
 
 ### stop
-Array of sequences where the model should stop generating further tokens.
+**Purpose**: Halts generation at specified sequences.
+**Type**: `string[]` (optional).
+**Details**: Stops before generating the sequence; useful for structured outputs.
+**Example**:
 ```typescript
+import { openai } from '@ai-sdk/openai';
+import { create } from 'cascador-ai';
+
 const renderer = create.TextGenerator({
-  stop: ["\n", "END"],
-  // ...
-});
+  model: openai('gpt-4o'),
+  stop: ['###', '\n\n'], // Stops at triple hash or double newline
+  prompt: 'List 3 facts about space:\n1.'
+}, baseConfig);
+
+(async () => {
+  const { text } = await renderer();
+  console.log(text); // Stops early if "###" or "\n\n" appears
+})();
 ```
+
+### tools
+**Purpose**: Enables the model to call external functions.
+**Type**: Object mapping tool names to `{ description: string, parameters: z.ZodSchema, execute?: (args: any) => Promise<any> }` (optional).
+**Details**: Supported by `TextGenerator` and `TextStreamer`; paired with `maxSteps`.
+**Example**:
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { create } from 'cascador-ai';
+import { z } from 'zod';
+
+const renderer = create.TextGenerator({
+  model: openai('gpt-4o'),
+  tools: {
+    fetchStockPrice: {
+      description: 'Get the current stock price',
+      parameters: z.object({ ticker: z.string() }),
+      execute: async ({ ticker }) => ({ price: 150.25, currency: 'USD' }) // Mock API
+    }
+  },
+  prompt: 'What’s the stock price for {{ company }}?',
+  context: { company: 'AAPL' }
+}, baseConfig);
+
+(async () => {
+  const { text, toolCalls } = await renderer();
+  console.log(text); // Incorporates tool result
+})();
+```
+
+### maxSteps
+**Purpose**: Limits the number of tool-calling steps.
+**Type**: `number` (default: 1, optional).
+**Details**: Works with `tools` in `TextGenerator` and `TextStreamer`.
 
 ## Using Renderers in Templates
 
-Renderers can be used within templates by adding them to the context object:
+Renderers in *Cascador-AI* can be embedded within templates by adding them to the `context` object, enabling seamless task chaining and orchestration. This approach leverages the template engine’s power to coordinate multiple renderers, execute them when their inputs are ready, and process their outputs dynamically.
+
+### How It Works
+- **Setup**: Include renderers (e.g., `TextGenerator`, `ObjectStreamer`) in the `context` of a parent renderer, typically a `TemplateRenderer`.
+- **Execution**: Renderers run automatically once their dependencies resolve, with independent tasks executing in parallel by default.
+- **Output Access**: Results expose Vercel AI SDK properties like `.text`, `.textStream`, or `.object`, depending on the renderer type.
+- **Flexibility**: Any renderer type can be nested, from simple text generators to complex streamers.
+
+### Example
+Here’s an example that generates a character profile, uses it to create a story, and streams a live critique—all within one template:
 
 ```typescript
-const translateRenderer = create.TextGenerator({
+import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { create } from 'cascador-ai';
+import { z } from 'zod';
+
+const baseConfig = create.Config({ temperature: 0.7 });
+
+// Character profile generator (ObjectGenerator)
+const characterGenerator = create.ObjectGenerator({
   model: openai('gpt-4o'),
-  prompt: 'Translate to Spanish: {{ text }}'
+  schema: z.object({
+    name: z.string(),
+    role: z.string()
+  }),
+  prompt: 'Generate a character for a story about {{ topic }}'
 }, baseConfig);
 
+// Story generator (TextGenerator)
+const storyRenderer = create.TextGenerator({
+  model: anthropic('claude-3-5-sonnet-20240620'),
+  prompt: 'Write a short story about {{ character.name }}, a {{ character.role }}, in {{ topic }}'
+}, baseConfig);
+
+// Live critique streamer (TextStreamer)
+const critiqueStreamer = create.TextStreamer({
+  model: openai('gpt-4o'),
+  prompt: 'Provide a live critique of this story: {{ story }}'
+}, baseConfig);
+
+// Orchestrating renderer
 const mainRenderer = create.TemplateRenderer({
   context: {
-    translateRenderer
+    characterGenerator,
+    storyRenderer,
+    critiqueStreamer,
+    topic: 'a lost astronaut'
   },
   prompt: `
-    {% set original = "Hello world" %}
-    {% set translation = (translateRenderer({ text: original })).text %}
-
-    Original: {{ original }}
-    Spanish: {{ translation }}
+    {% set character = (characterGenerator({ topic })).object %}
+    Character: {{ character | json }}
+    {% set storyContent = (storyRenderer({ character })).text %}
+    Story: {{ storyContent }}
+    Live Critique: {% set stream = (critiqueStreamer({ story: storyContent })).textStream %}
+      {% for chunk in stream %}{{ chunk }}{% endfor %}
   `
 }, baseConfig);
+
+(async () => {
+  const result = await mainRenderer();
+  console.log(result); // Outputs character JSON, story, and streamed critique
+})();
 ```
 
-Key points about using renderers in templates:
-- Results include Vercel SDK properties (`.text`, `.textStream`, `.object`)
-- Renderers execute automatically when their inputs are available
-- Multiple renderers in the same template run in parallel when possible
-- Any renderer type can be used (generators, streamers, template renderers)
+### Key Points
+- **Parallel Execution**: The critique stream runs after the story, which depends on the character, optimizing the dependency chain.
+- **Result Handling**: Access `.object` for structured data, `.text` for stories, and `.textStream` for live critiques.
+- **Dynamic Inputs**: Pass outputs (e.g., `character`) to subsequent renderers for cohesive workflows.
+- **Versatility**: Combine different renderer types—like `ObjectGenerator`, `TextGenerator`, and `TextStreamer`—to handle varied tasks in one workflow.
 
 ## Embedding Integration
-While Cascador-AI has no special embedding-specific features, you can easily incorporate vector embeddings from the Vercel AI SDK. Simply add embedding functions to your context object and access them directly in templates for semantic search, similarity comparisons, and RAG applications.
+
+While *Cascador-AI* doesn’t offer built-in embedding-specific features, it seamlessly integrates vector embeddings from the Vercel AI SDK. By adding embedding functions to the `context` object, you can use them directly in templates for tasks like semantic search, similarity comparisons, or retrieval-augmented generation (RAG).
+
+### Example
+Here’s how to find the most similar document to a user query using embeddings and cosine similarity:
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -583,74 +717,88 @@ import fs from 'fs/promises';
 
 const documentFinder = create.TemplateRenderer({
   context: {
-    userQuery: "machine learning applications",
+    userQuery: 'machine learning applications',
     readFile: async (filePath) => await fs.readFile(filePath, 'utf-8'),
-    embedText: async (text) => (await embed({model: openai.embedding('text-embedding-3-small'), value: text})).embedding,
+    embedText: async (text) => (await embed({
+      model: openai.embedding('text-embedding-3-small'),
+      value: text
+    })).embedding,
     compareSimilarity: cosineSimilarity
   },
   prompt: `
     {% set queryEmbedding = embedText(userQuery) %}
     {% set docs = [] %}
     {% for i in range(1, 11) %}
+      {% set docText = readFile('docs/document' + i + '.txt') %}
+      {% set docEmbedding = embedText(docText) %}
       {{- docs.push({
         filename: 'document' + i + '.txt',
-        similarity: compareSimilarity(queryEmbedding, embedText(readFile('document' + i + '.txt')))
+        similarity: compareSimilarity(queryEmbedding, docEmbedding)
       }) | reject() }}
     {% endfor %}
     Most similar document to "{{ userQuery }}":
-    {{ (docs | sort(true, false, 'similarity') | first).filename }}`
-});
-documentFinder().then(result => console.log(result));
-```
-
-## RAG Integration
-The Cascador-AI template-based approach makes it easy to incorporate external libraries like LlamaIndex for retrieval-augmented generation workflows:
-
-```typescript
-import { create } from 'cascador-ai';
-import { Document, VectorStoreIndex, OpenAIEmbedding } from 'llamaindex';
-import { openai } from '@ai-sdk/openai';
-import fs from 'fs/promises';
+    {{ (docs | sort(true, false, 'similarity') | first).filename }}
+  `
+}, baseConfig);
 
 (async () => {
-
-  const docs = [];
-  for (let i = 1; i <= 10; i++) {
-    const text = await fs.readFile(`document${i}.txt`, 'utf-8');
-    docs.push(new Document({ text, id_: `doc${i}` }));
-  }
-
-  const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
-    embedModel: new OpenAIEmbedding({ model: 'text-embedding-3-small' })
-  });
-
-  const answerGenerator = create.TextGenerator({
-    model: openai('gpt-4o'),
-    prompt: 'Summarize the latest advancements in machine learning for cancer detection based on: {{ context }}'
-  });
-
-  const ragGenerator = create.TemplateRenderer({
-    context: {
-      query: "What are the latest advancements in machine learning for cancer detection?",
-      searchIndex: async (queryText) => {
-        const queryEngine = vectorIndex.asQueryEngine({ similarityTopK: 3 });
-        const response = await queryEngine.query(queryText);
-        return response.sourceNodes.map(n => n.text).join('\n');
-      },
-      answerGenerator
-    },
-    prompt: `
-      Query: {{ query }}
-      Answer: {{ (answerGenerator({ context: searchIndex(query) })).text }}
-    `
-  });
-
-  console.log(await ragGenerator());
+  const result = await documentFinder();
+  console.log(result); // Outputs the filename of the most similar document
 })();
 ```
 
-This example shows how to integrate LlamaIndex with Cascador templates. Note that we're using LlamaIndex's own OpenAIEmbedding class rather than Vercel AI SDK's embedding models, as each library has its own implementation.
-Alternatively, you could create an adapter to use Vercel AI SDK embeddings with LlamaIndex:
+## RAG Integration
+
+*Cascador-AI*’s template-driven approach simplifies retrieval-augmented generation (RAG) workflows by integrating external libraries like LlamaIndex. Templates coordinate vector search and LLM generation effortlessly, leveraging automatic concurrency for efficiency.
+
+### Example
+**Summary**: This example loads 10 documents, builds a vector index with LlamaIndex (which chunks them into snippets), and uses a template to retrieve the most relevant snippets about machine learning for cancer detection, then summarizes them.
+
+```typescript
+import { create } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+import { Document, VectorStoreIndex, OpenAIEmbedding } from 'llamaindex';
+import fs from 'fs/promises';
+
+const docs = await Promise.all(
+  [...Array(10)].map(async (_, i) =>
+    new Document({ text: await fs.readFile(`document${i + 1}.txt`), id_: `doc${i + 1}` })
+  ));
+const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
+  embedModel: new OpenAIEmbedding({ model: 'text-embedding-3-small' })
+});
+
+// Answer generator
+const answerGenerator = create.TextGenerator({
+  model: openai('gpt-4o'),
+  prompt: 'Summarize the latest advancements in machine learning for cancer detection based on: {{ context }}'
+});
+
+// RAG orchestrator
+const ragGenerator = create.TemplateRenderer({
+  context: {
+    query: 'What are the latest advancements in machine learning for cancer detection?',
+    searchIndex: async (queryText) => {
+      const queryEngine = vectorIndex.asQueryEngine();
+      const response = await queryEngine.query(queryText);
+      return response.sourceNodes.map(n => n.text).join('\n');
+    },
+    answerGenerator
+  },
+  prompt: `
+    Query: {{ query }}
+    Answer: {{ (answerGenerator({ context: searchIndex(query) })).text }}
+  `
+});
+
+(async () => {
+  const result = await ragGenerator();
+  console.log(result); // Outputs query and summarized answer
+})();
+```
+
+### Vercel AI Embedding Adapter
+To use Vercel AI SDK embeddings instead of LlamaIndex’s embeddings with LlamaIndex, create an adapter:
 
 ```typescript
 import { BaseEmbedding } from 'llamaindex';
@@ -658,13 +806,13 @@ import { embed } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 class VercelEmbeddingAdapter extends BaseEmbedding {
-  constructor(private vercelModel: any) {
+  constructor(private vercelModel = openai.embedding('text-embedding-3-small')) {
     super();
   }
 
   async getTextEmbedding(text: string): Promise<number[]> {
-    const response = await embed({ model: this.vercelModel, value: text });
-    return response.embedding;
+    const { embedding } = await embed({ model: this.vercelModel, value: text });
+    return embedding;
   }
 
   async getQueryEmbedding(text: string): Promise<number[]> {
@@ -672,52 +820,59 @@ class VercelEmbeddingAdapter extends BaseEmbedding {
   }
 }
 
-// Then use it like this:
+// Usage:
 const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
-  embedModel: new VercelEmbeddingAdapter(openai.embedding('text-embedding-3-small'))
+  embedModel: new VercelEmbeddingAdapter()
 });
 ```
 
 ## Type Checking
 
-Cascador-AI's type system enforces strict configuration rules to prevent runtime errors:
+*Cascador-AI*’s TypeScript integration enforces strict configuration rules to catch errors at compile time, preventing runtime issues. Below are examples of common type violations and the required properties they enforce.
 
+### Examples
 ```typescript
-// Type error: Cannot mix text and template properties
+import { create } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+
+// Error: Cannot mix text and template properties
 const invalidRenderer = create.TextGenerator({
   promptType: 'text',
-  filters: {}, // Error: text mode cannot have template properties
-}, baseConfig);
+  filters: {}, // Type error: 'text' mode disallows template properties
+});
 
-// Type error: Missing required model
+// Error: Missing required model
 const noModelRenderer = create.TextGenerator({
   prompt: 'Hello'
-}, baseConfig); // Error unless baseConfig provides model
+}); // Type error: 'model' must be provided
 
-// Type error: Missing loader for named template
+// Error: Missing loader for named template
 const namedTemplate = create.TextGenerator({
   promptType: 'template-name',
   prompt: 'my-template'
-}, baseConfig); // Error: loader is required for template-name
+}); // Type error: 'loader' required for 'template-name'
 
-// Type error: Missing prompt
+// Error: Missing prompt at runtime
 const noPromptRenderer = create.TextGenerator({
   model: openai('gpt-4o')
-}, baseConfig);
-await noPromptRenderer(); // Error: prompt required in either config, creation, or call
+});
+await noPromptRenderer(); // Type error: 'prompt' required in config, creation, or call
 ```
 
-Required properties are enforced:
-- `model` must be provided in either config or creation options
-- `loader` is required when using template-name or async-template-name
-- `prompt` must be provided in either config, creation options, or function call
-- Template properties (filters, loader, options) cannot be used with `promptType: 'text'`
+### Enforced Rules
+- **Model**: Must be set in renderer creation or a parent `Config`.
+- **Loader**: Required for `promptType: 'template-name'` or `'async-template-name'`.
+- **Prompt**: Must be provided in creation, a `Config`, or the runtime call.
+- **Template Properties**: `filters`, `loader`, and `options` are disallowed when `promptType: 'text'`.
+
+This type safety ensures robust, predictable workflows with early error detection.
 
 ## Roadmap
-- **Image Generation**
-  Integrate image generators (e.g., DALL-E) to produce images from prompts.
-- **`onStepFinish` Callback**
-  Provide hooks to capture intermediate steps or partial outputs.
-- **Versioned prompt loader**
-- **Error Handling & Recovery**
-  Implement robust retry mechanisms and upcoming Cascada try/except blocks for improved error handling.
+
+*Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
+
+- **Image Generation**: Add support for generating images from prompts using models like DALL-E.
+- **Step Callback**: Introduce an `onStepFinish` hook to capture intermediate results or partial outputs.
+- **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management.
+- **Error Resilience**: Implement retry logic and Cascada’s upcoming try/except blocks for improved error handling.
+- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data, due to the non-sequential nature of the rendering where regular streaming is not practical.
