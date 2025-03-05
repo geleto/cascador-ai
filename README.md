@@ -25,7 +25,7 @@ Whether you’re generating stories, analyzing data, or integrating external ser
 
 ## Why Cascador-AI?
 
-* **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template syntax
+- **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template syntax
 - **Parallel by Default**: Independent operations run concurrently—no extra effort required
 - **Powerful Template Language**: Leverage variables, loops, conditionals, and more via [Cascada](https://github.com/geleto/cascada)
 - **Flexible Context**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, and custom service integrations
@@ -701,6 +701,48 @@ const mainRenderer = create.TemplateRenderer({
 - **Result Handling**: Access `.object` for structured data, `.text` for stories, and `.textStream` for live critiques.
 - **Dynamic Inputs**: Pass outputs (e.g., `character`) to subsequent renderers for cohesive workflows.
 - **Versatility**: Combine different renderer types—like `ObjectGenerator`, `TextGenerator`, and `TextStreamer`—to handle varied tasks in one workflow.
+
+
+### Choosing Between **Context Methods/Filters**, **Renderers**, and **Tools** in *Cascador-AI*
+
+In *Cascador-AI*, we’re dealing with three distinct mechanisms - **context methods/filters**, **renderers**, and **tools** - each with unique strengths. **Context methods/filters** excel at fast, precise data handling and transformations through JS/TS functions and filters, though they lack orchestration. **Renderers** orchestrate workflows with templating or LLM generation, offering modularity but not the LLM’s dynamic reasoning. **Tools** empower the LLM to adaptively fetch and chain data, at the cost of higher expense and serial execution.
+
+#### Context Methods/Filters:
+These are JS/TS functions and template filters in a renderer’s `context`, ideal for raw data tasks and transformations.
+
+**Use When:**
+- **Fetching specific data**: Call APIs, services, request data or files (e.g., `getFile('README.md')`).
+- **Running parallel tasks**: Fetch multiple data points concurrently (e.g., stock prices and weather).
+- **Knowing which data is needed**: Pre-fetch predictable data (e.g., stock prices for finance queries).
+- **Custom logic**: Compute values with JS/TS (e.g., `calculateDiscount(price, rate)`).
+- **Data transformation with filters**: Reshape data in templates (e.g., `{{ data | json | pluck('key') }}`).
+- *Why?* Fast, cheap, no LLM overhead; runs in parallel.
+
+#### Renderers:
+Renderers, like `TextGenerator` or `TemplateRenderer` (for non-LLM tasks), are modular blocks that orchestrate workflows with templating or LLM generation.
+
+**Use When:**
+- **Transforming context data to prompt/text**: Convert raw context into structured text (e.g., `{% set prompt = 'Analyze ' + data.topic %}{{ (analyzerRenderer({ prompt })).text }}`).
+- **Breaking down prompts in separate renderers**: Divide complex prompts across renderers for modularity and parallelism (e.g., `{{ (titleRenderer()).text }}` and `{{ (bodyRenderer()).text }}` run concurrently).
+- **Orchestrating workflows**: Chain steps (e.g., `{% set story = (storyRenderer()).text %}`).
+- **Reusing components**: Share renderers across templates (e.g., `translateGen`).
+- **Logic driving renderer use**:
+  - *Conditional renderer calls*: Pick renderers based on logic (e.g., `{% if detailLevel == 'brief' %}{{ (summaryRenderer()).text }}{% else %}{{ (detailedRenderer()).text }}{% endif %}`).
+  - *Dynamic context*: Guide renderer logic with context properties (e.g., `{{ (storyRenderer({ detailLevel: 'brief' })).text }}` adjusts output brevity).
+  - *Loops*: Process separate documents with `{% for %}` (e.g., summarize search result docs).
+  - *Why?* Structured, efficient, versatile; avoids LLM for logic.
+
+#### Tools:
+Tools extend the LLM with dynamic, callable functions, integrating data through its reasoning.
+**Use When:**
+- **LLM decides the workflow**: Pick tools based on context (e.g., fetch weather if asked).
+- **Chaining data in one pass**: LLM fetches data, decides next steps, and fetches more in a single response (e.g., “It’s 20°C—perfect! Hyde Park is nearby.” fetches temp, assesses it, then finds a park).
+- *Why?* Adaptive, cohesive responses; no extra prompts.
+
+#### Key Takeaways
+- **Methods/filters for raw efficiency**: Fast, specific tasks with JS/TS or filters; cost-effective and parallel.
+- **Renderers for orchestration**: Structured workflows with templating or LLM power; reusable and logic-driven.
+- **Tools for LLM dynamism**: Adaptive, single-pass data chaining; may increase latency and cost.
 
 ## Embedding Integration
 
