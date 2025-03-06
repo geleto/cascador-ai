@@ -1,6 +1,6 @@
 # Cascador-AI: Simplify Complex AI Workflows and Agents with Powerful Templates
 
-## Effortless Orchestration, Built-In Concurrency
+## What is Cascador-AI?
 
 Imagine crafting sophisticated AI workflows—blending language models, API calls, and data transformations—without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex sequences in a simple syntax while automatically optimizing for parallel execution.
 
@@ -34,14 +34,14 @@ Whether you’re generating stories, analyzing data, or integrating external ser
 - **LLM Provider Flexibility**: Works with any major provider through the Vercel AI SDK
 - **Type-Safe**: Catch errors early with robust TypeScript support
 
-Built on the powerful combination of [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
+Built on the powerful combination of [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core/) and the [Cascada Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
 
 ## Installation
 
 ```bash
 npm install cascador-ai
 ```
-Ensure you have Node.js installed and, if you plan to use specific LLM providers, their respective SDKs (e.g., `@ai-sdk/openai` for OpenAI). Check the [Vercel AI SDK documentation](https://sdk.vercel.ai/) for provider-specific setup details
+Ensure you have Node.js installed and, if you plan to use specific LLM providers, their respective SDKs (e.g., `@ai-sdk/openai` for OpenAI). Check the [Vercel AI SDK Core documentation](https://sdk.vercel.ai/docs/ai-sdk-core) for provider-specific setup details
 
 ## Quick Start
 
@@ -84,7 +84,6 @@ const mainGenerator = create.TemplateRenderer({
 		translate: async (text: string, lang: string) => (await translateGen({ text, language: lang })).text
 	},
 	context: {
-		language: 'Spanish',
 		readFile: async (filePath: string) => await fs.readFile(filePath, 'utf-8'),
 		storylineGen,
 		critiqueGen,
@@ -226,7 +225,7 @@ const templatedRenderer = create.TemplateRenderer({
 **Use it for**: Dynamic reports, email templates, or any task needing flexible, non-LLM rendering.
 
 ### TextGenerator
-**What it does**: Generates text via LLMs using Vercel’s `generateText`. Ideal for one-shot outputs like summaries or creative writing.
+**What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). Ideal for one-shot outputs like summaries or creative writing.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -250,10 +249,10 @@ const generator = create.TextGenerator({
 })();
 ```
 
-**Use it for**: Article generation, quick answers, or API-driven content. [See Vercel docs](<link-to-vercel-docs>) for return details.
+**Use it for**: Article generation, quick answers, or API-driven content. [See Vercel docs on text generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext) for return details.
 
 ### TextStreamer
-**What it does**: Streams LLM text in real time with Vercel’s `streamText`. Great for live updates or chat-style interfaces.
+**What it does**: Streams LLM text in real time with Vercel’s [`streamText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/stream-text). Great for live updates or chat-style interfaces.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -272,10 +271,10 @@ const streamer = create.TextStreamer({
 })();
 ```
 
-**Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs](<link-to-vercel-docs>) for streaming specifics.
+**Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs on text streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-text#streamtext) for streaming specifics.
 
 ### ObjectGenerator
-**What it does**: Produces structured data with Vercel’s `generateObject`, complete with schema validation. Think JSON outputs or classifications.
+**What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), complete with schema validation. Think JSON outputs or classifications.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -304,10 +303,10 @@ You can specify how the data should be structured by setting `output` to:
 - `enum` - For classification tasks with a discrete set of possible values
 - `no-schema` - No schema validation, returns raw JSON
 
-**Use it for**: Data extraction, structured responses, or enum-based classification.
+**Use it for**: Data extraction, structured responses, or enum-based classification. [See Vercel docs on object generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) for return details.
 
 ### ObjectStreamer
-**What it does**: Streams structured data incrementally via Vercel’s `streamObject`. Perfect for real-time data feeds or partial updates.
+**What it does**: Streams structured data incrementally via Vercel’s [`streamObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/stream-object). Perfect for real-time data feeds or partial updates.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -337,7 +336,7 @@ You can specify how the data should be structured by setting `output` to:
 - `array` - Streams complete elements from an array
 - `no-schema` - No schema validation, streams raw JSON
 
-**Use it for**: Live dashboards, incremental JSON builds, or array streaming.
+**Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
 ## Callable Render Objects
 
