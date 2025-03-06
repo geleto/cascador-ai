@@ -6,7 +6,7 @@ Imagine crafting sophisticated AI workflows—blending language models, API call
 
 Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous feel and asynchronous power. It’s TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
 
-**Note:** *Cascador-AI* is under active development and not yet production-ready, pending the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity.
+**Note:** *Cascador-AI* is under active development and not yet production-ready, pending more tests, bugfixes and the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity.
 
 # Table of Contents
 - [Features](#features)
@@ -19,8 +19,10 @@ Whether you’re generating stories, analyzing data, or integrating external ser
 - [Template Properties](#template-properties)
 - [Vercel AI Properties](#vercel-ai-properties)
 - [Using Renderers in Templates](#using-renderers-in-templates)
-- [Type Checking](#type-checking)
+- [Choosing Between Context Methods/Filters, Renderers, and Tools](#choosing-between-context-methodsfilters-renderers-and-tools-in-cascador-ai)
 - [Embedding Integration](#embedding-integration)
+- [RAG Integration](#rag-integration)
+- [Type Checking](#type-checking)
 - [Roadmap](#roadmap)
 
 ## Why Cascador-AI?
