@@ -2,11 +2,11 @@
 
 ## What is Cascador-AI?
 
-Imagine crafting sophisticated AI workflows—blending language models, API calls, and data transformations—without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK](https://sdk.vercel.ai/) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex sequences in a simple syntax while automatically optimizing for parallel execution.
+Imagine crafting sophisticated AI workflows—blending language models, API calls, and data transformations—without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex sequences in a simple syntax while automatically optimizing async operations for parallel execution.
 
-Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous feel and asynchronous power. It’s TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
+Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous ease of use and asynchronous power under the hood. It is TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
 
-**Note:** *Cascador-AI* is under active development and not yet production-ready, pending more tests, bugfixes and the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity.
+**Note:** *Cascador-AI* is under active development and not yet production-ready, pending more tests, bugfixes and the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity. See the [Roadmap](#roadmap) for more details.
 
 # Table of Contents
 - [Features](#features)
@@ -27,11 +27,11 @@ Whether you’re generating stories, analyzing data, or integrating external ser
 
 ## Why Cascador-AI?
 
-- **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template syntax
-- **Parallel by Default**: Independent operations run concurrently—no extra effort required
-- **Powerful Template Language**: Leverage variables, loops, conditionals, and more via [Cascada](https://github.com/geleto/cascada)
-- **Flexible Context**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, and custom service integrations
-- **LLM Provider Flexibility**: Works with any major provider through the Vercel AI SDK
+- **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand template language syntax
+- **Parallel by Default**: Independent asynchronous operations run concurrently - no extra effort required
+- **Powerful Template Language**: Leverage variables, loops, macros, conditionals, and more via [Cascada](https://github.com/geleto/cascada)
+- **Flexible Context**: Seamlessly access asynchronous data and functionality in your templates using the context object - from static values and dynamic functions to external APIs, database queries, custom service integrations and LLM requests
+- **LLM Provider Flexibility**: Works with any major provider through the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core)
 - **Type-Safe**: Catch errors early with robust TypeScript support
 
 Built on the powerful combination of [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core/) and the [Cascada Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
@@ -41,11 +41,16 @@ Built on the powerful combination of [Vercel AI SDK Core](https://sdk.vercel.ai/
 ```bash
 npm install cascador-ai
 ```
-Ensure you have Node.js installed and, if you plan to use specific LLM providers, their respective SDKs (e.g., `@ai-sdk/openai` for OpenAI). Check the [Vercel AI SDK Core documentation](https://sdk.vercel.ai/docs/ai-sdk-core) for provider-specific setup details
+
+Install the specific LLM providers that you plan to use:
+```bash
+npm install @ai-sdk/openai
+```
+Check the [Vercel AI SDK Core documentation](https://sdk.vercel.ai/docs/ai-sdk-core) for provider-specific setup details
 
 ## Quick Start
 
-This example walks you through generating a story from a synopsis, critiquing it, and translating it—all orchestrated with a single template. Independent tasks (critique and translation) run in parallel automatically, waiting only for the story to finish.
+This example walks you through generating a story from a synopsis, critiquing it, and translating it - all orchestrated with a single template. Independent tasks (critique and translation) run in parallel automatically, waiting only for the story to finish before proceeding.
 
 Here’s how it works:
 
@@ -115,9 +120,9 @@ The result? A seamless workflow with minimal code, showcasing Cascador-AI’s po
 
 ## Renderers: The Heart of Cascador-AI
 
-At the core of *Cascador-AI* are **renderers**—versatile objects that transform inputs into outputs, whether that’s rendering templates, generating text with LLMs, or streaming structured data. Think of them as the building blocks for your workflows, designed to be both powerful and easy to use. Every renderer shares a few key traits:
+At the core of *Cascador-AI* are **renderers** - versatile objects that transform inputs into outputs, whether that’s rendering templates, generating text with LLMs, or streaming structured data. Think of them as the building blocks for your workflows, designed to be both powerful and easy to use. Every renderer shares a few key traits:
 
-- **Created with Factories**: Use the `create` namespace to spin up renderers with custom configurations, optionally inheriting from a parent (like a `Config` object or another renderer):
+- **Created with Factories**: Use the `create` namespace to spin up renderers with custom configurations, optionally inheriting from a parent (a `Config` object or another renderer):
   ```typescript
   import { create } from 'cascador-ai';
   import { openai } from '@ai-sdk/openai';
@@ -148,7 +153,7 @@ At the core of *Cascador-AI* are **renderers**—versatile objects that transfor
 
 - **Callable Interface**: Invoke renderers in two ways: with their built-in setup or with one-off prompts and contexts. Precompiled prompts (set during creation) run faster, while on-the-fly prompts offer flexibility:
   ```typescript
-  // Using configured prompt and context
+  // Using configured precompiled prompt and context
   const result = await renderer();
 
   // With a one-off prompt and context
@@ -160,10 +165,10 @@ At the core of *Cascador-AI* are **renderers**—versatile objects that transfor
   ```typescript
   const mainRenderer = create.TemplateRenderer({
     context: {
-      translateRenderer,
-      summarizeRenderer
+      translateRenderer
     },
-    prompt: '{{ (translateRenderer({ text })).text }}'
+    text: `It always seems impossible until it's done`,
+    prompt: '{{ (translateRenderer({ text, language: 'Spanish' })).text }}'
   }, baseConfig);
   ```
   [Check out Using Renderers in Templates](#using-renderers-in-templates) for examples.
@@ -194,12 +199,49 @@ const renderer = create.TextGenerator({
 
 // The renderer inherits model, temperature, and context from baseConfig
 ```
+### Property Inheritance Explained
+Properties in *Cascador-AI* flow through a chain of configurations - starting from any `Config` object (or multiple), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` or `promptType` get overridden entirely, while objects like `filters`, and `loader` merge their contents, preserving and combining values.
+For the `context` object a child renderer's context keeps all the parent root properties but overrides the ones with matching names
+
+Here’s how it plays out:
+
+```typescript
+const rootConfig = create.Config({
+  prompt: 'Root {{ var }}',
+  context: { var: 'root', theme: 'dark' }, // Initial context
+  filters: { uppercase: (s) => s.toUpperCase() }
+});
+
+const midConfig = create.Config({
+  prompt: 'Mid {{ var }}',
+  context: { var: 'mid' }, // Overrides 'var', keeps 'theme'
+  filters: { lowercase: (s) => s.toLowerCase() } // Merges with uppercase
+}, rootConfig);
+// Resulting context: { var: 'mid', theme: 'dark' }
+
+const parentRenderer = create.TextGenerator({
+  prompt: 'Parent {{ var }}',
+  context: { user: 'guest' }, // Adds 'user', keeps 'var' and 'theme'
+}, midConfig);
+// Resulting context: { var: 'mid', theme: 'dark', user: 'guest' }
+
+const childRenderer = create.TextGenerator({
+  prompt: 'Child {{ var }} {{ user }}', // Overrides prompt
+}, parentRenderer);
+// Resulting context: { var: 'mid', theme: 'dark', user: 'guest' }
+
+(async () => {
+  console.log((await childRenderer()).text); // "Child mid guest"
+  // context: { var: 'mid', theme: 'dark', user: 'guest' }
+  // filters: { uppercase, lowercase }
+})();
+```
 
 ## The Cascador Renderers
 
 ### Your Toolkit for Every Task
 
-*Cascador-AI* offers a suite of renderers, each tailored to a specific job—whether it’s rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation but shine in their own ways. Here’s the lineup:
+*Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function. Here’s the lineup:
 
 ### TemplateRenderer
 **What it does**: Pure template processing, no LLMs involved. Perfect for stitching together dynamic content from data or async sources.
@@ -340,9 +382,8 @@ You can specify how the data should be structured by setting `output` to:
 
 ## Callable Render Objects
 
-### Flexibility at Your Fingertips
 
-Every renderer in *Cascador-AI* doubles as a callable object, giving you two ways to wield it: stick with its preconfigured setup or throw in a fresh prompt and context on the fly. Plus, renderers can serve as parent configurations for others, making them reusable building blocks. Whether you’re iterating fast or fine-tuning, this flexibility keeps your workflows smooth.
+Every renderer in *Cascador-AI* doubles as a callable object, giving you two ways to wield it: stick with its preconfigured setup or throw in a fresh prompt or context on the fly. Plus, renderers can serve as parent configurations for others, making them reusable building blocks.
 
 Here’s how you can call them:
 
@@ -464,40 +505,6 @@ const renderer = create.TemplateRenderer({
 }, baseConfig);
 ```
 See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for more.
-
-### Property Inheritance Explained
-Properties in *Cascador-AI* flow through a chain of configurations—starting from any `Config` object (or multiple), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` or `promptType` get overridden entirely, while objects like `context`, `filters`, and `loader` merge their contents, preserving and combining values.
-
-Here’s how it plays out:
-
-```typescript
-const rootConfig = create.Config({
-  prompt: 'Root {{ var }}',
-  context: { var: 'root', theme: 'dark' },
-  filters: { uppercase: (s) => s.toUpperCase() }
-});
-
-const midConfig = create.Config({
-  prompt: 'Mid {{ var }}',
-  context: { var: 'mid' }, // Merges with root’s context
-  filters: { lowercase: (s) => s.toLowerCase() } // Adds to filters
-}, rootConfig);
-
-const parentRenderer = create.TextGenerator({
-  prompt: 'Parent {{ var }}',
-  context: { user: 'guest' } // Merges again
-}, midConfig);
-
-const childRenderer = create.TextGenerator({
-  prompt: 'Child {{ var }} {{ user }}' // Overrides all prior prompts
-}, parentRenderer);
-
-(async () => {
-  console.log(await childRenderer()); // "Child guest"—prompt from child, context merged
-  // context: { var: 'mid', theme: 'dark', user: 'guest' }
-  // filters: { uppercase, lowercase }
-})();
-```
 
 ## Vercel AI Properties
 
@@ -704,20 +711,21 @@ const mainRenderer = create.TemplateRenderer({
 - **Versatility**: Combine different renderer types—like `ObjectGenerator`, `TextGenerator`, and `TextStreamer`—to handle varied tasks in one workflow.
 
 
-### Choosing Between **Context Methods/Filters**, **Renderers**, and **Tools** in *Cascador-AI*
+### Choosing Between **Context Methods**, **Renderers**, and **Tools** in *Cascador-AI*
 
-In *Cascador-AI*, we’re dealing with three distinct mechanisms - **context methods/filters**, **renderers**, and **tools** - each with unique strengths. **Context methods/filters** excel at fast, precise data handling and transformations through JS/TS functions and filters, though they lack orchestration. **Renderers** orchestrate workflows with templating or LLM generation, offering modularity but not the LLM’s dynamic reasoning. **Tools** empower the LLM to adaptively fetch and chain data, at the cost of higher expense and serial execution.
+In *Cascador-AI*, we’re dealing with three distinct mechanisms - **context methods**, **renderers**, and **tools** - each with unique strengths.
+- **Context methods** excel at fast, precise data handling and transformations (via filters) through JS/TS functions but they lack LLM’s dynamic reasoning to determine what functionality will be needed.
+- **Tools** empower the LLM to adaptively fetch and chain data, at the cost of higher expense and latency.
+- **Renderers** orchestrate workflows with templating or LLM generation, offering modularity.
 
-#### Context Methods/Filters:
-These are JS/TS functions and template filters in a renderer’s `context`, ideal for raw data tasks and transformations.
+#### Context Methods:
+These are JS/TS functions and template filters in a renderer’s `context`, ideal for data tasks and transformations.
 
-**Use When:**
-- **Fetching specific data**: Call APIs, services, request data or files (e.g., `getFile('README.md')`).
-- **Running parallel tasks**: Fetch multiple data points concurrently (e.g., stock prices and weather).
-- **Knowing which data is needed**: Pre-fetch predictable data (e.g., stock prices for finance queries).
-- **Custom logic**: Compute values with JS/TS (e.g., `calculateDiscount(price, rate)`).
-- **Data transformation with filters**: Reshape data in templates (e.g., `{{ data | json | pluck('key') }}`).
-- *Why?* Fast, cheap, no LLM overhead; runs in parallel.
+Use Context Methods When:
+- **Knowing which data is needed in advance**: Pre-fetch predictable data (e.g., stock prices for finance queries).
+- **Using TS/JS/template logic**: Use code to determine which data is needed avoiding the LLM overhead.
+- **Using complex workflows**: The template language allows you to use complex workflkows that are difficult to implement with templates - loops, complex API iteractions, imported templates, macros...
+- **Running complex parallel tasks**: For instance start different tasks from a loop, each one runs independently and all can be at a different stage at the same time.
 
 #### Renderers:
 Renderers, like `TextGenerator` or `TemplateRenderer` (for non-LLM tasks), are modular blocks that orchestrate workflows with templating or LLM generation.
@@ -914,8 +922,9 @@ This type safety ensures robust, predictable workflows with early error detectio
 
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
+- **Integrating the messages property with prompts**: template prompts are rendered and appended to the messages (if the property exists)
+- **Simplified loader wrapper**: replace the overcomplicated nunjucks loaders with simple function or interface
 - **Image Generation**: Add support for generating images from prompts using models like DALL-E.
-- **Step Callback**: Introduce an `onStepFinish` hook to capture intermediate results or partial outputs.
 - **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management.
 - **Error Resilience**: Implement retry logic and Cascada’s upcoming try/except blocks for improved error handling.
-- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data, due to the non-sequential nature of the rendering where regular streaming is not practical.
+- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical.
