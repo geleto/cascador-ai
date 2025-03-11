@@ -1,8 +1,10 @@
-# Cascador-AI: Simplify Complex AI Workflows and Agents with Powerful Templates
+# Cascador-AI: AI Orchestration Made Intuitive
 
 ## What is Cascador-AI?
 
-Imagine crafting sophisticated AI workflows—blending language models, API calls, and data transformations—without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex sequences in a simple syntax while automatically optimizing async operations for parallel execution.
+Imagine crafting sophisticated AI workflows - blending language models, API calls, and data transformations - without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex workflows with a template language that combines simplicity with comprehensive programming capabilities.
+
+While your template code remains clean and linear, behind the scenes Cascador-AI automatically executes independent operations in parallel - without any special notation or explicit concurency instructions.
 
 Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous ease of use and asynchronous power under the hood. It is TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
 
