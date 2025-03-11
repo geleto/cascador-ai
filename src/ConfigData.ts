@@ -1,10 +1,10 @@
-import { BaseConfig, Override, TemplateConfig } from './types';
+import { Override, TemplateConfig } from './types';
 
-export interface ConfigProvider<T extends BaseConfig> {
+export interface ConfigProvider<T> {
 	readonly config: T;
 }
 
-export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider<ConfigType> {
+export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
 	constructor(public readonly config: ConfigType) { }
 }
 
@@ -14,8 +14,8 @@ export class ConfigData<ConfigType extends BaseConfig> implements ConfigProvider
  * @todo - merge loaders
  */
 export function mergeConfigs<
-	TChild extends BaseConfig & Omit<TemplateConfig, 'promptType'>,
-	TParent extends BaseConfig & Omit<TemplateConfig, 'promptType'>
+	TChild extends Record<string, any> & Omit<TemplateConfig, 'promptType'>,
+	TParent extends Record<string, any> & Omit<TemplateConfig, 'promptType'>
 >(
 	parentConfig: TParent,
 	childConfig: TChild

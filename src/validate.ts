@@ -1,4 +1,4 @@
-import { BaseConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, Context } from "./types";
+import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, Context } from "./types";
 
 type ObjectConfigUnion = GenerateObjectObjectConfig<unknown> | GenerateObjectArrayConfig<unknown> | GenerateObjectEnumConfig<string> | GenerateObjectNoSchemaConfig;
 
@@ -10,7 +10,7 @@ export class ConfigError extends Error {
 	}
 }
 
-export function validateBaseConfig(config?: Partial<BaseConfig & OptionalTemplateConfig>) {
+export function validateBaseConfig(config?: Partial<OptionalTemplateConfig>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object');
 	}
@@ -32,7 +32,7 @@ export function validateBaseConfig(config?: Partial<BaseConfig & OptionalTemplat
 	}
 }
 
-export function validateCall(config: BaseConfig, promptOrContext?: Context | string, maybeContext?: Context) {
+export function validateCall(config: Record<string, any>, promptOrContext?: Context | string, maybeContext?: Context) {
 	if (maybeContext) {
 		if (typeof promptOrContext !== 'string') {
 			throw new ConfigError('First argument must be string when providing context');
@@ -55,7 +55,7 @@ export function validateCall(config: BaseConfig, promptOrContext?: Context | str
 	}
 }
 
-export function validateObjectConfig(config?: BaseConfig, isStream = false) {
+export function validateObjectConfig(config?: Record<string, any>, isStream = false) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object');
 	}

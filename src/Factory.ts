@@ -4,7 +4,7 @@ import { TemplateEngine } from './TemplateEngine';
 import {
 	Context, TemplatePromptType, SchemaType,
 	//configs:
-	AnyConfig, BaseConfig,
+	AnyConfig,
 	TemplateConfig, OptionalTemplateConfig,
 	GenerateTextConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamTextConfig, StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
@@ -13,6 +13,7 @@ import {
 	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
 	GenerateObjectResultAll, StreamObjectResultAll,
 	Override,
+	PromptOrMessage,
 
 } from './types';
 import { ILoaderAny } from 'cascada-tmpl';
@@ -37,8 +38,6 @@ type StrictType<T, Shape> = T extends Shape
 type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & TemplateConfig>;
-
-type PromptOrMessage = { prompt: string } | { messages: NonNullable<BaseConfig['messages']> };
 
 type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
 
@@ -65,7 +64,7 @@ type TemplateCallSignature<TConfig extends OptionalTemplateConfig> =
 
 
 type LLMCallSignature<
-	TConfig extends BaseConfig & OptionalTemplateConfig,
+	TConfig extends OptionalTemplateConfig,
 	TResult
 > = TConfig extends { promptType: 'text' }
 	? (
@@ -130,7 +129,7 @@ type RequireMissingWithSchema<
 	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
 type RequireLoaderIfNeeded<
-	TMergedConfig extends OptionalTemplateConfig & BaseConfig
+	TMergedConfig extends OptionalTemplateConfig
 > = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
@@ -148,7 +147,7 @@ export function Config<
 	TConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
 	TParentConfig extends AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
-	TCombined extends BaseConfig = StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>
+	TCombined = StrictUnionSubtype<Override<TParentConfig, TConfig>, AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>
 >(
 	config: TConfig,
 	parent: ConfigProvider<
@@ -488,8 +487,8 @@ export function ObjectGenerator<
 
 // Implementation
 export function ObjectGenerator<
-	TConfig extends OptionalTemplateConfig & BaseConfig,
-	TParentConfig extends OptionalTemplateConfig & BaseConfig,
+	TConfig extends OptionalTemplateConfig,
+	TParentConfig extends OptionalTemplateConfig,
 	ELEMENT = any,
 	ENUM extends string = string,
 	OBJECT = any
@@ -615,8 +614,8 @@ export function ObjectStreamer<
 
 // Implementation
 export function ObjectStreamer<
-	TConfig extends OptionalTemplateConfig & BaseConfig,
-	TParentConfig extends OptionalTemplateConfig & BaseConfig,
+	TConfig extends OptionalTemplateConfig,
+	TParentConfig extends OptionalTemplateConfig,
 	OBJECT = any, ELEMENT = any
 >(
 	config: TConfig,
@@ -645,7 +644,7 @@ export function ObjectStreamer<
 
 function createLLMRenderer<
 	TConfig extends OptionalTemplateConfig & Partial<TFunctionConfig>, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-	TFunctionConfig extends BaseConfig,
+	TFunctionConfig extends Record<string, any>,
 	TFunctionResult,
 >(
 	config: TConfig,
@@ -656,7 +655,7 @@ function createLLMRenderer<
 		// We have to run the prompt through a template first.
 		const renderer = TemplateRenderer(config as TemplateConfig & { promptType: TemplatePromptType });
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
-			validateCall(config as BaseConfig, promptOrContext, maybeContext);
+			validateCall(config, promptOrContext, maybeContext);
 			let renderedPrompt: string;
 
 			if (typeof promptOrContext === 'string') {
@@ -673,7 +672,7 @@ function createLLMRenderer<
 	} else {
 		// No need to run the prompt through a template.
 		call = async (prompt: string): Promise<TFunctionResult> => {
-			validateCall(config as BaseConfig, prompt);
+			validateCall(config, prompt);
 			return await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 		};
 	}

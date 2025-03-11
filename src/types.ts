@@ -50,20 +50,7 @@ export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
 
 export type OptionalNoPromptTemplateConfig = Partial<TemplateConfig> | { promptType: 'text' };
 
-//to get BaseConfig, omit the GenerateTextConfig specific values from GenerateTextConfig
-//@todo - phase out BaseConfig
-export type BaseConfig = Omit<GenerateTextConfig,
-	| 'stopSequences'
-	| 'experimental_continueSteps'
-	| 'experimental_output'
-	| 'tools'
-	| 'toolChoice'
-	| 'maxSteps'
-	| 'experimental_activeTools'
-	| 'experimental_repairToolCall'
-	| 'onStepFinish'
-	| 'model'//remove model to make it optional
-> & { promptType?: LLMPromptType, model?: LanguageModel };
+export type PromptOrMessage = { prompt: string } | { messages: NonNullable<GenerateTextConfig['messages']> };
 
 // Config types
 // All of them are partials because they can be requested in pieces,
@@ -129,7 +116,7 @@ export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 	onFinish?: OnFinishCallback<ELEMENT[]>;
-	elementStream?: AsyncIterableStream<ELEMENT>;//?
+	elementStream?: AsyncIterableStream<ELEMENT>;
 }
 
 export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
