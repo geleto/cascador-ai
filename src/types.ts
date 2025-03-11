@@ -1,5 +1,5 @@
 import {
-	LanguageModel, Schema, generateText, streamText, streamObject,
+	LanguageModel, Schema, generateText, generateObject, streamText, streamObject,
 	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, CoreTool,
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
@@ -51,6 +51,7 @@ export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
 export type OptionalNoPromptTemplateConfig = Partial<TemplateConfig> | { promptType: 'text' };
 
 //to get BaseConfig, omit the GenerateTextConfig specific values from GenerateTextConfig
+//@todo - phase out BaseConfig
 export type BaseConfig = Omit<GenerateTextConfig,
 	| 'stopSequences'
 	| 'experimental_continueSteps'
@@ -80,7 +81,10 @@ export type StreamTextConfig<
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
-export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
+//we get the last overload(with no generic type parameter) which is the no-schema overload and make it base by omitting the output and mode properties
+export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
+
+export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	output?: 'object' | undefined;
 	schema?: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
@@ -88,7 +92,7 @@ export type GenerateObjectObjectConfig<OBJECT> = BaseConfig & {
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectArrayConfig<ELEMENT> = BaseConfig & {
+export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
 	output?: 'array';
 	schema?: SchemaType<ELEMENT>;
 	schemaName?: string;
@@ -96,18 +100,20 @@ export type GenerateObjectArrayConfig<ELEMENT> = BaseConfig & {
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectEnumConfig<ENUM extends string> = BaseConfig & {
+export type GenerateObjectEnumConfig<ENUM extends string> = GenerateObjectBaseConfig & {
 	output?: 'enum';
 	enum?: ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectNoSchemaConfig = BaseConfig & {
+export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 	output: 'no-schema';
 	mode?: 'json';
 }
 
-export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
+export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
+
+export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	output?: 'object' | undefined;
 	schema?: SchemaType<OBJECT>;
 	schemaName?: string;
@@ -116,7 +122,7 @@ export type StreamObjectObjectConfig<OBJECT> = BaseConfig & {
 	onFinish?: OnFinishCallback<OBJECT>;
 }
 
-export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
+export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
 	output?: 'array';
 	schema?: SchemaType<ELEMENT>;
 	schemaName?: string;
@@ -126,7 +132,7 @@ export type StreamObjectArrayConfig<ELEMENT> = BaseConfig & {
 	elementStream?: AsyncIterableStream<ELEMENT>;//?
 }
 
-export type StreamObjectNoSchemaConfig = BaseConfig & {
+export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
 	output?: 'no-schema';
 	mode?: 'json';
 	onFinish?: OnFinishCallback<JSONValue>;
@@ -144,12 +150,6 @@ export type AnyNoTemplateConfig<
 	| StreamObjectObjectConfig<OBJECT>
 	| StreamObjectArrayConfig<ELEMENT>
 	| StreamObjectNoSchemaConfig;
-
-/*export type AnyConfig<
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ENUM extends string, ELEMENT
-> =
-	| AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT>
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ENUM, ELEMENT> & Partial<TemplateConfig>);*/
 
 export type AnyConfig<
 	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
