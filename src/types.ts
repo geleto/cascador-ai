@@ -56,19 +56,21 @@ export type PromptOrMessage = { prompt: string } | { messages: NonNullable<Gener
 // All of them are partials because they can be requested in pieces,
 // and because doing Partial on the zod schema property makes it do deepPartial on it's properties which breaks it
 
+// The first argument of generateText
 export type GenerateTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
+// The first argument of streamText
 export type StreamTextConfig<
 	TOOLS extends Record<string, CoreTool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
-//we get the last overload(with no generic type parameter) which is the no-schema overload and make it base by omitting the output and mode properties
+// We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
 
 export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
@@ -98,6 +100,7 @@ export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 	mode?: 'json';
 }
 
+// We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
 
 export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
