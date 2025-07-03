@@ -2,11 +2,17 @@
 
 ## What is Cascador-AI?
 
-Imagine crafting sophisticated AI workflows - blending language models, API calls, and data transformations - without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, script- and template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template and Scripting Engine](https://github.com/geleto/cascada), it lets you easily define complex workflows.
+Building sophisticated AI systems—from multi-step agents and RAG pipelines to complex tool-use chains—requires orchestrating numerous asynchronous tasks. **Cascador-AI is an AI orchestration library that makes this process radically simpler.** Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the powerful [Cascada Template and Scripting Engine](https://github.com/geleto/cascada), it allows you to define these workflows with clean, declarative code.
 
-While your script and template code remains clean and linear, behind the scenes Cascador-AI automatically executes all independent operations in parallel - without any special notation or explicit concurrency instructions.
+Its core advantage is a **parallel-by-default** execution model. You define the logical steps of your workflow, and the engine automatically runs independent operations—like fetching RAG context, calling an LLM, and using a tool—concurrently. It intelligently manages the dependency graph, so you can focus on your AI logic instead of writing boilerplate for `Promise.all` and managing async state.
 
-Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous ease of use and asynchronous power under the hood. It is TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
+Cascador-AI provides two distinct and powerful approaches to building your application:
+
+*   **Dynamic Prompting for LLM Calls**: All LLM renderers (`TextGenerator`, `ObjectGenerator`, etc.) are supercharged with a templating engine. This allows you to dynamically construct the perfect prompt by pulling in data from multiple async sources (APIs, databases, vector stores) right before the LLM call. This is ideal for everything from simple text generation to creating strongly-typed JSON objects. For cases where you only need to render a prompt or string without a subsequent LLM call, you can use the standalone `TemplateRenderer`.
+
+*   **Agentic Orchestration with `ScriptRunner`**: When your workflow requires complex logic, state, and decision-making, `ScriptRunner` becomes your "agent brain." It allows you to write stateful, multi-step workflows with loops and conditionals using the [Cascada Script language](script.md). This is the ideal tool for implementing self-correcting agentic loops, complex data pipelines, or any task where you are building a structured data object as the primary output.
+
+By seamlessly integrating multi-model calls, structured data generation, and complex control flow, Cascador-AI provides a robust, type-safe foundation for building your next-generation AI applications with less code and more clarity.
 
 **⚠️ Welcome to the Cutting Edge! ⚠️**
 Cascador-AI is a new project and is evolving quickly! This is exciting, but it also means things are in flux. You might run into bugs, and the documentation might not always align perfectly with the released code. It could be behind or have gaps. I am working hard to improve everything and welcome your contributions and feedback.
