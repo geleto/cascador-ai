@@ -2,13 +2,14 @@
 
 ## What is Cascador-AI?
 
-Imagine crafting sophisticated AI workflows - blending language models, API calls, and data transformations - without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template Engine](https://github.com/geleto/cascada) (a fork of [Nunjucks](https://mozilla.github.io/nunjucks/)), it lets you define complex workflows with a template language that combines simplicity with comprehensive programming capabilities.
+Imagine crafting sophisticated AI workflows - blending language models, API calls, and data transformations - without wrestling with intricate async code or concurrency headaches. *Cascador-AI* makes this a reality with an intuitive, template-driven approach. Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the [Cascada Template and Scripting Engine](https://github.com/geleto/cascada), it lets you easily define complex workflows.
 
-While your template code remains clean and linear, behind the scenes Cascador-AI automatically executes independent operations in parallel - without any special notation or explicit concurency instructions.
+While your template code remains clean and linear, behind the scenes Cascador-AI automatically executes all independent operations in parallel - without any special notation or explicit concurency instructions.
 
 Whether you’re generating stories, analyzing data, or integrating external services, *Cascador-AI* streamlines development with a synchronous ease of use and asynchronous power under the hood. It is TypeScript-friendly, supports all major LLM providers, and scales effortlessly from quick prototypes to robust applications.
 
-**Note:** *Cascador-AI* is under active development and not yet production-ready, pending more tests, bugfixes and the [Cascada Template Engine](https://github.com/geleto/cascada?tab=readme-ov-file#development-status-and-roadmap) reaching maturity. See the [Roadmap](#roadmap) for more details.
+**⚠️ Welcome to the Cutting Edge! ⚠️**
+Cascador-AI is a new project and is evolving quickly! This is exciting, but it also means things are in flux. You might run into bugs, and the documentation might not always align perfectly with the released code. It could be behind or have gaps. I am working hard to improve everything and welcome your contributions and feedback.
 
 # Table of Contents
 - [Features](#features)
@@ -52,71 +53,115 @@ Check the [Vercel AI SDK Core documentation](https://sdk.vercel.ai/docs/ai-sdk-c
 
 ## Quick Start
 
-This example walks you through generating a story from a synopsis, critiquing it, and translating it - all orchestrated with a single template. Independent tasks (critique and translation) run in parallel automatically, waiting only for the story to finish before proceeding.
+This example demonstrates the core power of Cascador-AI by building a **self-improving content agent**. Instead of just generating text, this agent orchestrates a multi-step workflow: it writes a draft, critiques its own work, and then iteratively revises the content until it meets a quality standard.
 
 Here’s how it works:
 
-```js
+```javascript
 import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
 import { create } from 'cascador-ai';
-import fs from 'fs/promises';
+import { z } from 'zod';
 
-// Base shared configuration
+// 1. Define a reusable base configuration using GPT-4o
 const baseConfig = create.Config({
-	temperature: 0.7,
+    model: openai('gpt-4o'),
+    temperature: 0.7,
 });
 
-// Story generator using Claude 3
-const storylineGen = create.TextGenerator({
-	model: anthropic('claude-3-5-sonnet-20240620'),
-	prompt: 'Expand the following synopsis into a short story: {{ synopsis }}'
+// 2. Define the Agent's Tools (Renderers)
+
+// A tool to write drafts (inherits GPT-4o from baseConfig)
+const draftGenerator = create.TextGenerator({
+    prompt: 'Write a short, engaging blog post about {{ topic }}.',
 }, baseConfig);
 
-// Critique generator using GPT-4
-const critiqueGen = create.TextGenerator({
-	model: openai('gpt-4o'),
-	prompt: 'Provide a critical analysis of the following story: {{ story }}'
+// A tool to critique drafts using a structured schema.
+// Note: This overrides the base model to use Claude Sonnet for critique.
+const critiqueGenerator = create.ObjectGenerator({
+    model: anthropic('claude-3-7-sonnet-latest'),
+    schema: z.object({
+        score: z.number().describe('Quality score from 1-10 on clarity and engagement.'),
+        suggestions: z.array(z.string()).describe('Specific, actionable suggestions for improvement.'),
+    }),
+    prompt: 'Critique this blog post. Provide a quality score and concrete suggestions for improvement.\n\nPOST:\n{{ draft }}',
 }, baseConfig);
 
-// Translation using GPT-4
-const translateGen = create.TextGenerator({
-	model: openai('gpt-4o'),
-	prompt: 'Translate the following text to {{ language }}: {{ text }}'
+// A tool to rewrite a draft based on feedback (inherits GPT-4o)
+const revisionGenerator = create.TextGenerator({
+    prompt: 'Rewrite the following blog post based on the suggestions provided.\n\nORIGINAL POST:\n{{ draft }}\n\nSUGGESTIONS:\n- {{ suggestions | join("\n- ") }}\n\nREVISED POST:',
 }, baseConfig);
 
-// Main template renderer for orchestrating the whole process
-const mainGenerator = create.TemplateRenderer({
-	filters: {
-		translate: async (text: string, lang: string) => (await translateGen({ text, language: lang })).text
-	},
-	context: {
-		readFile: async (filePath: string) => await fs.readFile(filePath, 'utf-8'),
-		storylineGen,
-		critiqueGen,
-		language: 'Spanish',
-	},
-	prompt: `
-    {% set synopsis = readFile('./src/synopsis.txt') %}
-    {% set storyContent = (storylineGen({ synopsis: synopsis })).text %}
-	Story: {{ storyContent }}
-    {% set critiqueContent = (critiqueGen({ story: storyContent })).text %}
-    Critique : {{ critiqueContent }}
-	Story in {{language}}: {{ storyContent | translate(language) }}`
+
+// 3. Define the Orchestrator Script
+const contentAgent = create.ScriptRunner({
+    context: {
+        // Provide the tools to the script
+        draftGenerator,
+        critiqueGenerator,
+        revisionGenerator,
+        // Define workflow parameters
+        topic: 'the future of AI-powered development',
+        qualityThreshold: 8,
+        maxRevisions: 3,
+    },
+    script: `
+      // This script orchestrates the agent's "thought process".
+      :data
+
+      // --- Generate and critique the initial draft ---
+      var currentDraft = (draftGenerator({ topic: topic })).text
+      var critiqueResult = (critiqueGenerator({ draft: currentDraft })).object
+      var qualityScore = critiqueResult.score
+      var suggestions = critiqueResult.suggestions
+      var revisionCount = 0
+
+      // --- Start the revision loop ---
+      while qualityScore < qualityThreshold and revisionCount < maxRevisions
+        var previousDraft = currentDraft
+        var previousScore = qualityScore
+        revisionCount++
+
+        // Revise the draft based on the latest suggestions
+        var revisedDraft = (revisionGenerator({ draft: currentDraft, suggestions: suggestions })).text
+
+        // Critique the NEW revised draft
+        var newCritiqueResult = (critiqueGenerator({ draft: revisedDraft })).object
+        var newScore = newCritiqueResult.score
+
+        // --- Decide whether to keep the revision ---
+        if newScore < previousScore
+          // Score got worse. Reject the revision and exit by forcing the loop to end.
+          revisionCount = maxRevisions + 1
+        else
+          // Revision is an improvement. Accept it and update our state for the next loop.
+          currentDraft = revisedDraft
+          qualityScore = newScore
+          suggestions = newCritiqueResult.suggestions
+        endif
+      endwhile
+
+      // --- Assemble the final result ---
+      @data.finalDraft = currentDraft
+      @data.finalScore = qualityScore
+      @data.revisionsMade = revisionCount > maxRevisions ? revisionCount - maxRevisions -1 : revisionCount
+    `,
 });
 
-(async () => console.log(await mainGenerator()))();
+// 4. Run the Agent
+(async () => {
+    const result = await contentAgent();
+    console.log('--- Agent Finished ---');
+    console.log(JSON.stringify(result, null, 2));
+})();
 ```
 
-This snippet:
+### What This Example Demonstrates
 
-1. Sets up a reusable base configuration.
-2. Loads a synopsis from a file.
-3. Expands it into a story using Claude 3.
-4. Generates a critique with GPT-4.
-5. Translates the story into Spanish—concurrently with the critique.
-
-The result? A seamless workflow with minimal code, showcasing Cascador-AI’s power to orchestrate tasks effortlessly.
+-   **Agentic Behavior**: The script doesn't just execute a static list of tasks; it uses a goal-oriented loop (`qualityScore < qualityThreshold`) to make decisions and improve its output over multiple steps.
+-   **Stateful Orchestration**: The `while` loop maintains and updates state (`currentDraft`, `qualityScore`) across multiple asynchronous LLM calls, which is essential for complex workflows.
+-   **Effortless Concurrency**: All underlying LLM calls (`draftGenerator`, `critiqueGenerator`, etc.) are async operations that run when their data is ready, without you needing to write any `await` or promise-handling logic inside the script.
+-   **Configuration Inheritance**: A `baseConfig` provides a default model (`gpt-4o`), which is automatically inherited by the tools. The `critiqueGenerator` shows how this can be easily overridden for specific tasks.
 
 # Understanding the Cascador-AI API
 
@@ -145,7 +190,7 @@ At the core of *Cascador-AI* are **renderers** - versatile objects that transfor
   }, baseConfig);
   ```
 
-- **Template Properties**: Every renderer supports template processing through several key properties:
+- **Template And Script Properties**: Every renderer supports template processing through several key properties:
   - `promptType` - Controls the template processing mode
   - `context` - Provides data and methods for templates
   - `filters` - Adds transformation functions
@@ -267,6 +312,48 @@ const templatedRenderer = create.TemplateRenderer({
 ```
 
 **Use it for**: Dynamic reports, email templates, or any task needing flexible, non-LLM rendering.
+
+### ScriptRunner
+**What it does**: Executes powerful, data-centric workflows using **[Cascada Script](script.md)**, a language designed for effortless concurrency. Unlike `TemplateRenderer`, which primarily produces a string, `ScriptRunner`'s main output is a structured data object (e.g., JSON), making it the ideal choice for your application's data layer. It excels at orchestrating complex logic, fetching data from multiple async sources in parallel, and transforming it into a final, clean object.
+
+```typescript
+import { create } from 'cascador-ai';
+
+// A user service mock
+const userService = {
+  fetchProfile: async (id) => ({ id, name: 'Alice', email: 'alice@example.com' }),
+  fetchPosts: async (id) => ([{ id: 101, title: 'First Post' }, { id: 102, title: 'Second Post' }]),
+};
+
+const userDashboardBuilder = create.ScriptRunner({
+  context: {
+    // Provide async functions to the script
+    fetchProfile: userService.fetchProfile,
+    fetchPosts: userService.fetchPosts,
+  },
+  script: `
+    // The :data directive focuses the output to be a clean data object
+    :data
+
+    // These two async calls run in parallel automatically
+    var profile = fetchProfile(userId)
+    var posts = fetchPosts(userId)
+
+    // The @data commands are buffered and run after the fetches complete,
+    // assembling the final object in a predictable order.
+    @data.user.id = profile.id
+    @data.user.name = profile.name
+    @data.posts = posts // Use simple assignment, a shortcut for .set()
+  `
+});
+
+(async () => {
+  const dashboardData = await userDashboardBuilder({ userId: 123 });
+  console.log('Dashboard Data:', JSON.stringify(dashboardData, null, 2));
+})();
+```
+
+**Use it for**: Implementing complex data layers, orchestrating multi-step agentic workflows, fetching and aggregating data from multiple APIs/databases, and any task where the primary output is structured data rather than a rendered string. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 ### TextGenerator
 **What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). Ideal for one-shot outputs like summaries or creative writing.
@@ -639,7 +726,7 @@ const renderer = create.TextGenerator({
 **Type**: `number` (default: 1, optional).
 **Details**: Works with `tools` in `TextGenerator` and `TextStreamer`.
 
-## Using Renderers in Templates
+## Using Renderers in Templates and Scripts
 
 Renderers in *Cascador-AI* can be embedded within templates by adding them to the `context` object, enabling seamless task chaining and orchestration. This approach leverages the template engine’s power to coordinate multiple renderers, execute them when their inputs are ready, and process their outputs dynamically.
 
@@ -672,7 +759,7 @@ const characterGenerator = create.ObjectGenerator({
 
 // Story generator (TextGenerator)
 const storyRenderer = create.TextGenerator({
-  model: anthropic('claude-3-5-sonnet-20240620'),
+  model: anthropic('claude-3-7-sonnet-latest'),
   prompt: 'Write a short story about {{ character.name }}, a {{ character.role }}, in {{ topic }}'
 }, baseConfig);
 
@@ -752,7 +839,8 @@ Tools extend the LLM with dynamic, callable functions, integrating data through 
 
 #### Key Takeaways
 - **Methods/filters for raw efficiency**: Fast, specific tasks with JS/TS or filters; cost-effective and parallel.
-- **Renderers for orchestration**: Structured workflows with templating or LLM power; reusable and logic-driven.
+- **`TemplateRenderer` for presentation**: Ideal for generating strings (HTML, Markdown), simple orchestration, and when the logic fits comfortably within template tags (`{{ }}`, `{% %}`).
+- **`ScriptRunner` for data-layer logic**: The go-to for complex orchestration, data transformation, and when the primary output is a structured object. Use it when template logic becomes too cumbersome.
 - **Tools for LLM dynamism**: Adaptive, single-pass data chaining; may increase latency and cost.
 
 ## Embedding Integration
