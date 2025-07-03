@@ -6,7 +6,7 @@ import * as results from './types-result';
 import { validateBaseConfig, ConfigError } from './validate';
 import * as utils from './type-utils';
 import { mergeConfigs } from './ConfigData';
-import { createLLMRenderer, LLMCallSignature } from './factory';
+import { createLLMRenderer, LLMCallSignature } from './llm';
 
 // Single config overload
 export function TextGenerator<
