@@ -2,7 +2,7 @@ import {
 	LanguageModel, Schema, generateText, generateObject, streamText, streamObject,
 	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, CoreTool,
 } from 'ai';
-import { ConfigureOptions, ILoaderAny } from 'cascada-tmpl';
+import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
 
 export type Override<A, B> = Omit<A, keyof B> & B;

@@ -49,11 +49,14 @@
 		"test:watch": "mocha --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --watch",
 		"start": "tsx examples/story.ts"
 	},
+	"peerDependencies": {
+		"ai": "^4.0.0"
+	},
 	"devDependencies": {
-		"ai": "^4.0.33",
 		"@eslint/js": "^9.17.0",
 		"@types/chai": "^5.0.1",
 		"@types/mocha": "^10.0.10",
+		"ai": "^4.3.16",
 		"chai": "^5.1.2",
 		"eslint": "^9.17.0",
 		"mocha": "^11.0.1",
@@ -68,6 +71,6 @@
 		"npm": ">=9.0.0"
 	},
 	"dependencies": {
-		"cascada-tmpl": "^0.0.6"
+		"cascada-engine": "^0.0.9"
 	}
 }

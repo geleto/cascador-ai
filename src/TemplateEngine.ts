@@ -1,6 +1,6 @@
 // TemplateEngine.ts
 
-import { Environment, AsyncEnvironment, AsyncTemplate, Template, compileAsync, compile } from 'cascada-tmpl';
+import cascada from 'cascada-engine';
 import { Context, TemplateConfig } from './types';
 
 class TemplateError extends Error {
@@ -12,9 +12,9 @@ class TemplateError extends Error {
 }
 
 export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
-	protected env: Environment | AsyncEnvironment;
-	protected templatePromise?: Promise<AsyncTemplate>;
-	protected template?: Template | AsyncTemplate;
+	protected env: cascada.Environment | cascada.AsyncEnvironment;
+	protected templatePromise?: Promise<cascada.Template | cascada.AsyncTemplate>;
+	protected template?: cascada.Template | cascada.AsyncTemplate;
 	protected config: TConfig;
 
 	constructor(config: TConfig) {
@@ -35,9 +35,9 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 		// Initialize appropriate environment based on promptType
 		try {
 			if (this.config.promptType === 'template' || this.config.promptType === 'template-name') {
-				this.env = new Environment(this.config.loader ?? null, this.config.options);
+				this.env = new cascada.Environment(this.config.loader ?? null, this.config.options);
 			} else {
-				this.env = new AsyncEnvironment(this.config.loader ?? null, this.config.options);
+				this.env = new cascada.AsyncEnvironment(this.config.loader ?? null, this.config.options);
 			}
 
 			// Add filters if provided
@@ -52,13 +52,27 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 			// Initialize template if prompt provided
 			if (this.config.prompt) {
 				if (this.config.promptType === 'template') {
-					this.template = compile(this.config.prompt, this.env as Environment);
+					this.template = cascada.compileTemplate(this.config.prompt, this.env as cascada.Environment);
 				} else if (this.config.promptType === 'template-name') {
-					this.template = this.env.getTemplate(this.config.prompt);
+					if (!this.config.prompt) {
+						throw new TemplateError('Prompt is required when promptType is "template-name"');
+					}
+					// the sync template API uses callback, promisify
+					this.templatePromise = new Promise((resolve, reject) => {
+						(this.env as cascada.Environment).getTemplate(this.config.prompt!, (err, template) => {
+							if (err) {
+								reject(err);
+							} else if (template) {
+								resolve(template);
+							} else {
+								reject(new TemplateError('getTemplate returned null template'));
+							}
+						});
+					});
 				} else if (this.config.promptType === 'async-template') {
-					this.template = compileAsync(this.config.prompt, this.env as AsyncEnvironment);
+					this.template = cascada.compileTemplateAsync(this.config.prompt, this.env as cascada.AsyncEnvironment);
 				} else if (this.config.promptType === 'async-template-name') {
-					this.templatePromise = (this.env as AsyncEnvironment).getTemplateAsync(this.config.prompt);
+					this.templatePromise = (this.env as cascada.AsyncEnvironment).getTemplate(this.config.prompt);
 				}
 			}
 		} catch (error) {
@@ -85,13 +99,13 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 
 			// If we have a prompt override, use renderString directly
 			if (promptOverride) {
-				if (this.env instanceof AsyncEnvironment) {
-					return await this.env.renderString(promptOverride, mergedContext);
+				if (this.env instanceof cascada.AsyncEnvironment) {
+					return await this.env.renderTemplateString(promptOverride, mergedContext);
 				}
 				return await new Promise((resolve, reject) => {
-					const env = this.env as Environment;
+					const env = this.env as cascada.Environment;
 					try {
-						env.renderString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
+						env.renderTemplateString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
 							if (err) {
 								reject(err);
 							} else if (res !== null) {
@@ -116,7 +130,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				throw new TemplateError('No template available to render');
 			}
 
-			if (this.template instanceof Template) {
+			if (this.template instanceof cascada.Template) {
 				const template = this.template;
 				return await new Promise((resolve, reject) => {
 					try {

@@ -16,7 +16,7 @@ import {
 	PromptOrMessage,
 
 } from './types';
-import { ILoaderAny } from 'cascada-tmpl';
+import { ILoaderAny } from 'cascada-engine';
 import { validateBaseConfig, ConfigError, validateCall } from './validate';
 import { z } from 'zod';
 

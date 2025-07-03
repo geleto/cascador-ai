@@ -1,5 +1,5 @@
 //import { openai } from '@ai-sdk/openai';
-import { ILoader, LoaderSource } from "cascada-tmpl";
+import { ILoader, LoaderSource } from "cascada-engine";
 import { z } from 'zod';
 import { create } from '../../src';
 import { LanguageModel } from 'ai';

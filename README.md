@@ -1,4 +1,4 @@
-# Cascador-AI: AI Orchestration Made Intuitive
+# Cascador-AI: Efficient AI Orchestration Made Intuitive
 
 ## What is Cascador-AI?
 
@@ -930,3 +930,4 @@ This type safety ensures robust, predictable workflows with early error detectio
 - **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management.
 - **Error Resilience**: Implement retry logic and Cascada’s upcoming try/except blocks for improved error handling.
 - **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical.
+- **Instructions on integrating memory**
