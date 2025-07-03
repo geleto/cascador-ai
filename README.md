@@ -41,6 +41,12 @@ Built on the powerful combination of [Vercel AI SDK Core](https://sdk.vercel.ai/
 
 ## Installation
 
+Install the Vercel AI SDK
+```bash
+npm install ai
+```
+
+Install Cascador-ai
 ```bash
 npm install cascador-ai
 ```
