@@ -9,14 +9,13 @@ import {
 	TemplateConfig, OptionalTemplateConfig, ScriptConfig, OptionalScriptConfig,
 	GenerateTextConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamTextConfig, StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
-	//Return types:
-	GenerateTextResult, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
-	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
-	GenerateObjectResultAll, StreamObjectResultAll, ScriptResult,
-	Override,
+
 	PromptOrMessage,
+	//utils:
+	Override
 
 } from './types';
+import * as results from './types-result';
 import { ILoaderAny } from 'cascada-engine';
 import { validateBaseConfig, ConfigError, validateCall } from './validate';
 import { z } from 'zod';
@@ -255,13 +254,13 @@ type ScriptCallSignature<TConfig extends OptionalScriptConfig> =
 	TConfig extends { script: string }
 	? {
 		//TConfig has script, no script argument is needed
-		(scriptOrContext?: Context | string): Promise<ScriptResult>;//one optional argument, script or context
-		(script: string, context: Context): Promise<ScriptResult>;//two arguments, script and context
+		(scriptOrContext?: Context | string): Promise<results.ScriptResult>;//one optional argument, script or context
+		(script: string, context: Context): Promise<results.ScriptResult>;//two arguments, script and context
 		config: TConfig;
 	}
 	: {
 		//TConfig has no script, script argument is needed
-		(script: string, context?: Context): Promise<ScriptResult>;//script is a must, context is optional
+		(script: string, context?: Context): Promise<results.ScriptResult>;//script is a must, context is optional
 		config: TConfig;
 	};
 
@@ -312,7 +311,7 @@ export function ScriptRunner<
 	const runner = new ScriptEngine(merged);
 
 	// Define the call function that handles both cases
-	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<ScriptResult> => {
+	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<results.ScriptResult> => {
 		if (typeof scriptOrContext === 'string') {
 			return await runner.run(scriptOrContext, maybeContext);
 		} else {
@@ -339,7 +338,7 @@ export function TextGenerator<
 >(
 	config: StrictTypeWithTemplate<TConfig, GenerateTextConfig<TOOLS, OUTPUT>> & RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
-): LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<TConfig, results.GenerateTextResult<TOOLS, OUTPUT>>;
 
 // Config with parent
 export function TextGenerator<
@@ -361,7 +360,7 @@ export function TextGenerator<
 			GenerateTextConfig<TOOLS, OUTPUT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, GenerateTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, results.GenerateTextResult<TOOLS, OUTPUT>>;
 
 export function TextGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
@@ -371,8 +370,8 @@ export function TextGenerator<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, Promise<GenerateTextResult<TOOLS, OUTPUT>>> |
-	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateTextResult<TOOLS, OUTPUT>>> {
+	LLMCallSignature<TConfig, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>> |
+	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? Override<TParentConfig, TConfig>
@@ -390,7 +389,7 @@ export function TextGenerator<
 	return createLLMRenderer<
 		CombinedType,
 		GenerateTextConfig<TOOLS, OUTPUT> & { model: LanguageModel },
-		Promise<GenerateTextResult<TOOLS, OUTPUT>>
+		Promise<results.GenerateTextResult<TOOLS, OUTPUT>>
 	>(merged, generateText);
 }
 
@@ -402,7 +401,7 @@ export function TextStreamer<
 >(
 	config: TConfig & RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
-): LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<TConfig, results.StreamTextResult<TOOLS, OUTPUT>>;
 
 // Config with parent
 export function TextStreamer<
@@ -414,7 +413,7 @@ export function TextStreamer<
 	config: TConfig & RequireTemplateLoaderIfNeeded<Override<TParentConfig, TConfig>>
 		& RequireMissing<TConfig, { model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
-): LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, results.StreamTextResult<TOOLS, OUTPUT>>;
 
 export function TextStreamer<
 	TConfig extends OptionalTemplateConfig & StreamTextConfig<TOOLS, OUTPUT>,
@@ -425,8 +424,8 @@ export function TextStreamer<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>> |
-	LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>> {
+	LLMCallSignature<TConfig, results.StreamTextResult<TOOLS, OUTPUT>> |
+	LLMCallSignature<Override<TParentConfig, TConfig>, results.StreamTextResult<TOOLS, OUTPUT>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? Override<TParentConfig, TConfig>
@@ -445,7 +444,7 @@ export function TextStreamer<
 	return createLLMRenderer<
 		CombinedType,
 		StreamTextConfig<TOOLS, OUTPUT> & { model: LanguageModel },
-		StreamTextResult<TOOLS, OUTPUT>
+		results.StreamTextResult<TOOLS, OUTPUT>
 	>(merged, streamText);
 }
 
@@ -457,7 +456,7 @@ export function ObjectGenerator<
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
 		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
+): LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
 
 // Array output
 export function ObjectGenerator<
@@ -467,7 +466,7 @@ export function ObjectGenerator<
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>, 'schema'> &
 		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<ELEMENT>>>;
 
 // Enum output
 export function ObjectGenerator<
@@ -476,7 +475,7 @@ export function ObjectGenerator<
 >(
 	config: StrictTypeWithTemplate<TConfig, GenerateObjectEnumConfig<ENUM>> &
 		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'enum', enum: ENUM[], model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<GenerateObjectEnumResult<ENUM>>>;
+): LLMCallSignature<TConfig, Promise<results.GenerateObjectEnumResult<ENUM>>>;
 
 // No schema output
 export function ObjectGenerator<
@@ -484,7 +483,7 @@ export function ObjectGenerator<
 >(
 	config: StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig> &
 		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
+): LLMCallSignature<TConfig, Promise<results.GenerateObjectNoSchemaResult>>;
 
 // Object with parent
 export function ObjectGenerator<
@@ -506,7 +505,7 @@ export function ObjectGenerator<
 			GenerateObjectObjectConfig<OBJECT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectObjectResult<OBJECT>>>
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>
 
 // Array with parent
 export function ObjectGenerator<
@@ -528,7 +527,7 @@ export function ObjectGenerator<
 			GenerateObjectArrayConfig<ELEMENT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateObjectArrayResult<ELEMENT>>>;
 
 // Enum with parent
 export function ObjectGenerator<
@@ -550,7 +549,7 @@ export function ObjectGenerator<
 			GenerateObjectEnumConfig<ENUM>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectEnumResult<ENUM>>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateObjectEnumResult<ENUM>>>;
 
 // No schema with parent
 export function ObjectGenerator<
@@ -572,7 +571,7 @@ export function ObjectGenerator<
 			GenerateObjectNoSchemaConfig
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectNoSchemaResult>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateObjectNoSchemaResult>>;
 
 // Implementation
 export function ObjectGenerator<
@@ -585,8 +584,8 @@ export function ObjectGenerator<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, Promise<GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> |
-	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> {
+	LLMCallSignature<TConfig, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> |
+	LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? Override<TParentConfig, TConfig>
@@ -602,7 +601,7 @@ export function ObjectGenerator<
 	return createLLMRenderer<
 		CombinedType,
 		GenerateObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
-		Promise<GenerateObjectObjectResult<OBJECT>>
+		Promise<results.GenerateObjectObjectResult<OBJECT>>
 	>(merged, generateObject);
 }
 
@@ -614,7 +613,7 @@ export function ObjectStreamer<
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>, 'schema'> &
 		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
+): LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<OBJECT>>>;
 
 // Array output
 export function ObjectStreamer<
@@ -624,7 +623,7 @@ export function ObjectStreamer<
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>, 'schema'> &
 		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<StreamObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<ELEMENT>>>;
 
 // No schema output
 export function ObjectStreamer<
@@ -632,7 +631,7 @@ export function ObjectStreamer<
 >(
 	config: StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig> &
 		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<StreamObjectNoSchemaResult>>;
+): LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>>;
 
 
 // Object with parent
@@ -655,7 +654,7 @@ export function ObjectStreamer<
 			StreamObjectObjectConfig<OBJECT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectObjectResult<OBJECT>>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.StreamObjectObjectResult<OBJECT>>>;
 
 // Array with parent
 export function ObjectStreamer<
@@ -677,7 +676,7 @@ export function ObjectStreamer<
 			StreamObjectArrayConfig<ELEMENT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.StreamObjectArrayResult<ELEMENT>>>;
 
 // No schema with parent
 export function ObjectStreamer<
@@ -699,7 +698,7 @@ export function ObjectStreamer<
 			StreamObjectNoSchemaConfig
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<StreamObjectNoSchemaResult>>;
+): LLMCallSignature<Override<TParentConfig, TConfig>, Promise<results.StreamObjectNoSchemaResult>>;
 
 // Implementation
 export function ObjectStreamer<
@@ -710,8 +709,8 @@ export function ObjectStreamer<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	LLMCallSignature<TConfig, StreamObjectResultAll<OBJECT, ELEMENT>> |
-	LLMCallSignature<Override<TParentConfig, TConfig>, StreamObjectResultAll<OBJECT, ELEMENT>> {
+	LLMCallSignature<TConfig, results.StreamObjectResultAll<OBJECT, ELEMENT>> |
+	LLMCallSignature<Override<TParentConfig, TConfig>, results.StreamObjectResultAll<OBJECT, ELEMENT>> {
 
 	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
 		? Override<TParentConfig, TConfig>
@@ -727,7 +726,7 @@ export function ObjectStreamer<
 	return createLLMRenderer<
 		CombinedType,
 		StreamObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
-		StreamObjectObjectResult<OBJECT>
+		results.StreamObjectObjectResult<OBJECT>
 	>(merged, streamObject);
 }
 

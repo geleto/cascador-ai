@@ -1,6 +1,6 @@
 import {
 	LanguageModel, Schema, generateText, generateObject, streamText, streamObject,
-	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, Tool,
+	JSONValue, Tool,
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -63,8 +63,6 @@ export interface ScriptConfig extends CascadaConfig {
 export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
 
 export type OptionalNoPromptScriptConfig = Partial<ScriptConfig> | { scriptType: 'text' };
-
-export type ScriptResult = Record<string, any> | string | null;
 
 export type PromptOrMessage = { prompt: string } | { messages: NonNullable<GenerateTextConfig['messages']> };
 
@@ -164,34 +162,7 @@ export type AnyConfig<
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined
 
 
-// Result types
-export type {
-	GenerateTextResult,
-	StreamTextResult
-} from 'ai';
 
-//these are returned in a Promise
-export type GenerateObjectResultAll<OBJECT, ENUM extends string, ELEMENT> =
-	| GenerateObjectObjectResult<OBJECT>
-	| GenerateObjectArrayResult<ELEMENT>
-	| GenerateObjectEnumResult<ENUM>
-	| GenerateObjectNoSchemaResult;
-
-export type GenerateObjectObjectResult<OBJECT> = GenerateObjectResult<OBJECT>;
-export type GenerateObjectArrayResult<ELEMENT> = GenerateObjectResult<ELEMENT[]>;
-export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
-export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
-
-export type StreamObjectResultAll<OBJECT, ELEMENT> =
-	| StreamObjectObjectResult<OBJECT>
-	| StreamObjectArrayResult<ELEMENT>
-	| StreamObjectNoSchemaResult;
-
-//These are returned as is without a promise, many of the properties are promises,
-//this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.
-export type StreamObjectObjectResult<OBJECT> = StreamObjectResult<DeepPartial<OBJECT>, OBJECT, never>;
-export type StreamObjectArrayResult<ELEMENT> = StreamObjectResult<ELEMENT[], ELEMENT[], AsyncIterableStream<ELEMENT>>;
-export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
 
 // Type guards for config objects
 export function hasModel(config: unknown): config is { model: LanguageModel } {
