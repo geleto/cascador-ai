@@ -1,17 +1,18 @@
 import { generateText, generateObject, streamText, CoreTool, streamObject, LanguageModel } from 'ai';
 import { ConfigData, ConfigProvider, mergeConfigs } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
+import { ScriptEngine } from './ScriptEngine';
 import {
 	Context, TemplatePromptType, SchemaType,
 	//configs:
 	AnyConfig,
-	TemplateConfig, OptionalTemplateConfig,
+	TemplateConfig, OptionalTemplateConfig, ScriptConfig, OptionalScriptConfig,
 	GenerateTextConfig, GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamTextConfig, StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
 	//Return types:
 	GenerateTextResult, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
 	StreamTextResult, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult,
-	GenerateObjectResultAll, StreamObjectResultAll,
+	GenerateObjectResultAll, StreamObjectResultAll, ScriptResult,
 	Override,
 	PromptOrMessage,
 
@@ -128,9 +129,15 @@ type RequireMissingWithSchema<
 	// Add missing required properties
 	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
-type RequireLoaderIfNeeded<
+type RequireTemplateLoaderIfNeeded<
 	TMergedConfig extends OptionalTemplateConfig
 > = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
+	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
+	: object;
+
+type RequireScriptLoaderIfNeeded<
+	TMergedConfig extends OptionalScriptConfig
+> = TMergedConfig['scriptType'] extends 'script-name' | 'async-script-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;
 
@@ -178,7 +185,7 @@ export function Config<
 
 // Single config overload
 export function TemplateRenderer<TConfig extends TemplateConfig>(
-	config: StrictType<TConfig, TemplateConfig> & RequireLoaderIfNeeded<TConfig>
+	config: StrictType<TConfig, TemplateConfig> & RequireTemplateLoaderIfNeeded<TConfig>
 ): TemplateCallSignature<TConfig>;
 
 // Config with parent overload - now properly returns only required properties in immediate config
@@ -186,7 +193,7 @@ export function TemplateRenderer<
 	TConfig extends TemplateConfig,
 	TParentConfig extends TemplateConfig
 >(
-	config: StrictType<TConfig, TemplateConfig> & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	config: StrictType<TConfig, TemplateConfig> & RequireTemplateLoaderIfNeeded<Override<TParentConfig, TConfig>>,
 	parent: ConfigProvider<StrictType<TParentConfig, TemplateConfig>>
 ): TemplateCallSignature<Override<TParentConfig, TConfig>>;
 
@@ -243,12 +250,94 @@ export function TemplateRenderer<
 	return callSignature as ReturnType;
 }
 
+// Script call signature type
+type ScriptCallSignature<TConfig extends OptionalScriptConfig> =
+	TConfig extends { script: string }
+	? {
+		//TConfig has script, no script argument is needed
+		(scriptOrContext?: Context | string): Promise<ScriptResult>;//one optional argument, script or context
+		(script: string, context: Context): Promise<ScriptResult>;//two arguments, script and context
+		config: TConfig;
+	}
+	: {
+		//TConfig has no script, script argument is needed
+		(script: string, context?: Context): Promise<ScriptResult>;//script is a must, context is optional
+		config: TConfig;
+	};
+
+// Single config overload
+export function ScriptRunner<TConfig extends ScriptConfig>(
+	config: StrictType<TConfig, ScriptConfig> & RequireScriptLoaderIfNeeded<TConfig>
+): ScriptCallSignature<TConfig>;
+
+// Config with parent overload
+export function ScriptRunner<
+	TConfig extends ScriptConfig,
+	TParentConfig extends ScriptConfig
+>(
+	config: StrictType<TConfig, ScriptConfig> & RequireScriptLoaderIfNeeded<Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<StrictType<TParentConfig, ScriptConfig>>
+): ScriptCallSignature<Override<TParentConfig, TConfig>>;
+
+export function ScriptRunner<
+	TConfig extends ScriptConfig,
+	TParentConfig extends ScriptConfig
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): [typeof parent] extends [undefined]
+	? ScriptCallSignature<TConfig>
+	: ScriptCallSignature<Override<TParentConfig, TConfig>> {
+
+	validateBaseConfig(config);
+	// Merge configs if parent exists, otherwise use provided config
+	const merged = parent
+		? mergeConfigs(parent.config, config)
+		: config;
+	if (parent) {
+		validateBaseConfig(merged);
+	}
+
+	if ((merged.scriptType === 'script-name' || merged.scriptType === 'async-script-name') && !('loader' in merged)) {
+		throw new ConfigError('Script name types require a loader');
+	}
+
+	if ((merged.scriptType === 'script-name' ||
+		merged.scriptType === 'async-script-name') &&
+		!merged.loader
+	) {
+		throw new Error('A loader is required when scriptType is "script-name", "async-script-name", or undefined.');
+	}
+
+	const runner = new ScriptEngine(merged);
+
+	// Define the call function that handles both cases
+	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<ScriptResult> => {
+		if (typeof scriptOrContext === 'string') {
+			return await runner.run(scriptOrContext, maybeContext);
+		} else {
+			if (maybeContext !== undefined) {
+				throw new Error('Second argument must be undefined when not providing script.');
+			}
+			return await runner.run(undefined, scriptOrContext);
+		}
+	};
+
+	const callSignature = Object.assign(call, { config: merged });
+
+	type ReturnType = [typeof parent] extends [undefined]
+		? ScriptCallSignature<TConfig>
+		: ScriptCallSignature<Override<TParentConfig, TConfig>>;
+
+	return callSignature as ReturnType;
+}
+
 // Single config overload
 export function TextGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>, OUTPUT = never
 >(
-	config: StrictTypeWithTemplate<TConfig, GenerateTextConfig<TOOLS, OUTPUT>> & RequireLoaderIfNeeded<TConfig>
+	config: StrictTypeWithTemplate<TConfig, GenerateTextConfig<TOOLS, OUTPUT>> & RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
 ): LLMCallSignature<TConfig, GenerateTextResult<TOOLS, OUTPUT>>;
 
@@ -311,7 +400,7 @@ export function TextStreamer<
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
-	config: TConfig & RequireLoaderIfNeeded<TConfig>
+	config: TConfig & RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
 ): LLMCallSignature<TConfig, StreamTextResult<TOOLS, OUTPUT>>;
 
@@ -322,7 +411,7 @@ export function TextStreamer<
 	TOOLS extends Record<string, CoreTool> = Record<string, CoreTool>,
 	OUTPUT = never
 >(
-	config: TConfig & RequireLoaderIfNeeded<Override<TParentConfig, TConfig>>
+	config: TConfig & RequireTemplateLoaderIfNeeded<Override<TParentConfig, TConfig>>
 		& RequireMissing<TConfig, { model: LanguageModel }, TParentConfig>,
 	parent: ConfigProvider<TParentConfig>
 ): LLMCallSignature<Override<TParentConfig, TConfig>, StreamTextResult<TOOLS, OUTPUT>>;
@@ -366,7 +455,7 @@ export function ObjectGenerator<
 	OBJECT = any
 >(
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
-		RequireLoaderIfNeeded<TConfig> &
+		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectObjectResult<OBJECT>>>;
 
@@ -376,7 +465,7 @@ export function ObjectGenerator<
 	ELEMENT = any
 >(
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, GenerateObjectArrayConfig<ELEMENT>>, 'schema'> &
-		RequireLoaderIfNeeded<TConfig> &
+		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectArrayResult<ELEMENT>>>;
 
@@ -386,7 +475,7 @@ export function ObjectGenerator<
 	ENUM extends string = string
 >(
 	config: StrictTypeWithTemplate<TConfig, GenerateObjectEnumConfig<ENUM>> &
-		RequireLoaderIfNeeded<TConfig> & { output: 'enum', enum: ENUM[], model: LanguageModel }
+		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'enum', enum: ENUM[], model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectEnumResult<ENUM>>>;
 
 // No schema output
@@ -394,7 +483,7 @@ export function ObjectGenerator<
 	TConfig extends OptionalTemplateConfig & GenerateObjectNoSchemaConfig
 >(
 	config: StrictTypeWithTemplate<TConfig, GenerateObjectNoSchemaConfig> &
-		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
+		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<GenerateObjectNoSchemaResult>>;
 
 // Object with parent
@@ -523,7 +612,7 @@ export function ObjectStreamer<
 	OBJECT = any
 >(
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectObjectConfig<OBJECT>>, 'schema'> &
-		RequireLoaderIfNeeded<TConfig> &
+		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectObjectResult<OBJECT>>>;
 
@@ -533,7 +622,7 @@ export function ObjectStreamer<
 	ELEMENT = any
 >(
 	config: DistributiveOmit<StrictTypeWithTemplate<TConfig, StreamObjectArrayConfig<ELEMENT>>, 'schema'> &
-		RequireLoaderIfNeeded<TConfig> &
+		RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectArrayResult<ELEMENT>>>;
 
@@ -542,7 +631,7 @@ export function ObjectStreamer<
 	TConfig extends OptionalTemplateConfig & StreamObjectNoSchemaConfig
 >(
 	config: StrictTypeWithTemplate<TConfig, StreamObjectNoSchemaConfig> &
-		RequireLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
+		RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<StreamObjectNoSchemaResult>>;
 
 

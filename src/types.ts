@@ -1,6 +1,6 @@
 import {
 	LanguageModel, Schema, generateText, generateObject, streamText, streamObject,
-	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, CoreTool,
+	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial, Tool,
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -34,21 +34,37 @@ type OnFinishCallback<RESULT> = BaseOnFinishCallback extends (event: infer E) =>
 
 // Define the possible prompt types
 export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name' | undefined;
+export type ScriptType = 'script' | 'async-script' | 'script-name' | 'async-script-name' | undefined;
 export type LLMPromptType = TemplatePromptType | 'text';
 
-// Config for the template engine with type safety for loader requirement
-export interface TemplateConfig {
-	prompt?: string;
-	promptType?: TemplatePromptType;
+export interface CascadaConfig {
 	context?: Context;
 	filters?: Filters;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
 
+// Config for the template engine with type safety for loader requirement
+export interface TemplateConfig extends CascadaConfig {
+	prompt?: string;
+	promptType?: TemplatePromptType;
+}
+
 export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
 
 export type OptionalNoPromptTemplateConfig = Partial<TemplateConfig> | { promptType: 'text' };
+
+// Script types
+export interface ScriptConfig extends CascadaConfig {
+	script?: string;
+	scriptType?: ScriptType;
+};
+
+export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
+
+export type OptionalNoPromptScriptConfig = Partial<ScriptConfig> | { scriptType: 'text' };
+
+export type ScriptResult = Record<string, any> | string | null;
 
 export type PromptOrMessage = { prompt: string } | { messages: NonNullable<GenerateTextConfig['messages']> };
 
@@ -58,14 +74,14 @@ export type PromptOrMessage = { prompt: string } | { messages: NonNullable<Gener
 
 // The first argument of generateText
 export type GenerateTextConfig<
-	TOOLS extends Record<string, CoreTool> = Record<string, never>,
+	TOOLS extends Record<string, Tool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
 
 // The first argument of streamText
 export type StreamTextConfig<
-	TOOLS extends Record<string, CoreTool> = Record<string, never>,
+	TOOLS extends Record<string, Tool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
@@ -129,7 +145,7 @@ export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
 }
 
 export type AnyNoTemplateConfig<
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
 	| GenerateTextConfig<TOOLS, OUTPUT>
 	| StreamTextConfig<TOOLS, OUTPUT>
@@ -142,7 +158,7 @@ export type AnyNoTemplateConfig<
 	| StreamObjectNoSchemaConfig;
 
 export type AnyConfig<
-	TOOLS extends Record<string, CoreTool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & { promptType: 'text' }) // text mode - no template props
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined

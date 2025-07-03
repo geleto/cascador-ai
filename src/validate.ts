@@ -1,4 +1,4 @@
-import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, Context } from "./types";
+import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, OptionalScriptConfig, Context } from "./types";
 
 type ObjectConfigUnion = GenerateObjectObjectConfig<unknown> | GenerateObjectArrayConfig<unknown> | GenerateObjectEnumConfig<string> | GenerateObjectNoSchemaConfig;
 
@@ -10,21 +10,35 @@ export class ConfigError extends Error {
 	}
 }
 
-export function validateBaseConfig(config?: Partial<OptionalTemplateConfig>) {
+export function validateBaseConfig(config?: Partial<OptionalTemplateConfig> | Partial<OptionalScriptConfig>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object');
 	}
 
-	if (config.promptType as string === 'text' && ('loader' in config || 'filters' in config || 'options' in config)) {
-		throw new ConfigError('Text promptType cannot have template properties');
+	// Handle template config validation
+	if ('promptType' in config && config.promptType !== undefined) {
+		if (config.promptType === 'text' && ('loader' in config || 'filters' in config || 'options' in config)) {
+			throw new ConfigError('Text promptType cannot have template properties');
+		}
+
+		if ((config.promptType === 'template-name' || config.promptType === 'async-template-name') && !('loader' in config)) {
+			throw new ConfigError('Template name types require a loader');
+		}
 	}
 
-	if ((config.promptType === 'template-name' || config.promptType === 'async-template-name') && !('loader' in config)) {
-		throw new ConfigError('Template name types require a loader');
+	// Handle script config validation
+	if ('scriptType' in config && config.scriptType !== undefined) {
+		if (config.scriptType === 'text' && ('loader' in config || 'filters' in config || 'options' in config)) {
+			throw new ConfigError('Text scriptType cannot have script properties');
+		}
+
+		if ((config.scriptType === 'script-name' || config.scriptType === 'async-script-name') && !('loader' in config)) {
+			throw new ConfigError('Script name types require a loader');
+		}
 	}
 
-	if ('filters' in config) {
-		for (const [name, filter] of Object.entries(config.filters ?? {})) {
+	if ('filters' in config && config.filters) {
+		for (const [name, filter] of Object.entries(config.filters)) {
 			if (typeof filter !== 'function') {
 				throw new ConfigError(`Filter ${name} must be a function`);
 			}
