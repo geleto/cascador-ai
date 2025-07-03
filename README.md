@@ -128,9 +128,10 @@ const contentAgent = create.ScriptRunner({
       var qualityScore = critiqueResult.score
       var suggestions = critiqueResult.suggestions
       var revisionCount = 0
+      var break = false
 
       // --- Start the revision loop ---
-      while qualityScore < qualityThreshold and revisionCount < maxRevisions
+      while qualityScore < qualityThreshold and revisionCount < maxRevisions and not break
         var previousDraft = currentDraft
         var previousScore = qualityScore
         revisionCount++
@@ -145,7 +146,8 @@ const contentAgent = create.ScriptRunner({
         // --- Decide whether to keep the revision ---
         if newScore < previousScore
           // Score got worse. Reject the revision and exit by forcing the loop to end.
-          revisionCount = maxRevisions + 1
+          break = true
+          revisionCount = revisionCount - 1
         else
           // Revision is an improvement. Accept it and update our state for the next loop.
           currentDraft = revisedDraft
@@ -157,7 +159,7 @@ const contentAgent = create.ScriptRunner({
       // --- Assemble the final result ---
       @data.finalDraft = currentDraft
       @data.finalScore = qualityScore
-      @data.revisionsMade = revisionCount > maxRevisions ? revisionCount - maxRevisions -1 : revisionCount
+      @data.revisionsMade = revisionCount
     `,
 });
 
