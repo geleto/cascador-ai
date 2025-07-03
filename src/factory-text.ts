@@ -39,6 +39,7 @@ export function TextGenerator<
 	>
 ): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.GenerateTextResult<TOOLS, OUTPUT>>;
 
+// Implementation
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
