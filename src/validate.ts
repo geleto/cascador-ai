@@ -1,4 +1,5 @@
-import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, OptionalScriptConfig, Context } from "./types";
+import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, OptionalScriptConfig } from "./types-config";
+import { Context } from "./types";
 
 type ObjectConfigUnion = GenerateObjectObjectConfig<unknown> | GenerateObjectArrayConfig<unknown> | GenerateObjectEnumConfig<string> | GenerateObjectNoSchemaConfig;
 

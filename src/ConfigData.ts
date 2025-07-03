@@ -1,4 +1,5 @@
-import { Override, TemplateConfig } from './types';
+import { Override } from './types';
+import { TemplateConfig } from './types-config';
 
 export interface ConfigProvider<T> {
 	readonly config: T;

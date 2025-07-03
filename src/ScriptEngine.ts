@@ -1,7 +1,8 @@
 // ScriptEngine.ts
 
 import cascada from 'cascada-engine';
-import { Context, ScriptConfig } from './types';
+import { Context } from './types';
+import { ScriptConfig } from './types-config';
 
 class ScriptError extends Error {
 	constructor(message: string, cause?: Error) {

@@ -1,7 +1,8 @@
 // TemplateEngine.ts
 
 import cascada from 'cascada-engine';
-import { Context, TemplateConfig } from './types';
+import { Context } from './types';
+import { TemplateConfig } from './types-config';
 
 class TemplateError extends Error {
 	constructor(message: string, cause?: Error) {
