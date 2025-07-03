@@ -1,4 +1,4 @@
-import { Override } from './types';
+import { Override } from './type-utils';
 import { TemplateConfig } from './types-config';
 
 export interface ConfigProvider<T> {

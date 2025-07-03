@@ -2,8 +2,6 @@ import { Schema } from 'ai';
 import { z } from 'zod';
 import { GenerateTextConfig } from './types-config';
 
-export type Override<A, B> = Omit<A, keyof B> & B;
-
 // Template types
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
