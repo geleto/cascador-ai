@@ -75,9 +75,3 @@ export function createLLMRenderer<
 	return callSignature as LLMCallSignature<TConfig, TFunctionResult>;
 }
 
-// Re-export all factory functions from their respective modules
-export { Config } from './factory-config';
-export { TemplateRenderer } from './factory-template';
-export { ScriptRunner } from './factory-script';
-export { TextGenerator, TextStreamer } from './factory-text';
-export { ObjectGenerator, ObjectStreamer } from './factory-object';
