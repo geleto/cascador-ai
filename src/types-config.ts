@@ -14,12 +14,18 @@ import { TemplatePromptType, ScriptType, LLMPromptType } from './types';
 // Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
-export interface CascadaConfig {
+interface BaseConfig {
+	debug?: boolean;
+}
+
+interface CascadaConfig extends BaseConfig {
 	context?: Record<string, any>;
 	filters?: Record<string, (input: any, ...args: any[]) => any>;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
+
+interface LLMConfig extends BaseConfig { promptType?: LLMPromptType }
 
 // Config for the template engine with type safety for loader requirement
 export interface TemplateConfig extends CascadaConfig {
@@ -50,17 +56,17 @@ export type GenerateTextConfig<
 	TOOLS extends Record<string, Tool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
+> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
 
 // The first argument of streamText
 export type StreamTextConfig<
 	TOOLS extends Record<string, Tool> = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & { promptType?: LLMPromptType }>;
+> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
+export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & LLMConfig;
 
 export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	output?: 'object' | undefined;
@@ -90,7 +96,7 @@ export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 }
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & { promptType?: LLMPromptType };
+export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & LLMConfig;
 
 export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	output?: 'object' | undefined;
