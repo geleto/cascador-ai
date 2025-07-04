@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import * as configs from './types-config';
 import { SchemaType } from './types';
+import * as configs from './types-config';
 import { ILoaderAny } from 'cascada-engine';
 
 export type Override<A, B> = Omit<A, keyof B> & B;

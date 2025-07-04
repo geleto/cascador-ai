@@ -1,11 +1,11 @@
 import { generateText, streamText, Tool, LanguageModel } from 'ai';
-import { ConfigProvider } from './ConfigData';
 
+import { validateBaseConfig, ConfigError } from './validate';
+import { ConfigProvider, mergeConfigs } from './ConfigData';
 import * as configs from './types-config';
 import * as results from './types-result';
-import { validateBaseConfig, ConfigError } from './validate';
 import * as utils from './type-utils';
-import { mergeConfigs } from './ConfigData';
+
 import { createLLMRenderer, LLMCallSignature } from './llm';
 
 // Single config overload

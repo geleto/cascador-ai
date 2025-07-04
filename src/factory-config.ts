@@ -1,9 +1,9 @@
-import { Tool } from 'ai';
 import { ConfigData, mergeConfigs } from './ConfigData';
+import { validateBaseConfig } from './validate';
 import { ConfigProvider } from './ConfigData';
 import * as configs from './types-config';
-import { validateBaseConfig } from './validate';
 import * as utils from './type-utils';
+import { Tool } from 'ai';
 
 // Single config overload
 export function Config<

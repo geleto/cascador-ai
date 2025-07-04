@@ -1,11 +1,10 @@
-import { ConfigProvider } from './ConfigData';
+import { ConfigProvider, mergeConfigs } from './ConfigData';
+import { validateBaseConfig, ConfigError } from './validate';
 import { ScriptEngine } from './ScriptEngine';
-import { Context } from './types';
 import * as configs from './types-config';
 import * as results from './types-result';
-import { validateBaseConfig, ConfigError } from './validate';
 import * as utils from './type-utils';
-import { mergeConfigs } from './ConfigData';
+import { Context } from './types';
 
 // Script call signature type
 type ScriptCallSignature<TConfig extends configs.OptionalScriptConfig> =

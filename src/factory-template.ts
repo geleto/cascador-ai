@@ -1,10 +1,9 @@
-import { ConfigProvider } from './ConfigData';
 import { TemplateEngine } from './TemplateEngine';
-import { Context } from './types';
-import * as configs from './types-config';
+import { ConfigProvider, mergeConfigs } from './ConfigData';
 import { validateBaseConfig, ConfigError } from './validate';
+import * as configs from './types-config';
 import * as utils from './type-utils';
-import { mergeConfigs } from './ConfigData';
+import { Context } from './types';
 
 type TemplateCallSignature<TConfig extends configs.OptionalTemplateConfig> =
 	TConfig extends { prompt: string }

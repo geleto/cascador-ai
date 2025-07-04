@@ -1,6 +1,6 @@
 import {
-	LanguageModel, Schema, generateText, generateObject, streamText, streamObject,
-	JSONValue, Tool,
+	generateText, generateObject, streamText, streamObject,
+	Schema, JSONValue, Tool,
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -135,8 +135,3 @@ export type AnyConfig<
 > =
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & { promptType: 'text' }) // text mode - no template props
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined
-
-// Type guards for config objects
-export function hasModel(config: unknown): config is { model: LanguageModel } {
-	return !!config && typeof config === 'object' && 'model' in config && !!config.model;
-}
