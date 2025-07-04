@@ -1043,10 +1043,13 @@ This type safety ensures robust, predictable workflows with early error detectio
 
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
+- **Covert any renderer to Tool** create.Tool(), for use in Vercel AI tools property
+- **Convert any Tool to a Renderer** - call tools directly rather than the LLM choosing to call, call with named arguments
+- **optional JS/TS scripts and templates** to be used instead of Cascada
 - **Integrating the messages property with prompts**: template prompts are rendered and appended to the messages (if the property exists)
 - **Simplified loader wrapper**: replace the overcomplicated nunjucks loaders with simple function or interface
 - **Image Generation**: Add support for generating images from prompts using models like DALL-E.
 - **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management.
 - **Error Resilience**: Implement retry logic and Cascada’s upcoming try/except blocks for improved error handling.
 - **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical.
-- **Instructions on integrating memory**: Provide clear patterns and examples for integrating long-term memory solutions into agentic workflows.
+- **Instructions on integrating memory**: Provide clear patterns and examples for integrating long-term memory.
