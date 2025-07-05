@@ -599,4 +599,95 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const streamResult2 = await hybridStreamer("greetingTemplate", { user: "Bob" });
 	for await (const chunk of streamResult2.partialObjectStream) { } // ✓ Templates + streaming
 
+	// SECTION 13: Tool Factory Tests
+
+	// Test converting a TextGenerator to a Tool
+	const textRenderer = create.TextGenerator({
+		model: openAIModel,
+		prompt: 'Analyze the sentiment of: {{ text }}'
+	});
+
+	const sentimentTool = create.Tool({
+		description: 'Analyze the sentiment of a given text',
+		parameters: z.object({
+			text: z.string().describe('The text to analyze')
+		}),
+		inputMapping: {
+			text: 'text'
+		}
+	}, textRenderer);
+
+	// Test converting a ScriptRunner to a Tool
+	const scriptRenderer = create.ScriptRunner({
+		script: `:data
+			const result = await fetch('https://api.example.com/data?city={{ city }}');
+			const data = await result.json();
+			@data = { temperature: data.temp, humidity: data.humidity };
+		`
+	});
+
+	const weatherTool = create.Tool({
+		description: 'Get weather information for a city',
+		parameters: z.object({
+			city: z.string().describe('The city to get weather for')
+		}),
+		inputMapping: {
+			city: 'city'
+		}
+	}, scriptRenderer);
+
+	// Test converting an ObjectGenerator to a Tool
+	const objectRenderer = create.ObjectGenerator({
+		model: openAIModel,
+		output: 'object',
+		schema,
+		prompt: 'Summarize this text: {{ content }}'
+	});
+
+	const summaryTool = create.Tool({
+		description: 'Create a summary of the given text',
+		parameters: z.object({
+			content: z.string().describe('The text to summarize')
+		}),
+		inputMapping: {
+			content: 'content'
+		},
+		outputMapping: {
+			name: 'summary',
+			age: 'keyPoints'
+		}
+	}, objectRenderer);
+
+	// Test using tools in a TextGenerator
+	const toolRenderer = create.TextGenerator({
+		model: openAIModel,
+		tools: {
+			sentimentAnalyzer: sentimentTool,
+			weatherLookup: weatherTool,
+			textSummarizer: summaryTool
+		},
+		prompt: 'Analyze the sentiment and summarize this text: {{ text }}'
+	});
+
+	await toolRenderer({ text: 'This is a great day!' }); // ✓ Tool integration
+
+	// SECTION 14: Error Cases for Tool Factory
+
+	// @ts-expect-error
+	const toolWithoutDescription = create.Tool({
+		parameters: z.object({ text: z.string() })
+	}, textRenderer); // ✗ Missing description
+
+	// @ts-expect-error
+	const toolWithoutParameters = create.Tool({
+		description: 'Test tool'
+	}, textRenderer); // ✗ Missing parameters
+
+	// @ts-expect-error
+	const toolWithoutParent = create.Tool({
+		description: 'Test tool',
+		parameters: z.object({ text: z.string() })
+	}); // ✗ Missing parent renderer
+
+	console.log('All type safety tests passed!');
 })().catch(console.error);

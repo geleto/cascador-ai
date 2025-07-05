@@ -1,6 +1,6 @@
 import {
 	generateText, generateObject, streamText, streamObject,
-	Schema, JSONValue, Tool,
+	Schema, JSONValue, Tool
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -35,8 +35,6 @@ export interface TemplateConfig extends CascadaConfig {
 
 export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
 
-export type OptionalNoPromptTemplateConfig = Partial<TemplateConfig> | { promptType: 'text' };
-
 // Script types
 export interface ScriptConfig extends CascadaConfig {
 	script?: string;
@@ -45,7 +43,12 @@ export interface ScriptConfig extends CascadaConfig {
 
 export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
 
-export type OptionalNoPromptScriptConfig = Partial<ScriptConfig> | { scriptType: 'text' };
+
+export type ToolParameters = z.ZodTypeAny | Schema<any>;
+
+// Tool configuration interface, @todo - from Vercel
+export type ToolConfig<PARAMETERS extends ToolParameters = any, RESULT = any> = BaseConfig & Omit<Tool<PARAMETERS, RESULT>, 'execute'>;
+
 
 // Config types
 // All of them are partials because they can be requested in pieces,
