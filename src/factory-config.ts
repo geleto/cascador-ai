@@ -38,6 +38,11 @@ export function Config<
 
 	validateBaseConfig(config);
 
+	// Debug output if config.debug is true
+	if ('debug' in config && config.debug) {
+		console.log('[DEBUG] Config function called with config:', JSON.stringify(config, null, 2));
+	}
+
 	if (parent) {
 		const merged = mergeConfigs(parent.config, config);
 		// Runtime check would go here if needed

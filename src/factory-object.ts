@@ -156,6 +156,11 @@ export function ObjectGenerator<
 		validateBaseConfig(merged);
 	}
 
+	// Debug output if config.debug is true
+	if ('debug' in merged && merged.debug) {
+		console.log('[DEBUG] ObjectGenerator called with config:', JSON.stringify(merged, null, 2));
+	}
+
 	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing
 	return createLLMRenderer<
 		CombinedType,
@@ -279,6 +284,11 @@ export function ObjectStreamer<
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
+	}
+
+	// Debug output if config.debug is true
+	if ('debug' in merged && merged.debug) {
+		console.log('[DEBUG] ObjectStreamer called with config:', JSON.stringify(merged, null, 2));
 	}
 
 	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing

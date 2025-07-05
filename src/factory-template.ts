@@ -53,6 +53,11 @@ export function TemplateRenderer<
 		validateBaseConfig(merged);
 	}
 
+	// Debug output if config.debug is true
+	if ('debug' in merged && merged.debug) {
+		console.log('[DEBUG] TemplateRenderer called with config:', JSON.stringify(merged, null, 2));
+	}
+
 	if ((merged.promptType === 'template-name' || merged.promptType === 'async-template-name') && !('loader' in merged)) {
 		throw new ConfigError('Template name types require a loader');
 	}
@@ -68,13 +73,24 @@ export function TemplateRenderer<
 
 	// Define the call function that handles both cases
 	const call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<string> => {
+		if ('debug' in merged && merged.debug) {
+			console.log('[DEBUG] TemplateRenderer - call function called with:', { promptOrContext, maybeContext });
+		}
 		if (typeof promptOrContext === 'string') {
-			return renderer.render(promptOrContext, maybeContext);
+			const result = await renderer.render(promptOrContext, maybeContext);
+			if ('debug' in merged && merged.debug) {
+				console.log('[DEBUG] TemplateRenderer - render result:', result);
+			}
+			return result;
 		} else {
 			if (maybeContext !== undefined) {
 				throw new Error('Second argument must be undefined when not providing prompt.');
 			}
-			return renderer.render(undefined, promptOrContext);
+			const result = await renderer.render(undefined, promptOrContext);
+			if ('debug' in merged && merged.debug) {
+				console.log('[DEBUG] TemplateRenderer - render result:', result);
+			}
+			return result;
 		}
 	};
 

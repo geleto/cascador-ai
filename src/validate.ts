@@ -12,6 +12,11 @@ export class ConfigError extends Error {
 }
 
 export function validateBaseConfig(config?: Partial<OptionalTemplateConfig> | Partial<OptionalScriptConfig>) {
+	// Debug output if config.debug is true
+	if (config && 'debug' in config && config.debug) {
+		console.log('[DEBUG] validateBaseConfig called with config:', JSON.stringify(config, null, 2));
+	}
+
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object');
 	}
@@ -48,6 +53,11 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig> | Pa
 }
 
 export function validateCall(config: Record<string, any>, promptOrContext?: Context | string, maybeContext?: Context) {
+	// Debug output if config.debug is true
+	if ('debug' in config && config.debug) {
+		console.log('[DEBUG] validateCall called with:', { config: JSON.stringify(config, null, 2), promptOrContext, maybeContext });
+	}
+
 	if (maybeContext) {
 		if (typeof promptOrContext !== 'string') {
 			throw new ConfigError('First argument must be string when providing context');
@@ -71,6 +81,11 @@ export function validateCall(config: Record<string, any>, promptOrContext?: Cont
 }
 
 export function validateObjectConfig(config?: Record<string, any>, isStream = false) {
+	// Debug output if config.debug is true
+	if (config && 'debug' in config && config.debug) {
+		console.log('[DEBUG] validateObjectConfig called with:', { config: JSON.stringify(config, null, 2), isStream });
+	}
+
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object');
 	}

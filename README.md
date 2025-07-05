@@ -116,31 +116,32 @@ const contentAgent = create.ScriptRunner({
         // Define workflow parameters
         topic: 'the future of AI-powered development',
         qualityThreshold: 8,
+		minRevisions: 1,
         maxRevisions: 3,
     },
-    script: `
-      // This script orchestrates the agent's "thought process".
+    script:
+      `// This script orchestrates the agent's "thought process".
       :data
 
       // --- Generate and critique the initial draft ---
-      var currentDraft = (draftGenerator({ topic: topic })).text
-      var critiqueResult = (critiqueGenerator({ draft: currentDraft })).object
+      var currentDraft = draftGenerator({ topic: topic }).text
+      var critiqueResult = critiqueGenerator({ draft: currentDraft }).object
       var qualityScore = critiqueResult.score
       var suggestions = critiqueResult.suggestions
       var revisionCount = 0
       var break = false
 
       // --- Start the revision loop ---
-      while qualityScore < qualityThreshold and revisionCount < maxRevisions and not break
+      while (qualityScore < qualityThreshold or revisionCount < minRevisions) and revisionCount < maxRevisions and not break
         var previousDraft = currentDraft
         var previousScore = qualityScore
-        revisionCount++
+        revisionCount = revisionCount + 1
 
         // Revise the draft based on the latest suggestions
-        var revisedDraft = (revisionGenerator({ draft: currentDraft, suggestions: suggestions })).text
+        var revisedDraft = revisionGenerator({ draft: currentDraft, suggestions: suggestions }).text
 
-        // Critique the NEW revised draft
-        var newCritiqueResult = (critiqueGenerator({ draft: revisedDraft })).object
+        // --- Critique the NEW revised draft ---
+        var newCritiqueResult = critiqueGenerator({ draft: revisedDraft }).object
         var newScore = newCritiqueResult.score
 
         // --- Decide whether to keep the revision ---
@@ -166,7 +167,6 @@ const contentAgent = create.ScriptRunner({
 // 4. Run the Agent
 (async () => {
     const result = await contentAgent();
-    console.log('--- Agent Finished ---');
     console.log(JSON.stringify(result, null, 2));
 })();
 ```

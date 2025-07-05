@@ -55,6 +55,11 @@ export function ScriptRunner<
 		validateBaseConfig(merged);
 	}
 
+	// Debug output if config.debug is true
+	if ('debug' in merged && merged.debug) {
+		console.log('[DEBUG] ScriptRunner called with config:', JSON.stringify(merged, null, 2));
+	}
+
 	if ((merged.scriptType === 'script-name' || merged.scriptType === 'async-script-name') && !('loader' in merged)) {
 		throw new ConfigError('Script name types require a loader');
 	}
@@ -70,13 +75,24 @@ export function ScriptRunner<
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<results.ScriptResult> => {
+		if ('debug' in merged && merged.debug) {
+			console.log('[DEBUG] ScriptRunner - call function called with:', { scriptOrContext, maybeContext });
+		}
 		if (typeof scriptOrContext === 'string') {
-			return await runner.run(scriptOrContext, maybeContext);
+			const result = await runner.run(scriptOrContext, maybeContext);
+			if ('debug' in merged && merged.debug) {
+				console.log('[DEBUG] ScriptRunner - run result:', result);
+			}
+			return result;
 		} else {
 			if (maybeContext !== undefined) {
 				throw new Error('Second argument must be undefined when not providing script.');
 			}
-			return await runner.run(undefined, scriptOrContext);
+			const result = await runner.run(undefined, scriptOrContext);
+			if ('debug' in merged && merged.debug) {
+				console.log('[DEBUG] ScriptRunner - run result:', result);
+			}
+			return result;
 		}
 	};
 

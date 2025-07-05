@@ -24,6 +24,11 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 			promptType: config.promptType ?? 'async-template'
 		};
 
+		// Debug output if config.debug is true
+		if ('debug' in this.config && this.config.debug) {
+			console.log('[DEBUG] TemplateEngine constructor called with config:', JSON.stringify(this.config, null, 2));
+		}
+
 		// Runtime validation of loader requirement
 		if (
 			(this.config.promptType === 'template-name' ||
@@ -88,6 +93,11 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 		promptOverride?: string,
 		contextOverride?: Context
 	): Promise<string> {
+		// Debug output if config.debug is true
+		if ('debug' in this.config && this.config.debug) {
+			console.log('[DEBUG] TemplateEngine.render called with:', { promptOverride, contextOverride });
+		}
+
 		// Runtime check for missing prompt
 		if (!promptOverride && !this.config.prompt) {
 			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
@@ -98,12 +108,20 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				? { ...this.config.context ?? {}, ...contextOverride }
 				: this.config.context ?? {};
 
+			if ('debug' in this.config && this.config.debug) {
+				console.log('[DEBUG] TemplateEngine.render - merged context:', mergedContext);
+			}
+
 			// If we have a prompt override, use renderString directly
 			if (promptOverride) {
 				if (this.env instanceof cascada.AsyncEnvironment) {
-					return await this.env.renderTemplateString(promptOverride, mergedContext);
+					const result = await this.env.renderTemplateString(promptOverride, mergedContext);
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] TemplateEngine.render - async renderString result:', result);
+					}
+					return result;
 				}
-				return await new Promise((resolve, reject) => {
+				const result = await new Promise<string>((resolve, reject) => {
 					const env = this.env as cascada.Environment;
 					try {
 						env.renderTemplateString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
@@ -119,6 +137,10 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 						reject(new Error(error instanceof Error ? error.message : String(error)));
 					}
 				});
+				if ('debug' in this.config && this.config.debug) {
+					console.log('[DEBUG] TemplateEngine.render - sync renderString result:', result);
+				}
+				return result;
 			}
 
 			// Otherwise use the compiled template
@@ -133,7 +155,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 
 			if (this.template instanceof cascada.Template) {
 				const template = this.template;
-				return await new Promise((resolve, reject) => {
+				const result = await new Promise<string>((resolve, reject) => {
 					try {
 						template.render(mergedContext, (err: Error | null, res: string | null) => {
 							if (err) {
@@ -148,9 +170,17 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 						reject(error instanceof Error ? error : new Error(String(error)));
 					}
 				});
+				if ('debug' in this.config && this.config.debug) {
+					console.log('[DEBUG] TemplateEngine.render - sync template result:', result);
+				}
+				return result;
 			}
 
-			return await this.template.render(mergedContext);
+			const result = await this.template.render(mergedContext);
+			if ('debug' in this.config && this.config.debug) {
+				console.log('[DEBUG] TemplateEngine.render - async template result:', result);
+			}
+			return result;
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new TemplateError(`Template render failed: ${error.message}`, error);

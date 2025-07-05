@@ -64,6 +64,11 @@ export function TextGenerator<
 		throw new ConfigError('TextGenerator config requires model');
 	}
 
+	// Debug output if config.debug is true
+	if (merged.debug) {
+		console.log('[DEBUG] TextGenerator called with config:', JSON.stringify(merged, null, 2));
+	}
+
 	return createLLMRenderer<
 		CombinedType,
 		configs.GenerateTextConfig<TOOLS, OUTPUT> & { model: LanguageModel },
@@ -118,6 +123,11 @@ export function TextStreamer<
 
 	if (!('model' in merged)) {
 		throw new ConfigError('TextStreamer config requires model');
+	}
+
+	// Debug output if config.debug is true
+	if (merged.debug) {
+		console.log('[DEBUG] TextStreamer called with config:', JSON.stringify(merged, null, 2));
 	}
 
 	return createLLMRenderer<

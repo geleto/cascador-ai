@@ -24,6 +24,11 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 			scriptType: config.scriptType ?? 'async-script'
 		} as TConfig;
 
+		// Debug output if config.debug is true
+		if ('debug' in this.config && this.config.debug) {
+			console.log('[DEBUG] ScriptEngine constructor called with config:', JSON.stringify(this.config, null, 2));
+		}
+
 		// Runtime validation of loader requirement
 		if (
 			(this.config.scriptType === 'script-name' ||
@@ -94,6 +99,11 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 		scriptOverride?: string,
 		contextOverride?: Context
 	): Promise<Record<string, any> | string | null> {
+		// Debug output if config.debug is true
+		if ('debug' in this.config && this.config.debug) {
+			console.log('[DEBUG] ScriptEngine.run called with:', { scriptOverride, contextOverride });
+		}
+
 		// Runtime check for missing script
 		if (!scriptOverride && !('script' in this.config) && !('script' in this.config && this.config.script)) {
 			throw new ScriptError('No script provided. Either provide a script in the configuration or as a call argument.');
@@ -104,12 +114,20 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 				? { ...('context' in this.config ? this.config.context : {}) ?? {}, ...contextOverride }
 				: ('context' in this.config ? this.config.context : {}) ?? {};
 
+			if ('debug' in this.config && this.config.debug) {
+				console.log('[DEBUG] ScriptEngine.run - merged context:', mergedContext);
+			}
+
 			// If we have a script override, use renderString directly
 			if (scriptOverride) {
 				if (this.env instanceof cascada.AsyncEnvironment) {
-					return await this.env.renderScriptString(scriptOverride, mergedContext);
+					const result = await this.env.renderScriptString(scriptOverride, mergedContext);
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] ScriptEngine.run - async renderScriptString result:', result);
+					}
+					return result;
 				}
-				return await new Promise((resolve, reject) => {
+				const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
 					const env = this.env as cascada.Environment;
 					try {
 						env.renderScriptString(scriptOverride, mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
@@ -125,6 +143,10 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 						reject(new Error(error instanceof Error ? error.message : String(error)));
 					}
 				});
+				if ('debug' in this.config && this.config.debug) {
+					console.log('[DEBUG] ScriptEngine.run - sync renderScriptString result:', result);
+				}
+				return result;
 			}
 
 			// Otherwise use the compiled script
@@ -139,7 +161,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 
 			if (this.script instanceof cascada.Script) {
 				const script = this.script;
-				return await new Promise((resolve, reject) => {
+				const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
 					try {
 						script.render(mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
 							if (err) {
@@ -154,9 +176,17 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 						reject(error instanceof Error ? error : new Error(String(error)));
 					}
 				});
+				if ('debug' in this.config && this.config.debug) {
+					console.log('[DEBUG] ScriptEngine.run - sync script result:', result);
+				}
+				return result;
 			}
 
-			return await this.script.render(mergedContext);
+			const result = await this.script.render(mergedContext);
+			if ('debug' in this.config && this.config.debug) {
+				console.log('[DEBUG] ScriptEngine.run - async script result:', result);
+			}
+			return result;
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new ScriptError(`Script render failed: ${error.message}`, error);

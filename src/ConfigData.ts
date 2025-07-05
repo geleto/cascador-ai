@@ -21,6 +21,14 @@ export function mergeConfigs<
 	parentConfig: TParent,
 	childConfig: TChild
 ): Override<TParent, TChild> {
+	// Debug output if either config has debug enabled
+	if (('debug' in parentConfig && parentConfig.debug) || ('debug' in childConfig && childConfig.debug)) {
+		console.log('[DEBUG] mergeConfigs called with:', {
+			parentConfig: JSON.stringify(parentConfig, null, 2),
+			childConfig: JSON.stringify(childConfig, null, 2)
+		});
+	}
+
 	// Start shallow merge
 	const merged = { ...parentConfig, ...childConfig };
 
@@ -54,6 +62,11 @@ export function mergeConfigs<
 	merged.loader = Array.from(
 		new Set([...parentLoaders, ...childLoaders].filter(Boolean))
 	);
+
+	// Debug output for merged result if debug is enabled
+	if (('debug' in parentConfig && parentConfig.debug) || ('debug' in childConfig && childConfig.debug)) {
+		console.log('[DEBUG] mergeConfigs result:', JSON.stringify(merged, null, 2));
+	}
 
 	return merged;
 }

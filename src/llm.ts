@@ -45,11 +45,19 @@ export function createLLMRenderer<
 	config: TConfig,
 	vercelFunc: (config: TFunctionConfig) => TFunctionResult
 ): LLMCallSignature<TConfig, TFunctionResult> {
+	// Debug output if config.debug is true
+	if (config.debug) {
+		console.log('[DEBUG] createLLMRenderer called with config:', JSON.stringify(config, null, 2));
+	}
+
 	let call;
 	if (config.promptType !== 'text') {
 		// We have to run the prompt through a template first.
 		const renderer = TemplateRenderer(config as configs.TemplateConfig & { promptType: TemplatePromptType });
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
+			if (config.debug) {
+				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrContext, maybeContext });
+			}
 			validateCall(config, promptOrContext, maybeContext);
 			let renderedPrompt: string;
 
@@ -58,17 +66,31 @@ export function createLLMRenderer<
 			} else {
 				renderedPrompt = await renderer(config.prompt!, promptOrContext);
 			}
+			if (config.debug) {
+				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
+			}
 			if (config.messages) {
 				//todo: add the prompt to the messages
 				//config.messages.push(renderedPrompt);
 			}
-			return await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
+			const result = await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
+			if (config.debug) {
+				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+			}
+			return result;
 		};
 	} else {
 		// No need to run the prompt through a template.
 		call = async (prompt: string): Promise<TFunctionResult> => {
+			if (config.debug) {
+				console.log('[DEBUG] createLLMRenderer - text path called with prompt:', prompt);
+			}
 			validateCall(config, prompt);
-			return await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
+			const result = await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
+			if (config.debug) {
+				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+			}
+			return result;
 		};
 	}
 	const callSignature = Object.assign(call, { config });
