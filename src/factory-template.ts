@@ -55,7 +55,7 @@ export function TemplateRenderer<
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] TemplateRenderer called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] TemplateRenderer created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	if ((merged.promptType === 'template-name' || merged.promptType === 'async-template-name') && !('loader' in merged)) {

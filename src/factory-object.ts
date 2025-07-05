@@ -158,7 +158,7 @@ export function ObjectGenerator<
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ObjectGenerator called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing
@@ -288,7 +288,7 @@ export function ObjectStreamer<
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ObjectStreamer called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing

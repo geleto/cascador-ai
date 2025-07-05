@@ -47,7 +47,7 @@ export function createLLMRenderer<
 ): LLMCallSignature<TConfig, TFunctionResult> {
 	// Debug output if config.debug is true
 	if (config.debug) {
-		console.log('[DEBUG] createLLMRenderer called with config:', JSON.stringify(config, null, 2));
+		console.log('[DEBUG] LLMRenderer created with config:', JSON.stringify(config, null, 2));
 	}
 
 	let call;

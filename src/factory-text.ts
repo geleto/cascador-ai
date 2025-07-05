@@ -66,7 +66,7 @@ export function TextGenerator<
 
 	// Debug output if config.debug is true
 	if (merged.debug) {
-		console.log('[DEBUG] TextGenerator called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] TextGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	return createLLMRenderer<
@@ -127,7 +127,7 @@ export function TextStreamer<
 
 	// Debug output if config.debug is true
 	if (merged.debug) {
-		console.log('[DEBUG] TextStreamer called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] TextStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	return createLLMRenderer<

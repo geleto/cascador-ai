@@ -57,7 +57,7 @@ export function ScriptRunner<
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ScriptRunner called with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] ScriptRunner created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	if ((merged.scriptType === 'script-name' || merged.scriptType === 'async-script-name') && !('loader' in merged)) {
