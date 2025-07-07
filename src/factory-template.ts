@@ -5,6 +5,9 @@ import * as configs from './types-config';
 import * as utils from './type-utils';
 import { Context } from './types';
 
+//@todo Simplify, may not need extends
+export type TemplateRendererInstance<CONFIG extends configs.OptionalTemplateConfig> = TemplateCallSignature<CONFIG>;
+
 type TemplateCallSignature<TConfig extends configs.OptionalTemplateConfig> =
 	TConfig extends { prompt: string }
 	? {

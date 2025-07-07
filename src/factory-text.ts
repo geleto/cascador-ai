@@ -8,6 +8,9 @@ import * as utils from './type-utils';
 
 import { createLLMRenderer, LLMCallSignature } from './llm';
 
+export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
+export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, results.GenerateTextResult<TOOLS, OUTPUT>>;
+
 // Single config overload
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,

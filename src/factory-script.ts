@@ -6,6 +6,8 @@ import * as results from './types-result';
 import * as utils from './type-utils';
 import { Context } from './types';
 
+export type ScriptRunnerInstance<CONFIG extends configs.OptionalScriptConfig> = ScriptCallSignature<CONFIG>;
+
 // Script call signature type
 export type ScriptCallSignature<TConfig extends configs.OptionalScriptConfig> =
 	TConfig extends { script: string }

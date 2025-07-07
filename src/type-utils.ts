@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SchemaType } from './types';
+import { SchemaType, ToolParameters } from './types';
 import * as configs from './types-config';
 import { ILoaderAny } from 'cascada-engine';
 
@@ -22,6 +22,13 @@ export type StrictType<T, Shape> = T extends Shape
 export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & configs.TemplateConfig>;
+
+// Helper to infer parameters from the schema
+export type InferParameters<T extends ToolParameters> = T extends z.ZodTypeAny
+	? z.infer<T>
+	: T extends { parameters: z.ZodTypeAny }
+	? z.infer<T['parameters']>
+	: any;
 
 export type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
 

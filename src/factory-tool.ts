@@ -1,44 +1,158 @@
-import { Tool as VercelTool } from 'ai';
+// factory-tool.ts
+
+import { Tool as VercelTool, JSONValue, ToolSet } from 'ai';
 import { ConfigError } from './validate';
+import { z } from 'zod';
 import { ToolConfig, ToolParameters } from './types';
+import * as configs from './types-config';
+
+import { TextGeneratorConfig, TextGeneratorInstance } from './factory-text';
+import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object';
+import { TemplateRendererInstance } from './factory-template';
+import { ScriptRunnerInstance } from './factory-script';
+import { InferParameters } from './type-utils';
+
+type AnyToolParent<
+	OBJECT, ELEMENT, ENUM extends string,
+	CONFIG extends (
+		ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
+		| TextGeneratorConfig<TOOLS, OUTPUT>
+		| configs.OptionalTemplateConfig
+		| configs.OptionalScriptConfig),
+	TOOLS extends ToolSet,
+	OUTPUT = never
+> =
+	| TextGeneratorInstance<CONFIG, OUTPUT>
+	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
+	| TemplateRendererInstance<configs.OptionalTemplateConfig>
+	| ScriptRunnerInstance<configs.OptionalScriptConfig>;
 
 
+// --- Overloads for type safety and autocompletion ---
 
-// Implementation
-export function Tool<PARAMETERS extends ToolParameters = any, RESULT = any>(
+// Overload for TextGenerator
+export function Tool<PARAMETERS extends ToolParameters, TOOLS extends ToolSet, OUTPUT>(
+	config: ToolConfig<PARAMETERS, string>,
+	parent: TextGeneratorInstance<TextGeneratorConfig<TOOLS, OUTPUT>, OUTPUT>
+): VercelTool<InferParameters<PARAMETERS>, string>;
+
+// Overload for ObjectGenerator
+export function Tool<PARAMETERS extends ToolParameters, OBJECT, ELEMENT, ENUM extends string, RESULT extends JSONValue>(
 	config: ToolConfig<PARAMETERS, RESULT>,
-	parent: { (context?: PARAMETERS): Promise<any>; config: any }
-): VercelTool<PARAMETERS, RESULT> {
+	parent: ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
+): VercelTool<InferParameters<PARAMETERS>, RESULT>;
 
-	// Debug output if config.debug is true
+// Overload for TemplateRenderer
+export function Tool<PARAMETERS extends ToolParameters>(
+	config: ToolConfig<PARAMETERS, string>,
+	parent: TemplateRendererInstance<configs.OptionalTemplateConfig>
+): VercelTool<InferParameters<PARAMETERS>, string>;
+
+// Overload for ScriptRunner
+export function Tool<PARAMETERS extends ToolParameters, RESULT extends JSONValue>(
+	config: ToolConfig<PARAMETERS, RESULT>,
+	parent: ScriptRunnerInstance<configs.OptionalScriptConfig>
+): VercelTool<InferParameters<PARAMETERS>, RESULT>;
+
+
+// --- Implementation ---
+export function Tool<
+	PARAMETERS extends ToolParameters,
+	OBJECT, ELEMENT, ENUM extends string,
+	CONFIG extends (
+		ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
+		| TextGeneratorConfig<TOOLS, OUTPUT>
+		| configs.OptionalTemplateConfig
+		| configs.OptionalScriptConfig),
+	TOOLS extends ToolSet,
+	OUTPUT = never,
+	RESULT extends JSONValue = JSONValue
+>(
+	config: ToolConfig<PARAMETERS, RESULT>,
+	parent: AnyToolParent<OBJECT, ELEMENT, ENUM, CONFIG, TOOLS, OUTPUT>
+): VercelTool<InferParameters<PARAMETERS>, RESULT> {
+
 	if ('debug' in config && config.debug) {
 		console.log('[DEBUG] Tool created with config:', JSON.stringify(config, null, 2));
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!config.parameters) {
 		throw new ConfigError('Tool config requires parameters schema');
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if (!parent) {
-		throw new ConfigError('Tool requires a parent renderer/scriptrunner');
+	if (!parent.config) {
+		throw new ConfigError('Tool requires a valid parent (Generator, Renderer, or Runner)');
 	}
 
-	// Create the tool execution function
-	const execute = async (args: PARAMETERS): Promise<any> => {
-		if ('debug' in config && config.debug) {
-			console.log('[DEBUG] Tool execution called with args:', args);
-		}
+	let execute: (args: InferParameters<PARAMETERS>) => Promise<any>;
 
-		// Execute the parent renderer
-		return await parent(args);
-	};
+	// We can discriminate based on the parent's config object
+	const parentConfig = parent.config;
 
-	// Return the Vercel AI Tool directly
+	// Determine the type of the parent:
+	// is it the return of TextGenerator, ObjectGenerator, TemplateRenderer, or ScriptRunner?
+	// then return the appropriate function to execute the tool
+
+	// Case 1: Parent is a ScriptRunner. The 'scriptType' property is unique to ScriptConfig.
+	if ('scriptType' in parentConfig) {
+		execute = async (args: InferParameters<PARAMETERS>): Promise<JSONValue> => {
+			// A ScriptRunner's call signature accepts a context object.
+			// The tool's arguments object is passed directly as the context.
+			const result = await (parent as ScriptRunnerInstance<configs.OptionalScriptConfig>)(args);
+
+			// ScriptRunner can return a string, an object, or null.
+			// Coalesce null to an empty string to ensure a valid JSONValue that isn't null.
+			return result ?? '';
+		};
+	}
+	// Case 2: Parent is an ObjectGenerator. The 'output' property is its key differentiator.
+	else if ('output' in parentConfig) {
+		execute = async (args: InferParameters<PARAMETERS>): Promise<JSONValue> => {
+			// An ObjectGenerator's call signature accepts a context object.
+			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
+
+			// The result object from Vercel's generateObject contains the generated JSON
+			// in the 'object' property. This applies to object, array, and enum outputs.
+			if ('object' in result) {
+				return result.object;
+			}
+
+			// This should not be reached with a valid ObjectGenerator parent.
+			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
+		};
+	}
+	// Case 3: Parent is a TextGenerator. It requires a 'model', unlike ScriptRunner or TemplateRenderer.
+	else if ('model' in parentConfig) {
+		execute = async (args: InferParameters<PARAMETERS>): Promise<string> => {
+			// A TextGenerator's call signature accepts a context object.
+			const result = await (parent as TextGeneratorInstance<any, any>)(args);
+
+			// The result object from Vercel's generateText contains the generated string
+			// in the 'text' property.
+			if ('text' in result) {
+				return result.text;
+			}
+
+			// This should not be reached with a valid TextGenerator parent.
+			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
+		};
+	}
+	// Case 4: Parent is a TemplateRenderer. This is a fallback check for a non-LLM, templating-only parent.
+	else if ('promptType' in parentConfig) {
+		execute = async (args: InferParameters<PARAMETERS>): Promise<string> => {
+			// A TemplateRenderer is the simplest case. Its call signature accepts a context
+			// object and directly returns a promise of the rendered string.
+			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
+		};
+	}
+	// Error case: If none of the above configurations match, we cannot create the tool.
+	else {
+		throw new ConfigError('Could not determine the type of the parent for the tool. The parent must be a configured instance from TextGenerator, ObjectGenerator, ScriptRunner, or TemplateRenderer.');
+	}
+
+
 	return {
-		...config,
+		description: config.description,
+		parameters: config.parameters as InferParameters<PARAMETERS>,
 		execute,
-		type: 'function' as const
-	}
+		type: 'function' as const,
+	};
 }

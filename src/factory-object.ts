@@ -7,6 +7,17 @@ import * as results from './types-result';
 import * as utils from './type-utils';
 import { SchemaType } from './types';
 
+export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> =
+	configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>
+	| configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>
+	| configs.OptionalTemplateConfig & configs.GenerateObjectEnumConfig<ENUM>
+	| configs.OptionalTemplateConfig & configs.GenerateObjectNoSchemaConfig;
+
+export type ObjectGeneratorInstance<
+	OBJECT, ELEMENT, ENUM extends string,
+	CONFIG extends ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
+> = LLMCallSignature<CONFIG, results.GenerateObjectObjectResult<OBJECT>>;
+
 // Object output
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
