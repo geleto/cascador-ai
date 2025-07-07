@@ -29,7 +29,8 @@ export default tseslint.config(
 			'keyword-spacing': ['error', { before: true, after: true }],
 			'space-infix-ops': 'error',
 			'space-before-blocks': 'error',
-			'space-before-function-paren': ['error', {
+			'space-before-function-paren': 'off',
+			'@typescript-eslint/space-before-function-paren': ['error', {
 				anonymous: 'always',
 				named: 'never',
 				asyncArrow: 'always'
