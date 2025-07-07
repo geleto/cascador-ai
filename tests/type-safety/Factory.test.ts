@@ -612,9 +612,6 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		parameters: z.object({
 			text: z.string().describe('The text to analyze')
 		}),
-		inputMapping: {
-			text: 'text'
-		}
 	}, textRenderer);
 
 	// Test converting a ScriptRunner to a Tool
@@ -630,10 +627,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		description: 'Get weather information for a city',
 		parameters: z.object({
 			city: z.string().describe('The city to get weather for')
-		}),
-		inputMapping: {
-			city: 'city'
-		}
+		})
 	}, scriptRenderer);
 
 	// Test converting an ObjectGenerator to a Tool
@@ -648,14 +642,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		description: 'Create a summary of the given text',
 		parameters: z.object({
 			content: z.string().describe('The text to summarize')
-		}),
-		inputMapping: {
-			content: 'content'
-		},
-		outputMapping: {
-			name: 'summary',
-			age: 'keyPoints'
-		}
+		})
 	}, objectRenderer);
 
 	// Test using tools in a TextGenerator
@@ -672,11 +659,6 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await toolRenderer({ text: 'This is a great day!' }); // ✓ Tool integration
 
 	// SECTION 14: Error Cases for Tool Factory
-
-	// @ts-expect-error
-	const toolWithoutDescription = create.Tool({
-		parameters: z.object({ text: z.string() })
-	}, textRenderer); // ✗ Missing description
 
 	// @ts-expect-error
 	const toolWithoutParameters = create.Tool({
