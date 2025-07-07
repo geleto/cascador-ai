@@ -1043,8 +1043,6 @@ This type safety ensures robust, predictable workflows with early error detectio
 
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
-- **Covert any renderer to Tool** create.Tool(), for use in Vercel AI tools property
-- **Convert any Tool to a Renderer** - call tools directly rather than the LLM choosing to call, call with named arguments
 - **optional JS/TS scripts and templates** to be used instead of Cascada
 - **Integrating the messages property with prompts**: template prompts are rendered and appended to the messages (if the property exists)
 - **Simplified loader wrapper**: replace the overcomplicated nunjucks loaders with simple function or interface

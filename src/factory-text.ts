@@ -1,4 +1,4 @@
-import { generateText, streamText, Tool, LanguageModel } from 'ai';
+import { generateText, streamText, LanguageModel, ToolSet } from 'ai';
 
 import { validateBaseConfig, ConfigError } from './validate';
 import { ConfigProvider, mergeConfigs } from './ConfigData';
@@ -11,7 +11,7 @@ import { createLLMRenderer, LLMCallSignature } from './llm';
 // Single config overload
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
-	TOOLS extends Record<string, Tool> = Record<string, Tool>, OUTPUT = never
+	TOOLS extends ToolSet = ToolSet, OUTPUT = never
 >(
 	config: utils.StrictTypeWithTemplate<TConfig, configs.GenerateTextConfig<TOOLS, OUTPUT>> & utils.RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
@@ -21,7 +21,7 @@ export function TextGenerator<
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissing<
 		utils.StrictTypeWithTemplate<
@@ -43,7 +43,7 @@ export function TextGenerator<
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
-	TOOLS extends Record<string, Tool> = Record<string, Tool>, OUTPUT = never
+	TOOLS extends ToolSet = ToolSet, OUTPUT = never
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -79,7 +79,7 @@ export function TextGenerator<
 // Single config overload
 export function TextStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamTextConfig<TOOLS, OUTPUT>,
-	TOOLS extends Record<string, Tool> = Record<string, Tool>,
+	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
 	config: TConfig & utils.RequireTemplateLoaderIfNeeded<TConfig>
@@ -90,7 +90,7 @@ export function TextStreamer<
 export function TextStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.OptionalTemplateConfig & configs.StreamTextConfig<TOOLS, OUTPUT>,
-	TOOLS extends Record<string, Tool> = Record<string, Tool>,
+	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
 	config: TConfig & utils.RequireTemplateLoaderIfNeeded<utils.Override<TParentConfig, TConfig>>
@@ -102,7 +102,7 @@ export function TextStreamer<
 export function TextStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.OptionalTemplateConfig & configs.StreamTextConfig<TOOLS, OUTPUT>,
-	TOOLS extends Record<string, Tool> = Record<string, Tool>,
+	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
 	config: TConfig,

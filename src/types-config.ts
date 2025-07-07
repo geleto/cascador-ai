@@ -1,6 +1,7 @@
 import {
 	generateText, generateObject, streamText, streamObject,
-	Schema, JSONValue, Tool
+	Schema, JSONValue, Tool,
+	ToolSet
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -56,14 +57,14 @@ export type ToolConfig<PARAMETERS extends ToolParameters = any, RESULT = any> = 
 
 // The first argument of generateText
 export type GenerateTextConfig<
-	TOOLS extends Record<string, Tool> = Record<string, never>,
+	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
 
 // The first argument of streamText
 export type StreamTextConfig<
-	TOOLS extends Record<string, Tool> = Record<string, never>,
+	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
 > = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
@@ -127,7 +128,7 @@ export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
 }
 
 export type AnyNoTemplateConfig<
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
 	| GenerateTextConfig<TOOLS, OUTPUT>
 	| StreamTextConfig<TOOLS, OUTPUT>
@@ -140,7 +141,7 @@ export type AnyNoTemplateConfig<
 	| StreamObjectNoSchemaConfig;
 
 export type AnyConfig<
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 > =
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & { promptType: 'text' }) // text mode - no template props
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined

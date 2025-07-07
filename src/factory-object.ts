@@ -1,4 +1,4 @@
-import { generateObject, streamObject, Tool, LanguageModel } from 'ai';
+import { generateObject, streamObject, LanguageModel, ToolSet } from 'ai';
 import { ConfigProvider, mergeConfigs } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './llm';
 import { validateBaseConfig } from './validate';
@@ -48,7 +48,7 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<
@@ -70,7 +70,7 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<
@@ -92,7 +92,7 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectEnumConfig<ENUM>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<
@@ -114,7 +114,7 @@ export function ObjectGenerator<
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectNoSchemaConfig,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissing<
 		utils.StrictTypeWithTemplate<
@@ -202,7 +202,7 @@ export function ObjectStreamer<
 export function ObjectStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<
@@ -224,7 +224,7 @@ export function ObjectStreamer<
 export function ObjectStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectArrayConfig<ELEMENT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<
@@ -246,7 +246,7 @@ export function ObjectStreamer<
 export function ObjectStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectNoSchemaConfig,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissingWithSchema<
 		utils.StrictTypeWithTemplate<

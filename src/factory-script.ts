@@ -7,7 +7,7 @@ import * as utils from './type-utils';
 import { Context } from './types';
 
 // Script call signature type
-type ScriptCallSignature<TConfig extends configs.OptionalScriptConfig> =
+export type ScriptCallSignature<TConfig extends configs.OptionalScriptConfig> =
 	TConfig extends { script: string }
 	? {
 		//TConfig has script, no script argument is needed

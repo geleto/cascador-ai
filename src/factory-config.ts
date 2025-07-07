@@ -3,12 +3,12 @@ import { validateBaseConfig } from './validate';
 import { ConfigProvider } from './ConfigData';
 import * as configs from './types-config';
 import * as utils from './type-utils';
-import { Tool } from 'ai';
+import { ToolSet } from 'ai';
 
 // Single config overload
 export function Config<
 	TConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.StrictUnionSubtype<TConfig, configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
 ): ConfigProvider<TConfig>;
@@ -17,7 +17,7 @@ export function Config<
 export function Config<
 	TConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
 	TCombined = utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>
 >(
 	config: TConfig,
@@ -30,7 +30,7 @@ export function Config<
 export function Config<
 	TConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends Record<string, Tool>, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
