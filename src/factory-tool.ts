@@ -9,7 +9,7 @@ import { TextGeneratorConfig, TextGeneratorInstance } from './factory-text';
 import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object';
 import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
-import { InferParameters } from './type-utils';
+import * as utils from './type-utils';
 
 //@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
 
@@ -23,7 +23,7 @@ export function Tool<
 	TParent extends TextGeneratorInstance<any, any>,
 	PARAMETERS extends configs.ToolParameters
 >(
-	config: TConfig,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, string>;
 
@@ -35,7 +35,7 @@ export function Tool<
 	PARAMETERS extends configs.ToolParameters,
 	OBJECT, ELEMENT, ENUM extends string
 >(
-	config: TConfig,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, TResult>;
 
@@ -45,7 +45,7 @@ export function Tool<
 	TParent extends TemplateRendererInstance<configs.OptionalTemplateConfig>,
 	PARAMETERS extends configs.ToolParameters
 >(
-	config: TConfig,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, string>;
 
@@ -55,7 +55,7 @@ export function Tool<
 	TParent extends ScriptRunnerInstance<configs.OptionalScriptConfig>,
 	PARAMETERS extends configs.ToolParameters
 >(
-	config: TConfig,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, results.ScriptResult>;
 
@@ -88,20 +88,20 @@ export function Tool<
 	}
 
 	// This signature MUST match the Vercel SDK's execute type
-	let execute: (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions) => Promise<any>;
+	let execute: (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions) => Promise<any>;
 
 	const parentConfig = parent.config;
 
 	// Case 1: ScriptRunner
 	if ('script' in parentConfig) {
-		execute = async (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
 			const result = await (parent as ScriptRunnerInstance<configs.OptionalScriptConfig>)(args);
 			return result ?? '';
 		};
 	}
 	// Case 2: ObjectGenerator
 	else if ('output' in parentConfig) {
-		execute = async (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
 			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
 			if ('object' in result) { return result.object; }
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
@@ -109,7 +109,7 @@ export function Tool<
 	}
 	// Case 3: TextGenerator
 	else if ('model' in parentConfig) {
-		execute = async (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
 			const result = await (parent as TextGeneratorInstance<any, any>)(args);
 			if ('text' in result) { return result.text; }
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
@@ -117,7 +117,7 @@ export function Tool<
 	}
 	// Case 4: TemplateRenderer
 	else if ('prompt' in parentConfig) {
-		execute = async (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
 			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
 		};
 	}

@@ -51,7 +51,7 @@ export type ToolParameters = z.ZodTypeAny | Schema<any>;
 
 /**
  * The configuration object passed to the `create.Tool` factory.
- * It describes the tool's parameters and description, but not its implementation.
+ * It is the vercel function tool without the execute function.
  */
 export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
 	type?: 'function';
@@ -63,11 +63,8 @@ export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
  * The output of the `create.Tool` factory.
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  */
-export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = {
-	description?: string;
-	parameters: PARAMETERS;
+export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = ToolConfig<PARAMETERS> & {
 	execute: (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions) => PromiseLike<RESULT>;
-	type?: 'function';
 }
 
 
