@@ -1,10 +1,10 @@
-//import { openai } from '@ai-sdk/openai';
 import { ILoader, LoaderSource } from "cascada-engine";
 import { z } from 'zod';
 import { create } from '../../src';
 import { JSONValue, LanguageModel } from 'ai';
 
-//const openAIModel = openAIModel;
+// @todo - replace this with a cleaner, more systematic test suite
+
 const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safety tests
 
 /**
@@ -761,7 +761,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 			getMagicWord: magicWordTool,
 			getTimestamp: timestampTool
 		},
-		maxToolRoundtrips: 5,
+		maxSteps: 5,
 	});
 
 	// This call is valid because it uses the tools defined above.
