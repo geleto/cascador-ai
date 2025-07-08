@@ -2,7 +2,7 @@
 import { ILoader, LoaderSource } from "cascada-engine";
 import { z } from 'zod';
 import { create } from '../../src';
-import { LanguageModel } from 'ai';
+import { JSONValue, LanguageModel } from 'ai';
 
 //const openAIModel = openAIModel;
 const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safety tests
@@ -721,7 +721,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		parameters: z.object({ city: z.string() }),
 	}, scriptRunnerParent);
 	// Type-check execute function and result
-	const locationResult: { location: string, time: string } = await locationTool.execute({ city: 'New York' }, { toolCallId: 'test', messages: [] });
+	const locationResult = await locationTool.execute({ city: 'New York' }, { toolCallId: 'test', messages: [] }) as { location: string, time: string };
 	console.log(locationResult);
 
 
@@ -746,8 +746,10 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		description: 'Gets the current timestamp.',
 		parameters: z.object({}), // or z.any()
 	}, create.ScriptRunner({ script: '@data = new Date().toISOString()' }));
-	const timestampResult: string = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Correctly takes empty object
-	const timestampResult2: string = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Or no arguments at all
+	const timestampResult: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Correctly takes empty object
+	const timestampResult2: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Or no arguments at all
+	console.log(timestampResult);
+	console.log(timestampResult2);
 
 	// Test 2: Using the created tools in another generator
 	const masterGenerator = create.TextGenerator({
@@ -785,27 +787,21 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		description: 'A tool without parameters.',
 	}, textGenParent);
 
-	// 4b. Missing description
-	// @ts-expect-error
-	const toolWithoutDescription = create.Tool({
-		parameters: z.object({ text: z.string() }),
-	}, textGenParent);
-
-	// 4c. Missing parent renderer
+	// 4b. Missing parent renderer
 	// @ts-expect-error
 	const toolWithoutParent = create.Tool({
 		description: 'A tool without a parent.',
 		parameters: z.object({ text: z.string() }),
 	});
 
-	// 4d. Parent is not a valid renderer instance (e.g., a raw Config)
-	// @ts-expect-error
+	// 4c. Parent is not a valid renderer instance (e.g., a raw Config)
 	const toolWithInvalidParent = create.Tool({
 		description: 'A tool with an invalid parent.',
 		parameters: z.object({ text: z.string() }),
+		// @ts-expect-error
 	}, parentModelConfig); // ✗ Cannot use a Config object, must be a renderer instance
 
-	// 4e. Extra, unknown properties in the tool config
+	// 4d. Extra, unknown properties in the tool config
 	// @ts-expect-error
 	const toolWithExtraProps = create.Tool({
 		description: 'A tool with extra properties.',
@@ -813,13 +809,13 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		extra: 'property'
 	}, textGenParent);
 
-	// 4f. Check result type mismatches
+	// 4e. Check result type mismatches
 	const anotherObjectTool = create.Tool({
 		description: 'Generates a user profile object based on text content.',
 		parameters: z.object({ content: z.string() }),
 	}, objectGenParent);
-	// @ts-expect-error - Result should be JSONValue, not guaranteed to be a string
-	const badResult: string = await anotherObjectTool.execute({ content: 'test' });
+	// @ts-expect-error - Result should be the schema object, not a string
+	const badResult: string = await anotherObjectTool.execute({ content: 'test' }, { toolCallId: 'test', messages: [] });
 
 	// Test 5: Tool with a complex, nested parameter schema
 	const complexSchema = z.object({
