@@ -1,7 +1,8 @@
 import {
 	generateText, generateObject, streamText, streamObject,
 	Schema, JSONValue, Tool,
-	ToolSet
+	ToolSet,
+	ToolExecutionOptions
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -48,7 +49,15 @@ export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
 export type ToolParameters = z.ZodTypeAny | Schema<any>;
 
 // Tool configuration interface, @todo - from Vercel
-export type ToolConfig<PARAMETERS extends ToolParameters = any, RESULT = any> = BaseConfig & Omit<Tool<PARAMETERS, RESULT>, 'execute'>;
+export type ToolConfig<PARAMETERS extends ToolParameters = any, RESULT = any> = BaseConfig & {
+	type?: 'function';
+	description?: string;
+	parameters: PARAMETERS;
+}
+
+export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = ToolConfig<PARAMETERS, RESULT> & {
+	execute: (args: any, options: ToolExecutionOptions) => PromiseLike<RESULT>;
+}
 
 
 // Config types

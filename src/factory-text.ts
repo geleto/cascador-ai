@@ -24,7 +24,8 @@ export function TextGenerator<
 export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet,
+	OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissing<
 		utils.StrictTypeWithTemplate<
