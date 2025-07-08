@@ -1,7 +1,7 @@
 import { generateObject, streamObject, LanguageModel, ToolSet } from 'ai';
 import { ConfigProvider, mergeConfigs } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './llm';
-import { validateBaseConfig } from './validate';
+import { validateBaseConfig, validateObjectConfig } from './validate';
 import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
@@ -166,6 +166,7 @@ export function ObjectGenerator<
 	if (parent) {
 		validateBaseConfig(merged);
 	}
+	validateObjectConfig(merged, false);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -296,6 +297,7 @@ export function ObjectStreamer<
 	if (parent) {
 		validateBaseConfig(merged);
 	}
+	validateObjectConfig(merged, true);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

@@ -1,7 +1,12 @@
-import { GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig, OptionalTemplateConfig, OptionalScriptConfig } from "./types-config";
+import { OptionalTemplateConfig, OptionalScriptConfig } from "./types-config";
+import type * as TypesConfig from "./types-config";
 import { Context } from "./types";
 
-type ObjectConfigUnion = GenerateObjectObjectConfig<unknown> | GenerateObjectArrayConfig<unknown> | GenerateObjectEnumConfig<string> | GenerateObjectNoSchemaConfig;
+type ObjectConfigUnion =
+	| TypesConfig.GenerateObjectObjectConfig<unknown>
+	| TypesConfig.GenerateObjectArrayConfig<unknown>
+	| TypesConfig.GenerateObjectEnumConfig<string>
+	| TypesConfig.GenerateObjectNoSchemaConfig;
 
 export class ConfigError extends Error {
 	constructor(message: string, cause?: Error) {
@@ -11,42 +16,64 @@ export class ConfigError extends Error {
 	}
 }
 
-export function validateBaseConfig(config?: Partial<OptionalTemplateConfig> | Partial<OptionalScriptConfig>) {
-	// Debug output if config.debug is true
-	if (config && 'debug' in config && config.debug) {
-		console.log('[DEBUG] validateBaseConfig called with config:', JSON.stringify(config, null, 2));
-	}
-
+export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | OptionalScriptConfig>) {
 	if (!config || typeof config !== 'object') {
-		throw new ConfigError('Config must be an object');
+		throw new ConfigError('Config must be an object.');
 	}
 
-	// Handle template config validation
-	if ('promptType' in config && config.promptType !== undefined) {
-		if (config.promptType === 'text' && ('loader' in config || 'filters' in config || 'options' in config)) {
-			throw new ConfigError('Text promptType cannot have template properties');
-		}
+	// A configuration's type (template vs. script) is determined by its INTENT.
+	// This intent can be signaled either by providing the content ('prompt' or 'script')
+	// or by specifying how content will be handled ('promptType' or 'scriptType').
+	const hasTemplateKeys = 'prompt' in config || 'promptType' in config;
+	const hasScriptKeys = 'script' in config || 'scriptType' in config;
 
-		if ((config.promptType === 'template-name' || config.promptType === 'async-template-name') && !('loader' in config)) {
-			throw new ConfigError('Template name types require a loader');
+	// A single configuration cannot be for both templating and scripting.
+	if (hasTemplateKeys && hasScriptKeys) {
+		throw new ConfigError('Configuration cannot have both template/prompt and script properties. A config must be either for templating or for scripting, not both.');
+	}
+
+	// --- Template-specific validation ---
+	if (hasTemplateKeys) {
+		const templateConfig = config as Partial<TypesConfig.TemplateConfig>;
+		if (templateConfig.promptType as string === 'text') {
+			// 'text' prompt type is for direct LLM calls and should not be mixed with cascada template engine features.
+			if (templateConfig.loader || templateConfig.filters || templateConfig.options) {
+				throw new ConfigError("'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.");
+			}
+		} else if (templateConfig.promptType) {
+			// For all other named template types (template, async-template, template-name, async-template-name).
+			if (!['template', 'async-template', 'template-name', 'async-template-name'].includes(templateConfig.promptType)) {
+				throw new ConfigError(`Invalid promptType: '${templateConfig.promptType}'. Valid options are 'template', 'async-template', 'template-name', 'async-template-name'.`);
+			}
+			// If the user intends to load a template by name, a loader must be provided.
+			if ((templateConfig.promptType === 'template-name' || templateConfig.promptType === 'async-template-name') && !templateConfig.loader) {
+				throw new ConfigError(`The promptType '${templateConfig.promptType}' requires a 'loader' to be configured to load the template by name.`);
+			}
 		}
 	}
 
-	// Handle script config validation
-	if ('scriptType' in config && config.scriptType !== undefined) {
-		if (config.scriptType === 'text' && ('loader' in config || 'filters' in config || 'options' in config)) {
-			throw new ConfigError('Text scriptType cannot have script properties');
-		}
-
-		if ((config.scriptType === 'script-name' || config.scriptType === 'async-script-name') && !('loader' in config)) {
-			throw new ConfigError('Script name types require a loader');
+	// --- Script-specific validation ---
+	if (hasScriptKeys) {
+		const scriptConfig = config as Partial<OptionalScriptConfig>;
+		if (scriptConfig.scriptType) {
+			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.scriptType)) {
+				throw new ConfigError(`Invalid scriptType: '${scriptConfig.scriptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
+			}
+			// If the user intends to load a script by name, a loader must be provided.
+			if ((scriptConfig.scriptType === 'script-name' || scriptConfig.scriptType === 'async-script-name') && !scriptConfig.loader) {
+				throw new ConfigError(`The scriptType '${scriptConfig.scriptType}' requires a 'loader' to be configured to load the script by name.`);
+			}
 		}
 	}
 
+	// --- Shared validation for Cascada-based configs (templates and scripts) ---
 	if ('filters' in config && config.filters) {
+		if (typeof config.filters !== 'object' || config.filters === null || Array.isArray(config.filters)) {
+			throw new ConfigError("'filters' must be a record object of filter functions.");
+		}
 		for (const [name, filter] of Object.entries(config.filters)) {
 			if (typeof filter !== 'function') {
-				throw new ConfigError(`Filter ${name} must be a function`);
+				throw new ConfigError(`Filter '${name}' must be a function.`);
 			}
 		}
 	}
