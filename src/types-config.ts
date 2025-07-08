@@ -7,6 +7,7 @@ import {
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
 import { TemplatePromptType, ScriptType, LLMPromptType } from './types';
+import { InferParameters } from './type-utils';
 
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
 // https://github.com/microsoft/TypeScript/issues/54223
@@ -48,15 +49,25 @@ export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
 
 export type ToolParameters = z.ZodTypeAny | Schema<any>;
 
-// Tool configuration interface, @todo - from Vercel
-export type ToolConfig<PARAMETERS extends ToolParameters = any, RESULT = any> = BaseConfig & {
+/**
+ * The configuration object passed to the `create.Tool` factory.
+ * It describes the tool's parameters and description, but not its implementation.
+ */
+export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
 	type?: 'function';
 	description?: string;
 	parameters: PARAMETERS;
 }
 
-export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = ToolConfig<PARAMETERS, RESULT> & {
-	execute: (args: any, options: ToolExecutionOptions) => PromiseLike<RESULT>;
+/**
+ * The output of the `create.Tool` factory.
+ * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
+ */
+export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = {
+	description?: string;
+	parameters: PARAMETERS;
+	execute: (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions) => PromiseLike<RESULT>;
+	type?: 'function';
 }
 
 
