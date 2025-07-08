@@ -2,9 +2,9 @@
 
 import { JSONValue, ToolSet } from 'ai';
 import { ConfigError } from './validate';
-import { z } from 'zod';
 import { FunctionTool, ToolConfig, ToolParameters } from './types';
 import * as configs from './types-config';
+import * as results from './types-result';
 
 import { TextGeneratorConfig, TextGeneratorInstance } from './factory-text';
 import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object';
@@ -12,15 +12,15 @@ import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
 import { InferParameters } from './type-utils';
 
+// Helper type to get the result from an ObjectGenerator parent.
+// The result of the tool's `execute` function is the `.object` property of the generator's full result.
+type ToolResultFromObjectGenerator<T extends (...args: any) => any> = Awaited<ReturnType<T>>['object'];
+
 // Overload for TextGenerator
-// @todo - use a stric TextGenerator config type
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, RESULT>,
-	TParent extends TextGeneratorInstance<TextGeneratorConfig<TOOLS, OUTPUT>, OUTPUT>,
-	PARAMETERS extends ToolParameters,
-	TOOLS extends ToolSet,
-	OUTPUT,
-	RESULT extends JSONValue = JSONValue,
+	TConfig extends ToolConfig<PARAMETERS, string>,
+	TParent extends TextGeneratorInstance<any, any>,
+	PARAMETERS extends ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
@@ -28,20 +28,21 @@ export function Tool<
 
 // Overload for ObjectGenerator
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, RESULT>,
 	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>,
-	PARAMETERS extends ToolParameters, OBJECT, ELEMENT, ENUM extends string, RESULT extends JSONValue,
+	TResult extends ToolResultFromObjectGenerator<TParent>,
+	TConfig extends ToolConfig<PARAMETERS, TResult>,
+	PARAMETERS extends ToolParameters,
+	OBJECT, ELEMENT, ENUM extends string
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, RESULT>;
+): FunctionTool<PARAMETERS, TResult>;
 
 // Overload for TemplateRenderer
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, RESULT>,
+	TConfig extends ToolConfig<PARAMETERS, string>,
 	TParent extends TemplateRendererInstance<configs.OptionalTemplateConfig>,
-	PARAMETERS extends ToolParameters,
-	RESULT extends InferParameters<PARAMETERS>,
+	PARAMETERS extends ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
@@ -49,14 +50,13 @@ export function Tool<
 
 // Overload for ScriptRunner
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, RESULT>,
+	TConfig extends ToolConfig<PARAMETERS, results.ScriptResult>,
 	TParent extends ScriptRunnerInstance<configs.OptionalScriptConfig>,
-	PARAMETERS extends ToolParameters,
-	RESULT extends InferParameters<PARAMETERS>
+	PARAMETERS extends ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, RESULT>;
+): FunctionTool<PARAMETERS, results.ScriptResult>;
 
 
 // --- Implementation ---

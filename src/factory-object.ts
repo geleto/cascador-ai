@@ -16,7 +16,7 @@ export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> =
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
 	CONFIG extends ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
-> = LLMCallSignature<CONFIG, results.GenerateObjectObjectResult<OBJECT>>;
+> = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
 
 // Object output
 export function ObjectGenerator<
@@ -75,7 +75,7 @@ export function ObjectGenerator<
 			configs.GenerateObjectObjectConfig<OBJECT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
 
 // Array with parent
 export function ObjectGenerator<
@@ -188,7 +188,7 @@ export function ObjectStreamer<
 	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.StreamObjectObjectConfig<OBJECT>>, 'schema'> &
 		utils.RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<OBJECT>>>;
+): LLMCallSignature<TConfig, results.StreamObjectObjectResult<OBJECT>>;
 
 // Array output
 export function ObjectStreamer<
@@ -198,7 +198,7 @@ export function ObjectStreamer<
 	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.StreamObjectArrayConfig<ELEMENT>>, 'schema'> &
 		utils.RequireTemplateLoaderIfNeeded<TConfig> &
 	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<TConfig, results.StreamObjectArrayResult<ELEMENT>>;
 
 // No schema output
 export function ObjectStreamer<
@@ -206,7 +206,7 @@ export function ObjectStreamer<
 >(
 	config: utils.StrictTypeWithTemplate<TConfig, configs.StreamObjectNoSchemaConfig> &
 		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>>;
+): LLMCallSignature<TConfig, results.StreamObjectNoSchemaResult>;
 
 
 // Object with parent
@@ -229,7 +229,7 @@ export function ObjectStreamer<
 			configs.StreamObjectObjectConfig<OBJECT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.StreamObjectObjectResult<OBJECT>>>;
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectObjectResult<OBJECT>>;
 
 // Array with parent
 export function ObjectStreamer<
@@ -251,7 +251,7 @@ export function ObjectStreamer<
 			configs.StreamObjectArrayConfig<ELEMENT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.StreamObjectArrayResult<ELEMENT>>>;
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectArrayResult<ELEMENT>>;
 
 // No schema with parent
 export function ObjectStreamer<
@@ -273,7 +273,7 @@ export function ObjectStreamer<
 			configs.StreamObjectNoSchemaConfig
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.StreamObjectNoSchemaResult>>;
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectNoSchemaResult>;
 
 // Implementation
 export function ObjectStreamer<

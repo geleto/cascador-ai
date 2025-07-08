@@ -9,7 +9,7 @@ import * as utils from './type-utils';
 import { createLLMRenderer, LLMCallSignature } from './llm';
 
 export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
-export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, results.GenerateTextResult<TOOLS, OUTPUT>>;
+export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
 // Single config overload
 export function TextGenerator<
@@ -18,7 +18,7 @@ export function TextGenerator<
 >(
 	config: utils.StrictTypeWithTemplate<TConfig, configs.GenerateTextConfig<TOOLS, OUTPUT>> & utils.RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
-): LLMCallSignature<TConfig, results.GenerateTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<TConfig, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
 // Config with parent
 export function TextGenerator<
@@ -41,7 +41,7 @@ export function TextGenerator<
 			configs.GenerateTextConfig<TOOLS, OUTPUT>
 		> extends never ? never : TParentConfig
 	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.GenerateTextResult<TOOLS, OUTPUT>>;
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
 // Implementation
 export function TextGenerator<
