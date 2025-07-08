@@ -607,7 +607,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		prompt: 'Analyze the sentiment of: {{ text }}'
 	});
 
-	const sentimentTool = create.Tool({
+	const sentimentTool2 = create.Tool({
 		description: 'Analyze the sentiment of a given text',
 		parameters: z.object({
 			text: z.string().describe('The text to analyze')
@@ -649,7 +649,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const toolRenderer = create.TextGenerator({
 		model: openAIModel,
 		tools: {
-			sentimentAnalyzer: sentimentTool,
+			sentimentAnalyzer: sentimentTool2,
 			weatherLookup: weatherTool,
 			textSummarizer: summaryTool
 		},
@@ -671,5 +671,177 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		parameters: z.object({ text: z.string() })
 	}); // ✗ Missing parent renderer
 
-	console.log('All type safety tests passed!');
+	// SECTION 13: Tool Factory Tests (Expanded)
+
+	// Test 1: Create a tool from each type of renderer/runner
+	// 1a. Parent: TextGenerator
+	const textGenParent = create.TextGenerator({
+		model: openAIModel,
+		prompt: 'Analyze the sentiment of this text: {{text}}',
+		promptType: 'template',
+	});
+	const sentimentTool = create.Tool({
+		description: 'Analyzes the sentiment of a given text.',
+		parameters: z.object({ text: z.string().describe('The text to analyze') }),
+	}, textGenParent);
+
+	// Type-check execute function and result
+	const sentimentResult: string = await sentimentTool.execute({ text: 'I love this!' }, { toolCallId: 'test', messages: [] });
+
+	// 1b. Parent: ObjectGenerator
+	const objectGenParent = create.ObjectGenerator({
+		model: openAIModel,
+		output: 'object',
+		schema,
+		prompt: 'Generate a user profile for a person who likes the following content: {{content}}',
+		promptType: 'template',
+	});
+	const userProfileTool = create.Tool({
+		description: 'Generates a user profile object based on text content.',
+		parameters: z.object({ content: z.string() }),
+	}, objectGenParent);
+	// Type-check execute function and result
+	const userProfileResult: z.infer<typeof schema> = await userProfileTool.execute({ content: 'Cats and dogs' }, { toolCallId: 'test', messages: [] });
+	console.log(userProfileResult);
+
+	// 1c. Parent: ScriptRunner
+	const scriptRunnerParent = create.ScriptRunner({
+		scriptType: 'async-script',
+		script: `
+			: vars
+	default_val = 'unknown'
+			: script
+				# Simulate an API call
+	const data = { location: '{{city | default: default_val}}', time: new Date().toISOString() };
+	@data = data;
+	`
+	});
+	const locationTool = create.Tool({
+		description: 'Gets the current time for a specified location.',
+		parameters: z.object({ city: z.string() }),
+	}, scriptRunnerParent);
+	// Type-check execute function and result
+	const locationResult: { location: string, time: string } = await locationTool.execute({ city: 'New York' }, { toolCallId: 'test', messages: [] });
+	console.log(locationResult);
+
+
+	// 1d. Parent: TemplateRenderer
+	const templateRendererParent = create.TemplateRenderer({
+		prompt: 'The magic word for {{user}} is {{word | upper}}.',
+		promptType: 'template',
+		filters: { upper: (s: string) => s.toUpperCase() },
+	});
+	const magicWordTool = create.Tool({
+		description: 'Generates a magic word for a user.',
+		parameters: z.object({
+			user: z.string(),
+			word: z.string(),
+		}),
+	}, templateRendererParent);
+	// Type-check execute function and result
+	const magicWordResult: string = await magicWordTool.execute({ user: 'Gandalf', word: 'mellon' }, { toolCallId: 'test', messages: [] });
+
+	// 1e. Tool with no parameters
+	const timestampTool = create.Tool({
+		description: 'Gets the current timestamp.',
+		parameters: z.object({}), // or z.any()
+	}, create.ScriptRunner({ script: '@data = new Date().toISOString()' }));
+	const timestampResult: string = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Correctly takes empty object
+	const timestampResult2: string = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Or no arguments at all
+
+	// Test 2: Using the created tools in another generator
+	const masterGenerator = create.TextGenerator({
+		model: openAIModel,
+		tools: {
+			getSentiment: sentimentTool,
+			createProfile: userProfileTool,
+			getLocationTime: locationTool,
+			getMagicWord: magicWordTool,
+			getTimestamp: timestampTool
+		},
+		maxToolRoundtrips: 5,
+	});
+
+	// This call is valid because it uses the tools defined above.
+	await masterGenerator('Get the magic word for user "Frodo" with the word "ring", then get the sentiment of "I hate it".');
+
+	// Test 3: Tool with inherited configuration
+	const parentModelConfig = create.Config({ model: openAIModel });
+	const childTextGen = create.TextGenerator({
+		prompt: 'Translate to French: {{text}}',
+		promptType: 'template'
+	}, parentModelConfig);
+	const translationTool = create.Tool({
+		description: 'Translates text to French.',
+		parameters: z.object({ text: z.string() }),
+	}, childTextGen); // ✓ This is valid as model is inherited
+
+	// SECTION 14: Advanced Tool and Error Cases
+
+	// Test 4: Invalid Tool configurations
+	// 4a. Missing parameters
+	// @ts-expect-error
+	const toolWithoutParameters = create.Tool({
+		description: 'A tool without parameters.',
+	}, textGenParent);
+
+	// 4b. Missing description
+	// @ts-expect-error
+	const toolWithoutDescription = create.Tool({
+		parameters: z.object({ text: z.string() }),
+	}, textGenParent);
+
+	// 4c. Missing parent renderer
+	// @ts-expect-error
+	const toolWithoutParent = create.Tool({
+		description: 'A tool without a parent.',
+		parameters: z.object({ text: z.string() }),
+	});
+
+	// 4d. Parent is not a valid renderer instance (e.g., a raw Config)
+	// @ts-expect-error
+	const toolWithInvalidParent = create.Tool({
+		description: 'A tool with an invalid parent.',
+		parameters: z.object({ text: z.string() }),
+	}, parentModelConfig); // ✗ Cannot use a Config object, must be a renderer instance
+
+	// 4e. Extra, unknown properties in the tool config
+	// @ts-expect-error
+	const toolWithExtraProps = create.Tool({
+		description: 'A tool with extra properties.',
+		parameters: z.object({ text: z.string() }),
+		extra: 'property'
+	}, textGenParent);
+
+	// 4f. Check result type mismatches
+	const anotherObjectTool = create.Tool({
+		description: 'Generates a user profile object based on text content.',
+		parameters: z.object({ content: z.string() }),
+	}, objectGenParent);
+	// @ts-expect-error - Result should be JSONValue, not guaranteed to be a string
+	const badResult: string = await anotherObjectTool.execute({ content: 'test' });
+
+	// Test 5: Tool with a complex, nested parameter schema
+	const complexSchema = z.object({
+		user: z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+		settings: z.object({
+			notifications: z.boolean(),
+			theme: z.enum(['light', 'dark']),
+		}).optional(),
+	});
+
+	const complexTool = create.Tool({
+		description: 'A tool with complex parameters.',
+		parameters: complexSchema,
+	}, textGenParent);
+
+	// This call is valid, and the type of `args` inside the tool's execute function
+	// would be correctly inferred as `z.infer<typeof complexSchema>`.
+	await complexTool.execute({
+		user: { id: '123', name: 'Alice' },
+		settings: { notifications: true, theme: 'dark' },
+	}, { toolCallId: 'test', messages: [] });
 })().catch(console.error);
