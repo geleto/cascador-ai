@@ -2,7 +2,6 @@
 
 import { JSONValue, ToolSet } from 'ai';
 import { ConfigError } from './validate';
-import { FunctionTool, ToolConfig, ToolParameters } from './types';
 import * as configs from './types-config';
 import * as results from './types-result';
 
@@ -12,56 +11,58 @@ import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
 import { InferParameters } from './type-utils';
 
+//@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
+
 // Helper type to get the result from an ObjectGenerator parent.
 // The result of the tool's `execute` function is the `.object` property of the generator's full result.
 type ToolResultFromObjectGenerator<T extends (...args: any) => any> = Awaited<ReturnType<T>>['object'];
 
 // Overload for TextGenerator
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, string>,
+	TConfig extends configs.ToolConfig<PARAMETERS, string>,
 	TParent extends TextGeneratorInstance<any, any>,
-	PARAMETERS extends ToolParameters
+	PARAMETERS extends configs.ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, string>;
+): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ObjectGenerator
 export function Tool<
 	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>,
 	TResult extends ToolResultFromObjectGenerator<TParent>,
-	TConfig extends ToolConfig<PARAMETERS, TResult>,
-	PARAMETERS extends ToolParameters,
+	TConfig extends configs.ToolConfig<PARAMETERS, TResult>,
+	PARAMETERS extends configs.ToolParameters,
 	OBJECT, ELEMENT, ENUM extends string
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, TResult>;
+): configs.FunctionTool<PARAMETERS, TResult>;
 
 // Overload for TemplateRenderer
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, string>,
+	TConfig extends configs.ToolConfig<PARAMETERS, string>,
 	TParent extends TemplateRendererInstance<configs.OptionalTemplateConfig>,
-	PARAMETERS extends ToolParameters
+	PARAMETERS extends configs.ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, string>;
+): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ScriptRunner
 export function Tool<
-	TConfig extends ToolConfig<PARAMETERS, results.ScriptResult>,
+	TConfig extends configs.ToolConfig<PARAMETERS, results.ScriptResult>,
 	TParent extends ScriptRunnerInstance<configs.OptionalScriptConfig>,
-	PARAMETERS extends ToolParameters
+	PARAMETERS extends configs.ToolParameters
 >(
 	config: TConfig,
 	parent: TParent
-): FunctionTool<PARAMETERS, results.ScriptResult>;
+): configs.FunctionTool<PARAMETERS, results.ScriptResult>;
 
 
 // --- Implementation ---
 export function Tool<
-	PARAMETERS extends ToolParameters,
+	PARAMETERS extends configs.ToolParameters,
 	OBJECT, ELEMENT, ENUM extends string,
 	CONFIG extends ( //this is the parent config type
 		ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
@@ -72,12 +73,12 @@ export function Tool<
 	OUTPUT = never,
 	RESULT extends JSONValue = JSONValue
 >(
-	config: ToolConfig<PARAMETERS, RESULT>,//The Vercel SDK function Tool without the execute function
+	config: configs.ToolConfig<PARAMETERS, RESULT>,//The Vercel SDK function Tool without the execute function
 	parent: TextGeneratorInstance<CONFIG, OUTPUT>
 		| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
 		| TemplateRendererInstance<configs.OptionalTemplateConfig>
 		| ScriptRunnerInstance<configs.OptionalScriptConfig>
-): FunctionTool<PARAMETERS, RESULT> {
+): configs.FunctionTool<PARAMETERS, RESULT> {
 
 	if ('debug' in config && config.debug) {
 		console.log('[DEBUG] Tool created with config:', JSON.stringify(config, null, 2));

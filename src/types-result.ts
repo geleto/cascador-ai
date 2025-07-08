@@ -8,7 +8,7 @@ export type {
 	StreamTextResult
 } from 'ai';
 
-export type ScriptResult = Record<string, any> | string | null;
+export type ScriptResult = JSONValue;//Record<string, any> | string | null;
 
 //these are returned in a Promise
 export type GenerateObjectResultAll<OBJECT, ENUM extends string, ELEMENT> =
