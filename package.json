@@ -47,6 +47,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\"",
 		"test:watch": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\" --watch",
+		"test-type": "eslint tests/type-safety",
 		"start": "tsx examples/story.ts"
 	},
 	"peerDependencies": {

@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
 	{
-		files: ['src/**/*.ts'],
+		files: ['src/**/*.ts', 'tests/**/*.ts'],
 		extends: [
 			js.configs.recommended,
 			...tseslint.configs.recommendedTypeChecked,
@@ -30,11 +30,6 @@ export default tseslint.config(
 			'space-infix-ops': 'error',
 			'space-before-blocks': 'error',
 			'space-before-function-paren': 'off',
-			'@typescript-eslint/space-before-function-paren': ['error', {
-				anonymous: 'always',
-				named: 'never',
-				asyncArrow: 'always'
-			}],
 			'space-in-parens': ['error', 'never'],
 			'no-multi-spaces': 'error',
 
