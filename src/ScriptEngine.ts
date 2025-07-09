@@ -1,5 +1,3 @@
-// ScriptEngine.ts
-
 import cascada from 'cascada-engine';
 import { Context } from './types';
 import { ScriptConfig } from './types-config';
@@ -35,7 +33,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 				this.config.scriptType === 'async-script-name') &&
 			!('loader' in this.config) && !this.config.loader
 		) {
-			throw new ScriptError('A loader is required when scriptType is "script-name", "async-script-name", or undefined.');
+			throw new ScriptError('A loader is required when scriptType is "script-name" or "async-script-name".');
 		}
 
 		// Initialize appropriate environment based on scriptType

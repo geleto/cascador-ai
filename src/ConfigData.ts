@@ -64,9 +64,9 @@ export function mergeConfigs<
 	);
 
 	// Debug output for merged result if debug is enabled
-	if (('debug' in parentConfig && parentConfig.debug) || ('debug' in childConfig && childConfig.debug)) {
+	/*if (('debug' in parentConfig && parentConfig.debug) || ('debug' in childConfig && childConfig.debug)) {
 		console.log('[DEBUG] mergeConfigs result:', JSON.stringify(merged, null, 2));
-	}
+	}*/
 
 	return merged;
 }

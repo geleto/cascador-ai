@@ -117,26 +117,23 @@ export function validateObjectConfig(config?: Record<string, any>, isStream = fa
 		throw new ConfigError('Config must be an object');
 	}
 
-	const objConfig = config as ObjectConfigUnion;
-
-	if (!('output' in config)) {
-		throw new ConfigError('Object config requires output type');
-	}
+	// The 'output' property defaults to 'object' if not specified or is undefined.
+	const outputType = config.output ?? 'object';
 
 	if (!('model' in config)) {
 		throw new ConfigError('Object config requires model');
 	}
 
-	switch (objConfig.output) {
+	switch (outputType) {
 		case 'object':
 		case 'array':
 			if (!('schema' in config)) {
-				throw new ConfigError(`${objConfig.output} output requires schema`);
+				throw new ConfigError(`${outputType} output requires schema`);
 			}
 			break;
 		case 'enum':
 			if (!isStream) {
-				if (!('enum' in config) || !Array.isArray(objConfig.enum) || objConfig.enum.length === 0) {
+				if (!('enum' in config) || !Array.isArray(config.enum) || config.enum.length === 0) {
 					throw new ConfigError('enum output requires non-empty enum array');
 				}
 			} else {
@@ -149,6 +146,6 @@ export function validateObjectConfig(config?: Record<string, any>, isStream = fa
 			}
 			break;
 		default:
-			throw new ConfigError('Invalid output type');
+			throw new ConfigError(`Invalid output type: '${String(outputType)}'`);
 	}
 }

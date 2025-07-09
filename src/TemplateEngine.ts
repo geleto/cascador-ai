@@ -1,5 +1,3 @@
-// TemplateEngine.ts
-
 import cascada from 'cascada-engine';
 import { Context } from './types';
 import { TemplateConfig } from './types-config';
@@ -35,7 +33,7 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				this.config.promptType === 'async-template-name') &&
 			!this.config.loader
 		) {
-			throw new TemplateError('A loader is required when promptType is "template-name", "async-template-name", or undefined.');
+			throw new TemplateError('A loader is required when promptType is "template-name" or "async-template-name".');
 		}
 
 		// Initialize appropriate environment based on promptType

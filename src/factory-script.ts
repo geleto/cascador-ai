@@ -70,7 +70,7 @@ export function ScriptRunner<
 		merged.scriptType === 'async-script-name') &&
 		!merged.loader
 	) {
-		throw new Error('A loader is required when scriptType is "script-name", "async-script-name", or undefined.');
+		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');
 	}
 
 	const runner = new ScriptEngine(merged);
