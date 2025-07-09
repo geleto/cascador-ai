@@ -76,7 +76,7 @@ export type RequireTemplateLoaderIfNeeded<
 	: object;
 
 export type RequireScriptLoaderIfNeeded<
-	TMergedConfig extends configs.OptionalScriptConfig
+	TMergedConfig extends configs.ScriptConfig
 > = TMergedConfig['scriptType'] extends 'script-name' | 'async-script-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;

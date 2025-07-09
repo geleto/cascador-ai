@@ -44,9 +44,6 @@ export interface ScriptConfig extends CascadaConfig {
 	scriptType?: ScriptType;
 };
 
-export type OptionalScriptConfig = ScriptConfig | { scriptType: 'text' };
-
-
 export type ToolParameters = z.ZodTypeAny | Schema<any>;
 
 /**

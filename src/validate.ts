@@ -1,4 +1,4 @@
-import { OptionalTemplateConfig, OptionalScriptConfig } from "./types-config";
+import { OptionalTemplateConfig, ScriptConfig } from "./types-config";
 import type * as TypesConfig from "./types-config";
 import { Context } from "./types";
 
@@ -16,7 +16,7 @@ export class ConfigError extends Error {
 	}
 }
 
-export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | OptionalScriptConfig>) {
+export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | ScriptConfig>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');
 	}
@@ -54,7 +54,7 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Opt
 
 	// --- Script-specific validation ---
 	if (hasScriptKeys) {
-		const scriptConfig = config as Partial<OptionalScriptConfig>;
+		const scriptConfig = config as Partial<ScriptConfig>;
 		if (scriptConfig.scriptType) {
 			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.scriptType)) {
 				throw new ConfigError(`Invalid scriptType: '${scriptConfig.scriptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);

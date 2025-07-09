@@ -50,7 +50,7 @@ export function Tool<
 // Overload for ScriptRunner
 export function Tool<
 	TConfig extends configs.ToolConfig<PARAMETERS>,
-	TParent extends ScriptRunnerInstance<configs.OptionalScriptConfig>,
+	TParent extends ScriptRunnerInstance<configs.ScriptConfig>,
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
@@ -66,7 +66,7 @@ export function Tool<
 	PARENT_TYPE extends TextGeneratorInstance<TOOLS, OUTPUT>
 	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
 	| TemplateRendererInstance<configs.OptionalTemplateConfig>
-	| ScriptRunnerInstance<configs.OptionalScriptConfig>,
+	| ScriptRunnerInstance<configs.ScriptConfig>,
 	TOOLS extends ToolSet,
 	OUTPUT = never,
 	RESULT extends JSONValue = JSONValue
@@ -96,7 +96,7 @@ export function Tool<
 	// Case 1: ScriptRunner is the only type with `script` or `scriptType`.
 	if ('script' in parentConfig || 'scriptType' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
-			const result = await (parent as ScriptRunnerInstance<configs.OptionalScriptConfig>)(args);
+			const result = await (parent as ScriptRunnerInstance<configs.ScriptConfig>)(args);
 			return result ?? '';
 		};
 	}
