@@ -43,10 +43,10 @@
 	"scripts": {
 		"build": "tsc",
 		"clean": "rimraf dist",
-		"lint": "eslint src",
+		"lint": "eslint src tests",
 		"typecheck": "tsc --noEmit",
-		"test": "mocha --node-option loader=ts-node/esm \"tests/**/*.test.ts\"",
-		"test:watch": "mocha --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --watch",
+		"test": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\"",
+		"test:watch": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\" --watch",
 		"start": "tsx examples/story.ts"
 	},
 	"peerDependencies": {
@@ -58,6 +58,7 @@
 		"@types/mocha": "^10.0.10",
 		"ai": "^4.3.16",
 		"chai": "^5.1.2",
+		"dotenv": "^16.4.5",
 		"eslint": "^9.17.0",
 		"mocha": "^11.0.1",
 		"rimraf": "^6.0.1",
