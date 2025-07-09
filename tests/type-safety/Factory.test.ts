@@ -64,18 +64,18 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await templateWithPrompt("Hi {name}"); // ✓ Overrides prompt
 	await templateWithPrompt("Hi {name}", { x: 1 }); // ✓ Overrides prompt with context
 	// Invalid cases:
-	// @ts-expect-error
+	// @ts-expect-error - Extra argument not allowed in template renderer call
 	await templateWithPrompt("Hi", {}, "extra"); // ✗ Extra argument not allowed
-	// @ts-expect-error
+	// @ts-expect-error - Prompt must be a string, not a number
 	await templateWithPrompt(123); // ✗ Prompt must be string
 
 	// Test 2: Empty configuration
 	const emptyConfig = create.Config({});
 	const templateWithEmptyConfig = create.TemplateRenderer({}, emptyConfig);
 	// Invalid cases - no prompt provided:
-	// @ts-expect-error
+	// @ts-expect-error - Missing required prompt when no prompt is provided in config
 	await templateWithEmptyConfig(); // ✗ Missing required prompt
-	// @ts-expect-error
+	// @ts-expect-error - Context without prompt not allowed when no prompt is provided in config
 	await templateWithEmptyConfig({ name: "Bob" }); // ✗ Context without prompt not allowed
 	// Valid cases:
 	await templateWithEmptyConfig("Hi {name}"); // ✓ Provides required prompt
@@ -88,7 +88,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	const templateWithLoader = create.TemplateRenderer({}, loaderConfig);
 	// Invalid cases:
-	// @ts-expect-error
+	// @ts-expect-error - Missing template name when loader is configured
 	await templateWithLoader(); // ✗ Missing template name
 	// Valid cases:
 	await templateWithLoader("greetingTemplate"); // ✓ Provides template name
@@ -127,11 +127,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// Test 7: Invalid loader configurations
 	// Should fail at creation:
-	// @ts-expect-error
+	// @ts-expect-error - Missing required loader when promptType is template-name
 	const invalidLoaderTemplate = create.TemplateRenderer({
 		promptType: 'template-name' // ✗ Missing required loader
 	});
-	// @ts-expect-error
+	// @ts-expect-error - Cannot call template renderer without loader when promptType is template-name
 	await invalidLoaderTemplate(); // ✗ Missing loader
 
 	// Test 8: Mixed configuration inheritance
@@ -151,11 +151,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const typeCheckedTemplate = create.TemplateRenderer({}, configWithPrompt);
 	const configType = typeCheckedTemplate.config; // ✓ Preserves exact type
 	// Invalid cases:
-	// @ts-expect-error
+	// @ts-expect-error - Prompt must be a string, not a boolean
 	await typeCheckedTemplate(true); // ✗ Prompt must be string
-	// @ts-expect-error
+	// @ts-expect-error - Context must be an object, not a boolean
 	await typeCheckedTemplate("Hi", true); // ✗ Context must be object
-	// @ts-expect-error
+	// @ts-expect-error - First argument must be a string when providing context
 	await typeCheckedTemplate({}, {}); // ✗ First arg must be string with context
 
 	// Test 10: Context structure validation
@@ -164,7 +164,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await nestedTemplate({ user: { name: "Bob" } }); // ✓ Valid nested context
 	await nestedTemplate("Hi {user.name}", { user: { name: "Bob" } }); // ✓ Override with valid context
 	// Invalid cases:
-	// @ts-expect-error
+	// @ts-expect-error - Invalid context structure for nested template
 	await nestedTemplate({}, {}); // ✗ Invalid context structure
 
 	// Test 11: Multi-level config inheritance
@@ -190,29 +190,29 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await simpleTemplate(); // ✓ Undefined context is valid
 
 	// Test strict TemplateConfig validation
-	// @ts-expect-error
+	// @ts-expect-error - Invalid property in template renderer configuration
 	const invalidTemplate = create.TemplateRenderer({ prompt: "Hello", invalid: 1 }); // ✗ Invalid property
 
 	const templateParent = create.Config({ prompt: "Hello" });
-	// @ts-expect-error
+	// @ts-expect-error - Invalid property in child template renderer configuration
 	const invalidChildTemplate = create.TemplateRenderer({ invalid: 1 }, templateParent);
 
 	const modelParent = create.Config({ prompt: "Hello", model: openAIModel });
-	// @ts-expect-error
+	// @ts-expect-error - Incompatible promptType with model parent configuration
 	const incompatibleTemplate = create.TemplateRenderer({ promptType: 'template' }, modelParent);
 
 	// SECTION 2: Text Generation Tests
 
 	// Invalid configuration
-	// @ts-expect-error
+	// @ts-expect-error - Invalid property in text generator configuration
 	const invalidGenerator = create.TextGenerator({ model: openAIModel, invalid: 1 });
 
 	const basicGenerator = create.TextGenerator({ model: openAIModel });
 	await basicGenerator("Hello"); // ✓ Basic text generation
 	// Invalid cases:
-	// @ts-expect-error
+	// @ts-expect-error - Missing prompt in text generator call
 	await basicGenerator({ system: "Be helpful" }); // ✗ Missing prompt
-	// @ts-expect-error
+	// @ts-expect-error - Missing prompt in text generator call
 	await basicGenerator(); // ✗ Missing prompt
 
 	const modelParentConfig = create.Config({ model: openAIModel });
@@ -236,14 +236,14 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await toolGenerator("Find attractions in London"); // ✓ Generation with tools
 
 	const incompatibleParent = create.Config({ model: openAIModel, output: 'object' });
-	// @ts-expect-error
+	// @ts-expect-error - Incompatible text generator with object output parent
 	const invalidTextGen = create.TextGenerator({ prompt: "Hello" }, incompatibleParent);
 
 	// SECTION 3: Streaming Tests
 
 	const basicStreamer = create.TextStreamer({ model: openAIModel });
 	const streamResult = await basicStreamer("Stream");
-	for await (const chunk of streamResult.textStream) { } // ✓ Basic text streaming
+	for await (const chunk of streamResult.textStream) { /* consume stream */ } // ✓ Basic text streaming
 
 	// SECTION 4: Object Generation Tests
 
@@ -277,7 +277,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const toolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
 		tools: cityTools,
-		// @ts-expect-error
+		// @ts-expect-error - Cannot combine tools with object output type
 		output: 'object', // ✗ Cannot combine tools with object output
 		schema
 	});
@@ -288,29 +288,29 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 		output: 'object',
 		schema,
-		onFinish: (event) => console.log(event)
+		onFinish: (event) => { console.log(event); }
 	});
-	for await (const chunk of (await objectStreamer("Stream person")).partialObjectStream) { } // ✓ Object streaming
+	for await (const chunk of (await objectStreamer("Stream person")).partialObjectStream) { /* consume stream */ } // ✓ Object streaming
 
 	// SECTION 6: Error Cases
 
-	// @ts-expect-error
+	// @ts-expect-error - Missing required model in text generator configuration
 	const modellessGen = create.TextGenerator({}); // ✗ Missing required model
 
 	const schemalessObjGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error
+		// @ts-expect-error - Missing required schema for object output type
 		output: 'object'
 	}); // ✗ Missing required schema
 
 	const enumlessGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error
+		// @ts-expect-error - Missing required enum values for enum output type
 		output: 'enum'
 	}); // ✗ Missing required enum values
 
 	const extraPropGen = create.ObjectGenerator({
-		// @ts-expect-error
+		// @ts-expect-error - Unknown property in object generator configuration
 		output: 'object',
 		schema,
 		model: openAIModel,
@@ -364,7 +364,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		promptType: 'template',
 		prompt: "Stream {what}"
 	});
-	for await (const chunk of (await streamingTemplateGen({ what: "data" })).textStream) { } // ✓ Template with streaming
+	for await (const chunk of (await streamingTemplateGen({ what: "data" })).textStream) { /* consume stream */ } // ✓ Template with streaming
 
 	// SECTION 9: Complex Object Generation Tests
 
@@ -390,7 +390,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const invalidToolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error
+		// @ts-expect-error - Cannot combine tools with object output type
 		output: 'object',
 		schema: complexUserSchema,
 		tools: cityTools
@@ -432,7 +432,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const invalidEnumStreamer = create.ObjectStreamer({
 		model: openAIModel,
-		// @ts-expect-error
+		// @ts-expect-error - Enum output type not supported with streaming
 		output: 'enum',
 		enum: ['yes', 'no']
 	}); // ✗ Enum not supported with streaming
@@ -471,7 +471,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await templateChildGen({ what: "person" }); // ✓ Uses merged context
 
 	// Helper function for model type checking
-	function modelConfigCheck<TConfig extends Partial<{ model: LanguageModel }>>(config: TConfig & { model: LanguageModel }) {
+	function modelConfigCheck(config: { model: LanguageModel }) {
 		console.log(config.model);
 	}
 	modelConfigCheck({ model: openAIModel }); // ✓ Valid model configuration
@@ -503,7 +503,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const invalidToolChild = create.ObjectGenerator(
 		{
-			// @ts-expect-error
+			// @ts-expect-error - Cannot mix tools with object output configuration
 			tools: cityTools,
 			prompt: "Generate {what}",
 		}, objectParentConfigWithContext); // ✗ Cannot mix tools with object output
@@ -515,7 +515,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 
 	const invalidObjectChild = create.ObjectGenerator({
-		// @ts-expect-error
+		// @ts-expect-error - Cannot mix object output with tools configuration
 		output: 'object',
 		schema,
 		prompt: "Generate {what}",
@@ -551,7 +551,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		promptType: 'text'
 	});
 	const invalidTemplateChild = create.ObjectGenerator({
-		// @ts-expect-error
+		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 		output: 'object',
 		schema,
 		prompt: "Generate person",
@@ -564,7 +564,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		context: { child: true }
 	});
 	const invalidTextPromptChild = create.ObjectGenerator({
-		// @ts-expect-error
+		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 		output: 'object',
 		schema,
 		prompt: "Generate person",
@@ -593,11 +593,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		schema,
 		prompt: "Generate person",
 		context: { child: true }
-		// @ts-expect-error
+		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	}, textPromptBaseConfig); // ✗ Cannot mix promptType:'text' with template config
 
 	const streamResult2 = await hybridStreamer("greetingTemplate", { user: "Bob" });
-	for await (const chunk of streamResult2.partialObjectStream) { } // ✓ Templates + streaming
+	for await (const chunk of streamResult2.partialObjectStream) { /* consume stream */ } // ✓ Templates + streaming
 
 	// SECTION 13: Tool Factory Tests
 
@@ -660,12 +660,12 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// SECTION 14: Error Cases for Tool Factory
 
-	// @ts-expect-error
+	// @ts-expect-error - Missing required parameters in tool configuration
 	const toolWithoutParameters = create.Tool({
 		description: 'Test tool'
 	}, textRenderer); // ✗ Missing parameters
 
-	// @ts-expect-error
+	// @ts-expect-error - Missing required parent renderer in tool configuration
 	const toolWithoutParent = create.Tool({
 		description: 'Test tool',
 		parameters: z.object({ text: z.string() })
@@ -782,13 +782,13 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// Test 4: Invalid Tool configurations
 	// 4a. Missing parameters
-	// @ts-expect-error
+	// @ts-expect-error - Missing required parameters in tool configuration
 	const toolWithoutParameters = create.Tool({
 		description: 'A tool without parameters.',
 	}, textGenParent);
 
 	// 4b. Missing parent renderer
-	// @ts-expect-error
+	// @ts-expect-error - Missing required parent renderer in tool configuration
 	const toolWithoutParent = create.Tool({
 		description: 'A tool without a parent.',
 		parameters: z.object({ text: z.string() }),
@@ -798,11 +798,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const toolWithInvalidParent = create.Tool({
 		description: 'A tool with an invalid parent.',
 		parameters: z.object({ text: z.string() }),
-		// @ts-expect-error
+		// @ts-expect-error - Cannot use a Config object as parent, must be a renderer instance
 	}, parentModelConfig); // ✗ Cannot use a Config object, must be a renderer instance
 
 	// 4d. Extra, unknown properties in the tool config
-	// @ts-expect-error
+	// @ts-expect-error - Unknown property in tool configuration
 	const toolWithExtraProps = create.Tool({
 		description: 'A tool with extra properties.',
 		parameters: z.object({ text: z.string() }),
