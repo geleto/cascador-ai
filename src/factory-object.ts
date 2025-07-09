@@ -163,6 +163,13 @@ export function ObjectGenerator<
 
 	validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
+
+	// Set default output value to make the config explicit.
+	// This simplifies downstream logic (e.g., in `create.Tool`).
+	if ((merged as any).output === undefined) {
+		(merged as any).output = 'object';
+	}
+
 	if (parent) {
 		validateBaseConfig(merged);
 	}
@@ -294,6 +301,12 @@ export function ObjectStreamer<
 
 	validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
+
+	// Set default output value to make the config explicit.
+	if ((merged as any).output === undefined) {
+		(merged as any).output = 'object';
+	}
+
 	if (parent) {
 		validateBaseConfig(merged);
 	}

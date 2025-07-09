@@ -1,5 +1,3 @@
-// factory-tool.ts
-
 import { JSONValue, ToolExecutionOptions, ToolSet } from 'ai';
 import { ConfigError } from './validate';
 import * as configs from './types-config';
@@ -92,14 +90,18 @@ export function Tool<
 
 	const parentConfig = parent.config;
 
-	// Case 1: ScriptRunner
-	if ('script' in parentConfig) {
+	// The order of these checks is important and designed to be mutually exclusive.
+	// We check for the most specific properties first.
+
+	// Case 1: ScriptRunner is the only type with `script` or `scriptType`.
+	if ('script' in parentConfig || 'scriptType' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
 			const result = await (parent as ScriptRunnerInstance<configs.OptionalScriptConfig>)(args);
 			return result ?? '';
 		};
 	}
-	// Case 2: ObjectGenerator
+	// Case 2: ObjectGenerator has a string `output` property. This is checked
+	// before `model` because ObjectGenerators *also* have a `model`.
 	else if ('output' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
 			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
@@ -107,7 +109,7 @@ export function Tool<
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
 		};
 	}
-	// Case 3: TextGenerator
+	// Case 3: TextGenerator has a `model` but is not an ObjectGenerator.
 	else if ('model' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
 			const result = await (parent as TextGeneratorInstance<any, any>)(args);
@@ -115,8 +117,8 @@ export function Tool<
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
 		};
 	}
-	// Case 4: TemplateRenderer
-	else if ('prompt' in parentConfig) {
+	// Case 4: TemplateRenderer has `prompt` but no `model`.
+	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
 			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
 		};
