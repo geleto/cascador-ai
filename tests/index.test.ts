@@ -1,10 +1,6 @@
 import { expect, testUtils, createTestConfig } from './setup.js';
 
 describe('Example Test', () => {
-	it('should work', () => {
-		expect(true).to.be.true;
-	});
-
 	it('should load environment variables', () => {
 		// Test that environment variables can be accessed
 		const config = createTestConfig();
