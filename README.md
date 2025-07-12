@@ -23,12 +23,12 @@ Cascador-AI is a new project and is evolving quickly! This is exciting, but it a
 - [Quick Start](#quick-start)
 - [Understanding the Cascador-AI API](#understanding-the-cascador-ai-api)
 - [Configuration Management](#configuration-management)
-- [Renderer Types](#renderer-types)
+- [The Cascador Renderers](#the-cascador-renderers)
 - [Callable Render Objects](#callable-render-objects)
 - [Template Properties](#template-properties)
 - [Vercel AI Properties](#vercel-ai-properties)
 - [Using Renderers in Templates and Scripts](#using-renderers-in-templates-and-scripts)
-- [Choosing Your Orchestration Strategy: Scripts, Templates, Context, and Tools](#choosing-your-orchestration-strategy-scripts-templates-context-and-tools)
+- [Choosing Your Orchestration Strategy: Scripts, Templates, Context Methods, and Tools](#choosing-your-orchestration-strategy-scripts-templates-context-methods-and-tools)
 - [Embedding Integration](#embedding-integration)
 - [RAG Integration](#rag-integration)
 - [Type Checking](#type-checking)
@@ -221,7 +221,7 @@ At the core of *Cascador-AI* are **renderers** - versatile objects that transfor
   // With a one-off prompt and context
   const result = await renderer('Hi {{ name }}', { name: 'World' });
   ```
-  One-off inputs specified in a call argument are compiled each time they're used, while inputs defined during renderer creation are precompiled for better performance. [See Callable Objects](#callable-objects)
+  One-off inputs specified in a call argument are compiled each time they're used, while inputs defined during renderer creation are precompiled for better performance. [See Callable Render Objects](#callable-render-objects)
 
 - **Nested in Scripts and Templates**: Drop renderers into your `context` to use them within other scripts or templates, chaining tasks effortlessly:
   ```typescript
@@ -486,6 +486,37 @@ You can specify how the data should be structured by setting `output` to:
 
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
+### Tool
+**What it does**: Wraps an existing `TextGenerator`, `ObjectGenerator`, `TemplateRenderer` or `ScriptRunner` into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
+
+```typescript
+import { create } from 'cascador-ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+// 1. Define a renderer to perform a specific task
+const summarizer = create.TextGenerator({
+  model: openai('gpt-4o-mini'),
+  prompt: 'Provide a concise, one-sentence summary of the following text: {{ text }}',
+});
+
+// 2. Wrap it in a Tool to create a Vercel AI SDK-compatible tool object
+const summarizeTool = create.Tool({
+  description: 'Summarizes a given piece of text into a single sentence.',
+  parameters: z.object({ text: z.string() }),
+}, summarizer);
+
+const chatAgent = create.TextGenerator({
+  model: openai('gpt-4o'),
+  tools: { summarize: summarizeTool }, // Provide the tool to the LLM
+  prompt: "Please summarize this for me: 'Cascador-AI is an AI orchestration library...'",
+});
+const chatResult = await chatAgent(); // LLM sees the prompt and calls the tool
+console.log('Model-Driven Result:', chatResult.toolCalls);
+```
+
+**Use it for**: Creating modular, reusable, and type-safe functions that can be used flexibly across your application, when want to empower an autonomous agent with the decision which tools to use.
+
 ## Callable Render Objects
 
 
@@ -520,7 +551,7 @@ Precompiled prompts (set at creation) are optimized for performance, while one-o
 
 ## Template Properties
 
-Renderers in *Cascador-AI* are powered by Cascada's scripting and templating engine. With a handful of properties, you can control how scripts and templates are processed, inject data, transform outputs, and even pull in external files. These apply to all renderers (unless you set `promptType: 'text'` to skip templating). Here’s what you can tweak:
+Renderers in *Cascador-AI* are powered by Cascada's templating engine. With a handful of properties, you can control how prompts and  templates are processed, inject data, transform outputs, and pull in data from external files and service. These apply to all renderers except the script runner.
 
 ### prompt
 The heart of your renderer—it’s the template or text that gets processed. Set it in three spots:
@@ -614,7 +645,7 @@ See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for m
 
 ## Vercel AI Properties
 
-*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable, overridden in runtime calls. Below are the key properties, with examples provided for the less intuitive ones (`model`, `messages`, `stop`, `tools`).
+*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all LLM renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable overridden in runtime calls. Below are the key properties, with examples provided for the less intuitive ones (`model`, `messages`, `stop`).
 
 ### model
 **Purpose**: Specifies the language model to use for generation.
@@ -710,38 +741,39 @@ const renderer = create.TextGenerator({
 ```
 
 ### tools
-**Purpose**: Enables the model to call external functions.
-**Type**: Object mapping tool names to `{ description: string, parameters: z.ZodSchema, execute?: (args: any) => Promise<any> }` (optional).
-**Details**: Supported by `TextGenerator` and `TextStreamer`; paired with `maxSteps`.
+**Purpose**: Enables the model to call external functions *based on its own reasoning*.
+**Details**: Supported by `TextGenerator` and `TextStreamer`. This is for model-driven tool use. For better organization, you can populate this with tools created by `create.Tool`.
 **Example**:
 ```typescript
 import { openai } from '@ai-sdk/openai';
 import { create } from 'cascador-ai';
 import { z } from 'zod';
 
-const renderer = create.TextGenerator({
+// Define a tool using the create.Tool factory
+const getWeatherTool = create.Tool({
+  parameters: z.object({ city: z.string() }),
+  execute: async ({ city }) => ({ temperature: Math.floor(Math.random() * 30) })
+});
+
+// Pass the tool to the LLM
+const weatherAgent = create.TextGenerator({
   model: openai('gpt-4o'),
-  tools: {
-    fetchStockPrice: {
-      description: 'Get the current stock price',
-      parameters: z.object({ ticker: z.string() }),
-      execute: async ({ ticker }) => ({ price: 150.25, currency: 'USD' }) // Mock API
-    }
-  },
-  prompt: 'What’s the stock price for {{ company }}?',
-  context: { company: 'AAPL' }
+  tools: { getWeather: getWeatherTool },
+  prompt: 'What’s the weather like in San Francisco?',
 }, baseConfig);
 
 (async () => {
-  const { text, toolCalls } = await renderer();
-  console.log(text); // Incorporates tool result
+  // The LLM will see the prompt and decide to call getWeather.
+  const { text, toolCalls } = await weatherAgent();
+  console.log(text); // May contain the weather or be empty if a tool was called.
+  console.log(toolCalls); // Will show the call to getWeather.
 })();
 ```
 
 ### maxSteps
-**Purpose**: Limits the number of tool-calling steps.
+**Purpose**: Limits the number of model-driven tool-calling steps in a single turn.
 **Type**: `number` (default: 1, optional).
-**Details**: Works with `tools` in `TextGenerator` and `TextStreamer`.
+**Details**: Works with the `tools` property in `TextGenerator` and `TextStreamer`.
 
 ## Using Renderers in Templates and Scripts
 
@@ -824,10 +856,10 @@ const mainRenderer = create.TemplateRenderer({
 
 ## Choosing Your Orchestration Strategy: Scripts, Templates, Context Methods, and Tools
 
-In *Cascador-AI*, you have several mechanisms to build workflows. Choosing the right one depends on your goal: are you building a structured data object, or are you rendering a final text document?
+In *Cascador-AI*, you have several powerful mechanisms to build workflows. Choosing the right one depends on your goal: are you building a structured data object, or are you rendering a final text document, as well as who should be in control: the developer or the AI model.
 
-### `ScriptRunner`: For Data-Layer Logic and Orchestration
-Use `ScriptRunner` when your primary goal is to produce a structured data object (JSON). It is the backbone of your application's data layer.
+### `ScriptRunner` & `TemplateRenderer`: For Data and Presentation Layers
+-   **`ScriptRunner`**: Use when the primary output is a structured data object (JSON). Ideal for data-layer logic, multi-step agents, and orchestrating various data sources. It is the backbone of your application's data layer.
 
 **Use When:**
 -   **The output is data:** Your main goal is to create a complex object or array to be used by your application.
@@ -835,8 +867,7 @@ Use `ScriptRunner` when your primary goal is to produce a structured data object
 -   **Orchestrating multiple sources:** You are fetching data from several APIs, databases, and other renderers and need to combine them into a single, coherent object.
 -   **Readability is key for complex flows:** The top-to-bottom, `await`-free syntax makes complex data dependencies easy to follow.
 
-### `TemplateRenderer`: For Presentation and String Generation
-Use `TemplateRenderer` when your primary goal is to produce a string, such as HTML, Markdown, or a formatted report.
+-   **`TemplateRenderer`**: Use when the primary output is a rendered string (for instance an HTML or a Markdown). Ideal for the presentation layer.
 
 **Use When:**
 -   **The output is text:** You are generating a final, human-readable document.
@@ -851,12 +882,12 @@ These are the fundamental JS/TS functions you provide to *both* scripts and temp
 -   **The logic is deterministic:** You need to fetch data from a known API endpoint, query a database, or perform a specific data transformation.
 -   **You want to expose utilities:** Provide helper functions (e.g., `formatDate`, `calculateTotal`) to your scripts and templates.
 
-### LLM `tools`: For Dynamic, Model-Driven Actions
-This is a specific feature of Vercel AI SDK where the *LLM itself decides* which function to call based on the prompt. It's a different paradigm from the developer-defined logic in scripts and templates.
+### `Tools`: For Developer-Defined Functionality
+`create.Tools` provides a clean, type-safe way to expose custom functionality to your AI workflows. Unlike the old Vercel AI SDK approach where the LLM decides which tools to call, `Tools` gives you full control over when and how functions are executed.
 
 **Use When:**
--   **The workflow is unpredictable:** You don't know ahead of time which information the user will ask for, so the LLM must decide whether to call a tool like `getWeather` or `findRestaurants`.
--   **You want a conversational agent:** The LLM can chain its own reasoning, calling a tool, getting a result, and using that result to decide its next step, all within a single turn.
+-   **The workflow is unpredictable**: You can't know ahead of time what the user will ask. The LLM must infer intent and select the appropriate tool (e.g., `getWeather` vs. `sendEmail`).
+-   **You are building a conversational agent**: The LLM can chain its own reasoning—calling a tool, getting a result, and using that result to decide its next step—all within a single, autonomous turn.
 
 ## Embedding Integration
 
