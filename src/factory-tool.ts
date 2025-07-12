@@ -3,7 +3,7 @@ import { ConfigError } from './validate';
 import * as configs from './types-config';
 import * as results from './types-result';
 
-import { TextGeneratorConfig, TextGeneratorInstance } from './factory-text';
+import { TextGeneratorInstance } from './factory-text';
 import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object';
 import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
@@ -15,14 +15,13 @@ import * as utils from './type-utils';
 // The result of the tool's `execute` function is the `.object` property of the generator's full result.
 type ToolResultFromObjectGenerator<T extends (...args: any) => any> = Awaited<ReturnType<T>>['object'];
 
-// Overload for TextGenerator
+// Overload for TextGenerator and TemplateRenderer
 export function Tool<
 	TConfig extends configs.ToolConfig<PARAMETERS>,
-	TParent extends TextGeneratorInstance<any, any>,
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TParent
+	parent: TemplateRendererInstance<configs.OptionalTemplateConfig> | TextGeneratorInstance<any, any>
 ): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ObjectGenerator
@@ -37,24 +36,13 @@ export function Tool<
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, TResult>;
 
-// Overload for TemplateRenderer
-export function Tool<
-	TConfig extends configs.ToolConfig<PARAMETERS>,
-	TParent extends TemplateRendererInstance<configs.OptionalTemplateConfig>,
-	PARAMETERS extends configs.ToolParameters
->(
-	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TParent
-): configs.FunctionTool<PARAMETERS, string>;
-
 // Overload for ScriptRunner
 export function Tool<
 	TConfig extends configs.ToolConfig<PARAMETERS>,
-	TParent extends ScriptRunnerInstance<configs.ScriptConfig>,
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TParent
+	parent: ScriptRunnerInstance<configs.ScriptConfig>
 ): configs.FunctionTool<PARAMETERS, results.ScriptResult>;
 
 
@@ -78,9 +66,11 @@ export function Tool<
 	if ('debug' in config && config.debug) {
 		console.log('[DEBUG] Tool created with config:', JSON.stringify(config, null, 2));
 	}
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!config.parameters) {
 		throw new ConfigError('Tool config requires parameters schema');
 	}
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!parent.config) {
 		throw new ConfigError('Tool requires a valid parent (Generator, Renderer, or Runner)');
 	}
@@ -95,7 +85,7 @@ export function Tool<
 
 	// Case 1: ScriptRunner is the only type with `script` or `scriptType`.
 	if ('script' in parentConfig || 'scriptType' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<JSONValue> => {
 			const result = await (parent as ScriptRunnerInstance<configs.ScriptConfig>)(args);
 			return result ?? '';
 		};
@@ -103,7 +93,7 @@ export function Tool<
 	// Case 2: ObjectGenerator has a string `output` property. This is checked
 	// before `model` because ObjectGenerators *also* have a `model`.
 	else if ('output' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<JSONValue> => {
 			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
 			if ('object' in result) { return result.object; }
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
@@ -111,7 +101,7 @@ export function Tool<
 	}
 	// Case 3: TextGenerator has a `model` but is not an ObjectGenerator.
 	else if ('model' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<string> => {
 			const result = await (parent as TextGeneratorInstance<any, any>)(args);
 			if ('text' in result) { return result.text; }
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
@@ -119,7 +109,7 @@ export function Tool<
 	}
 	// Case 4: TemplateRenderer has `prompt` but no `model`.
 	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<string> => {
 			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
 		};
 	}
