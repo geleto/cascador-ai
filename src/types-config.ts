@@ -1,6 +1,6 @@
 import {
 	generateText, generateObject, streamText, streamObject,
-	Schema, JSONValue, Tool,
+	Schema, JSONValue,
 	ToolSet,
 	ToolExecutionOptions
 } from 'ai';

@@ -6,6 +6,7 @@ import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
 import { SchemaType } from './types';
+import { GenerateObjectObjectConfig, StreamObjectObjectConfig } from './types-config';
 
 export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> =
 	configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>
@@ -166,8 +167,8 @@ export function ObjectGenerator<
 
 	// Set default output value to make the config explicit.
 	// This simplifies downstream logic (e.g., in `create.Tool`).
-	if ((merged as any).output === undefined) {
-		(merged as any).output = 'object';
+	if ((merged as GenerateObjectObjectConfig<OBJECT>).output === undefined) {
+		(merged as GenerateObjectObjectConfig<OBJECT>).output = 'object';
 	}
 
 	if (parent) {
@@ -303,8 +304,8 @@ export function ObjectStreamer<
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 
 	// Set default output value to make the config explicit.
-	if ((merged as any).output === undefined) {
-		(merged as any).output = 'object';
+	if ((merged as StreamObjectObjectConfig<OBJECT>).output === undefined) {
+		(merged as StreamObjectObjectConfig<OBJECT>).output = 'object';
 	}
 
 	if (parent) {
