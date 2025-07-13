@@ -255,6 +255,12 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	await objectGenerator("Generate person"); // ✓ Single object generation
 
+	const objectGenerator2 = create.ObjectGenerator({
+		model: openAIModel,
+		schema
+	});
+	await objectGenerator("Generate person"); // ✓ Single object generation is default if no output is provided
+
 	const arrayGenerator = create.ObjectGenerator({
 		model: openAIModel,
 		output: 'array',
@@ -277,8 +283,8 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const toolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
-		tools: cityTools,
 		// @ts-expect-error - Cannot combine tools with object output type
+		tools: cityTools,
 		output: 'object', // ✗ Cannot combine tools with object output
 		schema
 	});
@@ -298,11 +304,21 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// @ts-expect-error - Missing required model in text generator configuration
 	const modellessGen = create.TextGenerator({}); // ✗ Missing required model
 
-	const schemalessObjGen = create.ObjectGenerator({
+	// @ts-expect-error - Missing required schema for object output type
+	const schemalessObjStream = create.ObjectStreamer({
 		model: openAIModel,
-		// @ts-expect-error - Missing required schema for object output type
 		output: 'object'
 	}); // ✗ Missing required schema
+
+	// @ts-expect-error - Missing required schema for object output type
+	const schemalessDefaultObjStream = create.ObjectStreamer({
+		model: openAIModel,
+	}); // ✗ Missing required schema
+
+	const schemaDefaultObjStream = create.ObjectStreamer({
+		model: openAIModel,
+		schema
+	});
 
 	const enumlessGen = create.ObjectGenerator({
 		model: openAIModel,
@@ -311,11 +327,21 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	}); // ✗ Missing required enum values
 
 	const extraPropGen = create.ObjectGenerator({
-		// @ts-expect-error - Unknown property in object generator configuration
 		output: 'object',
 		schema,
 		model: openAIModel,
+		// @ts-expect-error - Unknown property in object generator configuration
 		extraProp: 123 // ✗ Unknown property
+	});
+
+	const defaultOutputGen = create.ObjectGenerator({
+		schema,
+		model: openAIModel,
+	});
+
+	// @ts-expect-error - no output defaults to object which expects schema
+	const defaultOutputNoSchemaGen = create.ObjectGenerator({
+		model: openAIModel,
 	});
 
 	// SECTION 7: Complex Inheritance Tests
@@ -391,9 +417,9 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const invalidToolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error - Cannot combine tools with object output type
 		output: 'object',
 		schema: complexUserSchema,
+		// @ts-expect-error - Cannot combine tools with object output type
 		tools: cityTools
 	}); // ✗ Cannot combine tools with object output
 
@@ -502,12 +528,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		context: { base: true }
 	});
 
-	const invalidToolChild = create.ObjectGenerator(
-		{
-			// @ts-expect-error - Cannot mix tools with object output configuration
-			tools: cityTools,
-			prompt: "Generate {what}",
-		}, objectParentConfigWithContext); // ✗ Cannot mix tools with object output
+	// @ts-expect-error - Cannot mix tools with object output configuration
+	const invalidToolChild = create.ObjectGenerator({
+		tools: cityTools,
+		prompt: "Generate {what}",
+	}, objectParentConfigWithContext); // ✗ Cannot mix tools with object output
 
 	// Test incompatible mixing of object output with tools parent
 	const toolParentConfigWithContext = create.Config({
@@ -516,10 +541,10 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 
 	const invalidObjectChild = create.ObjectGenerator({
-		// @ts-expect-error - Cannot mix object output with tools configuration
 		output: 'object',
 		schema,
 		prompt: "Generate {what}",
+		// @ts-expect-error - Cannot mix object output with tools configuration
 	}, toolParentConfigWithContext); // ✗ Cannot mix object output with tools
 
 	// Test template context compatibility
@@ -551,12 +576,13 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 		promptType: 'text'
 	});
+
 	const invalidTemplateChild = create.ObjectGenerator({
-		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 		output: 'object',
 		schema,
 		prompt: "Generate person",
 		context: { child: true }
+		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	}, textPromptParentConfig); // ✗ Cannot mix promptType:'text' with template config
 
 	// Test promptType:'text' with parent template context
@@ -565,11 +591,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		context: { child: true }
 	});
 	const invalidTextPromptChild = create.ObjectGenerator({
-		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 		output: 'object',
 		schema,
 		prompt: "Generate person",
 		promptType: 'text'
+		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	}, templateContextParent); // ✗ Cannot mix promptType:'text' with template config
 
 	// Config-only inheritance tests

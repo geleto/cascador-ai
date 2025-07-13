@@ -19,16 +19,6 @@ export type ObjectGeneratorInstance<
 	CONFIG extends ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
 > = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
 
-// Object output
-export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
-	OBJECT = any
->(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
-
 // Array output
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>,
@@ -56,27 +46,16 @@ export function ObjectGenerator<
 		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<results.GenerateObjectNoSchemaResult>>;
 
-// Object with parent
+// Object output (default)
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	OBJECT = any
 >(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.GenerateObjectObjectConfig<OBJECT>
-		>,
-		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
-		TParentConfig
-	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.GenerateObjectObjectConfig<OBJECT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
+	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
+		utils.RequireTemplateLoaderIfNeeded<TConfig> &
+	{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
+): LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
+
 
 // Array with parent
 export function ObjectGenerator<
@@ -144,6 +123,29 @@ export function ObjectGenerator<
 	>
 ): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectNoSchemaResult>>;
 
+// Object with parent (default)
+export function ObjectGenerator<
+	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
+	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+>(
+	config: utils.RequireMissingWithSchema<
+		utils.StrictTypeWithTemplate<
+			TConfig,
+			configs.GenerateObjectObjectConfig<OBJECT>
+		>,
+		{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
+		TParentConfig
+	>,
+	parent: ConfigProvider<
+		utils.StrictTypeWithTemplate<
+			utils.Override<TParentConfig, TConfig>,
+			configs.GenerateObjectObjectConfig<OBJECT>
+		> extends never ? never : TParentConfig
+	>
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
+
+
 // Implementation
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig,
@@ -189,16 +191,6 @@ export function ObjectGenerator<
 	>(merged, generateObject);
 }
 
-// Object output
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
-	OBJECT = any
->(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.StreamObjectObjectConfig<OBJECT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, results.StreamObjectObjectResult<OBJECT>>;
-
 // Array output
 export function ObjectStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectArrayConfig<ELEMENT>,
@@ -217,28 +209,16 @@ export function ObjectStreamer<
 		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
 ): LLMCallSignature<TConfig, results.StreamObjectNoSchemaResult>;
 
-
-// Object with parent
+// Object output (default)
 export function ObjectStreamer<
 	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	OBJECT = any
 >(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.StreamObjectObjectConfig<OBJECT>
-		>,
-		{ output: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
-		TParentConfig
-	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.StreamObjectObjectConfig<OBJECT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectObjectResult<OBJECT>>;
+	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.StreamObjectObjectConfig<OBJECT>>, 'schema'> &
+		utils.RequireTemplateLoaderIfNeeded<TConfig> &
+	{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
+): LLMCallSignature<TConfig, results.StreamObjectObjectResult<OBJECT>>;
+
 
 // Array with parent
 export function ObjectStreamer<
@@ -283,6 +263,28 @@ export function ObjectStreamer<
 		> extends never ? never : TParentConfig
 	>
 ): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectNoSchemaResult>;
+
+// Object with parent (default)
+export function ObjectStreamer<
+	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
+	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+>(
+	config: utils.RequireMissingWithSchema<
+		utils.StrictTypeWithTemplate<
+			TConfig,
+			configs.StreamObjectObjectConfig<OBJECT>
+		>,
+		{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
+		TParentConfig
+	>,
+	parent: ConfigProvider<
+		utils.StrictTypeWithTemplate<
+			utils.Override<TParentConfig, TConfig>,
+			configs.StreamObjectObjectConfig<OBJECT>
+		> extends never ? never : TParentConfig
+	>
+): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectObjectResult<OBJECT>>;
 
 // Implementation
 export function ObjectStreamer<
