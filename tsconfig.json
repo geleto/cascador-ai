@@ -7,7 +7,6 @@
 	  //"resolveJsonModule": true,
       //"isolatedModules": true,
 	  "outDir": "./dist",
-	  "rootDir": "./",
 	  "strict": true,
 	  "esModuleInterop": true,
 	  "skipLibCheck": true,

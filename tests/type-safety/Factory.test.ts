@@ -1,6 +1,7 @@
 import { ILoader, LoaderSource } from "cascada-engine";
 import { z } from 'zod';
-import { create } from '../../src';
+//import { create } from '../../src';
+import { create } from 'cascador-ai';
 import { JSONValue, LanguageModel } from 'ai';
 
 // @todo - replace this with a cleaner, more systematic test suite

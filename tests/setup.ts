@@ -13,17 +13,18 @@ export const testUtils = {
 
 	// Helper to get environment variable with fallback
 	getEnv: (key: string, fallback?: string): string => {
-		return process.env[key] || fallback || '';
+		return process.env[key] ?? fallback ?? '';
 	}
 };
 
 // Example of how to use environment variables in tests
 export const createTestConfig = () => {
 	return {
-		apiKey: process.env.API_KEY || 'test-api-key',
-		openaiApiKey: process.env.OPENAI_API_KEY || 'test-openai-key',
-		nodeEnv: process.env.NODE_ENV || 'test',
-		logLevel: process.env.LOG_LEVEL || 'info'
+		apiKey: process.env.API_KEY ?? 'test-api-key',
+		openaiApiKey: process.env.OPENAI_API_KEY ?? 'test-openai-key',
+		anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? 'test-anthropic-key',
+		nodeEnv: process.env.NODE_ENV ?? 'test',
+		logLevel: process.env.LOG_LEVEL ?? 'info'
 	};
 };
 
