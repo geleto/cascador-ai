@@ -4,7 +4,7 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"sourceMap": true,
-		"outDir": "./dist/esm",
+		"outDir": "./dist",
 		"rootDir": "./src",
 		"strict": true,
 		"esModuleInterop": true,

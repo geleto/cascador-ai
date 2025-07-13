@@ -32,21 +32,19 @@
 		"LICENSE"
 	],
 	"type": "module",
-	"main": "./dist/cjs/index.js",
-	"module": "./dist/esm/index.js",
-	"types": "./dist/esm/index.d.ts",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/esm/index.d.ts",
-			"import": "./dist/esm/index.js",
-			"require": "./dist/cjs/index.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
 		}
 	},
 	"scripts": {
-		"build": "webpack && dts-bundle-generator -o dist/index.d.ts src/index.ts",
-		"build:webpack": "webpack",
+		"build": "tsc -p tsconfig.build.json",
 		"build:tsc": "tsc -p tsconfig.build.json",
-		"build:dts": "dts-bundle-generator -o dist/index.d.ts src/index.ts",
 		"clean": "rimraf dist",
 		"lint": "eslint src tests",
 		"typecheck": "tsc --noEmit",
@@ -66,19 +64,14 @@
 		"@types/node": "^22.13.4",
 		"@typescript-eslint/eslint-plugin": "^8.24.0",
 		"@typescript-eslint/parser": "^8.24.0",
-		"babel-loader": "^10.0.0",
 		"chai": "^5.1.2",
 		"dotenv": "^16.4.5",
-		"dts-bundle-generator": "^9.5.1",
 		"eslint": "^9.20.1",
 		"mocha": "^11.0.1",
 		"rimraf": "^6.0.1",
-		"ts-loader": "^9.5.2",
 		"tsx": "^4.19.2",
 		"typescript": "^5.7.3",
-		"typescript-eslint": "^8.24.0",
-		"webpack": "^5.100.1",
-		"webpack-cli": "^6.0.1"
+		"typescript-eslint": "^8.24.0"
 	},
 	"engines": {
 		"node": ">=18.0.0",
