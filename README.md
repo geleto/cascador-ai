@@ -46,17 +46,6 @@ Cascador-AI is a new project and is evolving quickly! This is exciting, but it a
 - [Type Checking](#type-checking)
 - [Roadmap](#roadmap)
 
-## Why Cascador-AI?
-
-- **Intuitive Orchestration**: Create complex AI workflows with easy-to-understand script and template syntax.
-- **Data-Centric Scripting**: Use **Cascada Script** to build powerful, readable data pipelines for your application's data layer.
-- **Parallel by Default**: Independent asynchronous operations run concurrently - no extra effort required.
-- **Powerful Scripting & Templating**: Leverage variables, loops, macros, conditionals, and more via [Cascada](https://github.com/geleto/cascada).
-- **Flexible Context**: Seamlessly access asynchronous data and functionality using the context object - from static values and dynamic functions to external APIs, database queries, custom service integrations and LLM requests.
-- **LLM Provider Flexibility**: Works with any major provider through the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core).
-- **Type-Safe**: Catch errors early with robust TypeScript support.
-
-Built on the powerful combination of [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core/) and the [Cascada Scripting and Template Engine](https://github.com/geleto/cascada), Cascador-AI delivers a developer experience that feels synchronous while providing the performance benefits of asynchronous execution.
 
 ## Installation
 
@@ -78,117 +67,67 @@ Check the [Vercel AI SDK Core documentation](https://sdk.vercel.ai/docs/ai-sdk-c
 
 ## Quick Start
 
-This example demonstrates the core power of Cascador-AI by building a **self-improving content agent**. Instead of just generating text, this agent orchestrates a multi-step workflow: it writes a draft, critiques its own work, and then iteratively revises the content until it meets a quality standard.
+This example demonstrates the core power of Cascador-AI by building a **self-improving content agent**. This agent orchestrates a multi-step workflow: it writes a draft, critiques its own work, and then iteratively revises the content until it meets a quality standard.
 
 Here’s how it works:
 
 ```javascript
-import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { create } from 'cascador-ai';
 import { z } from 'zod';
 
-// 1. Define a reusable base configuration using GPT-4o
-const baseConfig = create.Config({
-    model: openai('gpt-4o'),
-    temperature: 0.7,
-});
+// Define a reusable base configuration
+const baseConfig = create.Config({ model: openai('gpt-4o'), temperature: 0.7, maxRetries: 3 });
 
-// 2. Define the Agent's Core Capabilities (Renderers)
-
-// A renderer to write drafts (inherits GPT-4o from baseConfig)
+// A renderer to write drafts (inherits from baseConfig)
 const draftGenerator = create.TextGenerator({
-    prompt: 'Write a short, engaging blog post about {{ topic }}.',
+	prompt: 'Write a short, engaging blog post about {{ topic }}.',
 }, baseConfig);
 
 // A renderer to critique drafts using a structured schema.
-// This overrides the base model to use Claude Sonnet for critique.
 const critiqueGenerator = create.ObjectGenerator({
-    model: anthropic('claude-3-7-sonnet-latest'),
-    schema: z.object({
-        score: z.number().describe('Quality score from 1-10 on clarity and engagement.'),
-        suggestions: z.array(z.string()).describe('Specific, actionable suggestions for improvement.'),
-    }),
-    prompt: 'Critique this blog post. Provide a quality score and concrete suggestions for improvement.\n\nPOST:\n{{ draft }}',
+	schema: z.object({
+		score: z.number().describe('Quality score from 1-10.'),
+		suggestions: z.array(z.string()).describe('Actionable suggestions for improvement.'),
+	}),
+	prompt: 'Critique this blog post: {{ draft }}',
 }, baseConfig);
 
-// A renderer to rewrite a draft based on feedback (inherits GPT-4o)
+// A renderer to rewrite a draft based on feedback
 const revisionGenerator = create.TextGenerator({
-    prompt: 'Rewrite the following blog post based on the suggestions provided.\n\nORIGINAL POST:\n{{ draft }}\n\nSUGGESTIONS:\n- {{ suggestions | join("\n- ") }}\n\nREVISED POST:',
+	model: anthropic('claude-3-7-sonnet-latest'), //override the base model to use Claude Sonnet
+	prompt: 'Rewrite the following post based on these suggestions:\n\nPOST:\n{{ draft }}\n\nSUGGESTIONS:\n- {{ suggestions | join("\n- ") }}',
 }, baseConfig);
 
-
-// 3. Define the Orchestrator Script
+// Define the orchestration script for the agent
 const contentAgent = create.ScriptRunner({
-    context: {
-        // Provide the renderers to the script
-        draftGenerator,
-        critiqueGenerator,
-        revisionGenerator,
-        // Define workflow parameters
-        topic: 'the future of AI-powered development',
-        qualityThreshold: 8,
-		minRevisions: 1,
-        maxRevisions: 3,
-    },
-    script:
-      `// This script orchestrates the agent's "thought process".
-      :data
-
-      // --- Generate and critique the initial draft ---
-      var currentDraft = draftGenerator({ topic: topic }).text
-      var critiqueResult = critiqueGenerator({ draft: currentDraft }).object
-      var qualityScore = critiqueResult.score
-      var suggestions = critiqueResult.suggestions
+	context: {
+		draftGenerator, critiqueGenerator, revisionGenerator,
+		topic: "the future of AI-powered development",
+		qualityThreshold: 8, maxRevisions: 3, minRevisions: 1
+	},
+	script: `:data
       var revisionCount = 0
-      var break = false
+      var currentDraft = draftGenerator({ topic: topic }).text
+      var critique = critiqueGenerator({ draft: currentDraft }).object
 
-      // --- Start the revision loop ---
-      while (qualityScore < qualityThreshold or revisionCount < minRevisions) and revisionCount < maxRevisions and not break
-        var previousDraft = currentDraft
-        var previousScore = qualityScore
+      // Iteratively revise until the quality threshold or maxRevisions is met
+      while (critique.score < qualityThreshold or revisionCount < minRevisions) and revisionCount < maxRevisions
         revisionCount = revisionCount + 1
-
-        // Revise the draft based on the latest suggestions
-        var revisedDraft = revisionGenerator({ draft: currentDraft, suggestions: suggestions }).text
-
-        // --- Critique the NEW revised draft ---
-        var newCritiqueResult = critiqueGenerator({ draft: revisedDraft }).object
-        var newScore = newCritiqueResult.score
-
-        // --- Decide whether to keep the revision ---
-        if newScore < previousScore
-          // Score got worse. Reject the revision and exit by forcing the loop to end.
-          break = true
-          revisionCount = revisionCount - 1
-        else
-          // Revision is an improvement. Accept it and update our state for the next loop.
-          currentDraft = revisedDraft
-          qualityScore = newScore
-          suggestions = newCritiqueResult.suggestions
-        endif
+        currentDraft = revisionGenerator({ draft: currentDraft, suggestions: critique.suggestions }).text
+        critique = critiqueGenerator({ draft: currentDraft }).object
       endwhile
 
-      // --- Assemble the final result ---
-      @data.finalDraft = currentDraft
-      @data.finalScore = qualityScore
-      @data.revisionsMade = revisionCount
-    `,
+      @data = { finalDraft: currentDraft, finalScore: critique.score, revisionCount: revisionCount }`,
 });
 
-// 4. Run the Agent
+// Run the agent
 (async () => {
-    const result = await contentAgent();
-    console.log(JSON.stringify(result, null, 2));
-})();
+	const result = await contentAgent();
+	console.log(JSON.stringify(result, null, 2));
+})().catch(console.error);
 ```
-
-### What This Example Demonstrates
-
--   **Agentic Behavior**: The script doesn't just execute a static list of tasks; it uses a goal-oriented loop (`qualityScore < qualityThreshold`) to make decisions and improve its output over multiple steps.
--   **Stateful Orchestration**: The `while` loop maintains and updates state (`currentDraft`, `qualityScore`) across multiple asynchronous LLM calls, which is essential for complex workflows.
--   **Effortless Concurrency**: All underlying LLM calls (`draftGenerator`, `critiqueGenerator`, etc.) are async operations that run when their data is ready, without you needing to write any `await` or promise-handling logic inside the script.
--   **Configuration Inheritance**: A `baseConfig` provides a default model (`gpt-4o`), which is automatically inherited by the renderers. The `critiqueGenerator` shows how this can be easily overridden for specific tasks.
 
 # Understanding the Cascador-AI API
 
