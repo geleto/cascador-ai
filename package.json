@@ -77,8 +77,10 @@
 		"node": ">=18.0.0",
 		"npm": ">=9.0.0"
 	},
+	"peerDependencies": {
+		"ai": "^4.3.17"
+	},
 	"dependencies": {
-		"ai": "^4.3.17",
 		"cascada-engine": "^0.0.9"
 	}
 }
