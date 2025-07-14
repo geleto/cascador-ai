@@ -12,7 +12,6 @@ export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
 /**
  * Merge two partial LLM configs into a single object.
  * The return type is exactly the union of P & C (with child overriding parent).
- * @todo - merge loaders
  */
 export function mergeConfigs<
 	TChild extends Record<string, any> & Omit<TemplateConfig, 'promptType'>,
