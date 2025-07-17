@@ -14,17 +14,34 @@ The core of Cascador-AI is a **data-flow execution model**. Instead of running l
 
 ### 💡 Logic vs. Capabilities: A Clear Separation of Concerns
 
-The library encourages a powerful separation between the *what* and the *how*:
-*   **The Logic (The "What"):** This is the high-level plan defined in a `ScriptRunner` or `TemplateRenderer`. It's a readable, self-contained script that orchestrates the workflow.
-*   **The Capabilities (The "How"):** These are the JavaScript/TypeScript functions, LLM renderers, and data you provide in the `context` object. They are the concrete tools and data sources your logic uses to get the job done.
+The library encourages a powerful separation between the *what* (the orchestration plan) and the *how* (the underlying tools and functions):
+
+*   **The Logic (The "What"):** This is the high-level plan defined in a `ScriptRunner` or `TemplateRenderer`. It's a readable, self-contained script that orchestrates the workflow, defining the steps and data flow.
+    *   *Examples:* A script that first generates a draft, then sends it for critique, and finally revises it based on feedback; a template that fetches user data and product recommendations in parallel to render a personalized welcome email.
+
+*   **The Capabilities (The "How"):** These are the concrete tools and data sources your logic uses to get the job done. You provide them in the `context` object, making them available to your scripts and templates. The engine automatically handles resolving promises, allowing you to focus on your workflow logic without async boilerplate.
+    *   *Examples:* Seamlessly access asynchronous data and functionality—from static values (`{ qualityThreshold: 8 }`) and dynamic JavaScript functions (`(name) => name.toUpperCase()`) to external API calls (`fetchWeatherAPI`), database queries (`db.getUser`), custom service integrations, and even other `Cascador-AI` renderers.
+
+### 🧩 Composable & Reusable Components
+
+Cascador-AI treats every piece of your AI workflow—from a simple text generator to a complex multi-step agent—as a modular, reusable component. Because you define logic as code, you can encapsulate functionality into distinct `TextGenerator`, `ObjectGenerator`, or `ScriptRunner` instances.
+
+These components are not just static definitions; they are callable functions that can be passed around, nested, and composed. You can call one component from within another's script or template by simply adding it to the `context`. This allows you to build sophisticated systems from smaller, testable, and self-contained parts, promoting clean architecture and avoiding monolithic, hard-to-maintain agent definitions. For even more powerful composition, Cascada templates and scripts can also `include` files, `import` macros, and `extend` parent templates and scripts.
 
 ### 🛠️ Full-Spectrum AI Functionality
 
-Powered by the Vercel AI SDK Core, Cascador-AI provides a complete toolkit for modern AI development:
-*   **Structured Data:** Generate strongly-typed, validated JSON objects and arrays using Zod schemas.
-*   **Tool Use:** Expose your own functions - like API calls or database queries - as tools that can be called directly by the LLM agents.
-*   **Text Generation & Streaming:** Leverage powerful LLMs for both one-shot text generation and real-time streaming for interactive experiences.
-*   **Custom Integrations:** Seamlessly plug any custom service, utility, or external API into your workflows via the `context` object.
+Cascador-AI combines its unique orchestration capabilities with the robust features of the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) to provide a complete toolkit for modern AI development.
+
+#### Powered by Cascada
+*   **Declarative Agent Orchestration:** Define sophisticated, multi-step agent logic using clean, readable scripts. The engine automatically parallelizes independent operations, data-flows and piepeline steps while transparently managing data dependencies, letting you focus on the "what" instead of the "how."
+*   **Dynamic Prompt Engineering:** Craft powerful, adaptive prompts by composing templates, embedding the results from other LLM calls, and injecting data from asynchronous sources like APIs or databases, all within a single, coherent workflow.
+*   **Seamless Custom Integrations:** Easily plug any custom service, utility, or external API into your workflows. By adding them to the `context` object, they become available as simple function calls within your scripts and templates.
+
+#### Powered by the Vercel AI SDK Core
+*   **LLM Provider Flexibility:** Works with any major provider supported by the Vercel AI SDK Core, including OpenAI, Anthropic, Google, Cohere, and more. Swap models and providers with a single line of code.
+*   **Structured Data Generation:** Generate strongly-typed, validated JSON objects and arrays using Zod schemas, ensuring reliable and predictable outputs from your LLMs.
+*   **Model-Driven Tool Use:** Expose your own functions—like API calls or database queries—as tools that an LLM can decide to call based on its own reasoning to fulfill a user's request.
+*   **Text Generation & Streaming:** Leverage powerful LLMs for both one-shot text generation and real-time streaming to create dynamic, interactive user experiences.
 
 **⚠️ Welcome to the Cutting Edge! ⚠️**
 Cascador-AI is a new project and is evolving quickly! This is exciting, but it also means things are in flux. You might run into bugs, and the documentation might not always align perfectly with the released code. It could be behind or have gaps. I am working hard to improve everything and welcome your contributions and feedback.
@@ -133,7 +150,19 @@ const contentAgent = create.ScriptRunner({
 
 ## Renderers: The Heart of Cascador-AI
 
-At the core of *Cascador-AI* are **renderers** - versatile objects that transform inputs into outputs, whether that’s executing data-centric scripts, rendering templates, generating text with LLMs, or streaming structured data. Think of them as the building blocks for your workflows, designed to be both powerful and easy to use. Every renderer shares a few key traits:
+At the core of *Cascador-AI* are **renderers**—versatile objects that transform inputs into outputs. They are the building blocks for your workflows, designed to be both powerful and easy to compose. Every renderer, from a data-processing `criptRunner` to an LLM-powered `TextGenerator`, is created using the `create` factory and can be called like a function.
+
+All renderers that generate output from a language model (e.g., `TextGenerator`, `ObjectGenerator`) accept a `prompt` that is processed by the Cascada templating engine. This allows you to dynamically construct prompts using data from the `context`. The `ScriptRunner` is the exception; it executes a `script` instead of rendering a `prompt`.
+
+Here's a quick overview of the primary renderers you'll use:
+*   [**`create.Config`**](#renderer-config): Not a renderer, but a factory for creating reusable configuration objects. Define a base config with a shared model, temperature, or context, and have other renderers inherit from it to keep your code DRY.
+*   [**`create.ScriptRunner`**](#renderer-scriptrunner): **For data-layer orchestration.** Executes a Cascada script to orchestrate complex, multi-step workflows. Its primary output is a structured data object (JSON), making it ideal for building agents and data pipelines.
+*   [**`create.TemplateRenderer`**](#renderer-templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output, with no LLM involved. Perfect for generating HTML, Markdown, or other text-based formats from dynamic data.
+*   [**`create.TextGenerator` / `create.TextStreamer`**](#renderer-textgenerator): **For LLM-based text generation.** Generates or streams unstructured text from an LLM. Use it for tasks like summarization, translation, or creative writing.
+*   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#renderer-objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects or arrays from an LLM, validated against a Zod schema. Ideal for data extraction, classification, or function-like outputs.
+*   [**`create.Tool`**](#renderer-tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool. This allows an LLM to decide when and how to call your custom logic.
+
+Every renderer shares a few key traits:
 
 - **Created with Factories**: Use the `create` namespace to spin up renderers with custom configurations, optionally inheriting from a parent (a `Config` object or another renderer):
   ```typescript
@@ -257,7 +286,7 @@ const childRenderer = create.TextGenerator({
 
 *Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function. Here’s the lineup:
 
-### TemplateRenderer
+### <a id="renderer-templaterenderer"></a>TemplateRenderer
 **What it does**: Pure template processing for string generation, with no LLMs involved. Perfect for stitching together dynamic content from data or async sources into a final text output like HTML or Markdown.
 
 ```typescript
@@ -280,7 +309,7 @@ const templatedRenderer = create.TemplateRenderer({
 
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
-### ScriptRunner
+### <a id="renderer-scriptrunner"></a>ScriptRunner
 **What it does**: Executes powerful, data-centric workflows using **[Cascada Script](script.md)**, a language designed for effortless concurrency. Unlike `TemplateRenderer`, which primarily produces a string, `ScriptRunner`'s main output is a structured data object (e.g., JSON), making it the ideal choice for your application's data layer. It excels at orchestrating complex logic, fetching data from multiple async sources in parallel, and transforming it into a final, clean object.
 
 ```typescript
@@ -323,7 +352,7 @@ const userDashboardBuilder = create.ScriptRunner({
 **Use it for**: Implementing complex data layers, orchestrating multi-step agentic workflows, fetching and aggregating data from multiple APIs/databases, and any task where the primary output is structured data rather than a rendered string. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 
-### TextGenerator
+### <a id="renderer-textgenerator"></a>TextGenerator
 **What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). Ideal for one-shot outputs like summaries or creative writing.
 
 ```typescript
@@ -372,7 +401,7 @@ const streamer = create.TextStreamer({
 
 **Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs on text streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-text#streamtext) for streaming specifics.
 
-### ObjectGenerator
+### <a id="renderer-objectgenerator"></a>ObjectGenerator
 **What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), complete with schema validation. Think JSON outputs or classifications.
 
 ```typescript
@@ -437,7 +466,7 @@ You can specify how the data should be structured by setting `output` to:
 
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
-### Tool
+### <a id="renderer-tool"></a>Tool
 **What it does**: Wraps an existing `TextGenerator`, `ObjectGenerator`, `TemplateRenderer` or `ScriptRunner` into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
 
 ```typescript
@@ -596,7 +625,7 @@ See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for m
 
 ## Vercel AI Properties
 
-*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all LLM renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable overridden in runtime calls. Below are the key properties, with examples provided for the less intuitive ones (`model`, `messages`, `stop`).
+*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all LLM renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable overridden in runtime calls. Below are the key properties, with examples provided for the less intuitive ones (`model`, `stop`).
 
 ### model
 **Purpose**: Specifies the language model to use for generation.
@@ -629,32 +658,6 @@ const anthropicRenderer = create.TextGenerator({
 **Purpose**: Limits the number of tokens generated.
 **Type**: `number` (optional).
 **Details**: Caps response length to manage size and cost.
-
-### messages
-**Note** This functionality is not yet implemented
-**Purpose**: Defines a chat-style conversation history.
-**Type**: Array of `{ role: 'system' | 'user' | 'assistant', content: string }` (optional).
-**Details**: For multi-turn interactions; `prompt` appends as a user message (future behavior may evolve).
-**Example**:
-```typescript
-import { openai } from '@ai-sdk/openai';
-import { create } from 'cascador-ai';
-
-const renderer = create.TextGenerator({
-  model: openai('gpt-4o'),
-  messages: [
-    { role: 'system', content: 'You are a pirate captain.' },
-    { role: 'user', content: 'What’s your ship called?' },
-    { role: 'assistant', content: 'The Black Kraken, matey!' }
-  ],
-  prompt: 'Tell me about your latest adventure.'
-}, baseConfig);
-
-(async () => {
-  const { text } = await renderer();
-  console.log(text); // Continues pirate-themed chat
-})();
-```
 
 ### topP
 **Purpose**: Controls diversity via nucleus sampling.
@@ -1026,11 +1029,14 @@ This type safety ensures robust, predictable workflows with early error detectio
 
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
-- **optional JS/TS scripts and templates** to be used instead of Cascada
-- **Integrating the messages property with prompts**: template prompts are rendered and appended to the messages (if the property exists)
-- **Simplified loader wrapper**: replace the overcomplicated nunjucks loaders with simple function or interface
+- **Chat functionality** via create.Chat
+- **First-Class Evaluators for Quality, Safety, and Testing**: Evaluator system to enhance AI reliability through three key use cases: building self-correcting workflows, implementing live production guardrails, and integrating validation into automated tests. Accessible via two flexible patterns: a composable create.Evaluator wrapper that transparently wraps any renderer—preserving its original call signature and return as well as an universal evaluator property that can be added to any renderer for simple, declarative quality control. The system will support fine-grained control over retries and an option to throw exceptions on failure for seamless CI/CD integration.
+- **OpenTelemetry/MLflow integration**:  MLflow's tracing, which captures your app's entire execution, including prompts, retrievals, tool calls.
+- **Automated Prompt Optimization**: Go beyond manual prompt engineering with a built-in create.Optimizer. Inspired by frameworks like DSPy, this feature will allow you to attach an optimizer to any generator. It will use your existing Evaluator as a guide to programmatically test and evolve your prompts, automatically discovering the highest-performing version for your specific task. This creates a powerful feedback loop, using the same components that guard your production app to continuously improve its core logic with minimal effort.
+- **Execution Replay and Debugging**: A planned Cascada feature - creating an advanced logging system, via a dedicated output handler, to capture the entire execution trace. This will allow developers to replay and inspect the sequence of operations and variable states for complex debugging, and will integrate seamlessly with the Evaluator's trace history.
+- **Optional native JS/TS scripts and templates** to be used instead of Cascada, e.g. 'prompt' and 'script' properties can be a JS/TS function.
 - **Image Generation**: Add support for generating images from prompts using models like DALL-E.
-- **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management.
-- **Error Resilience**: Implement retry logic and Cascada’s upcoming try/except blocks for improved error handling.
-- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical.
+- **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management. Choose different versions depending on the model or validate old and new prompts during tests.
+- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical. Useful for previews.
 - **Instructions on integrating memory**: Provide clear patterns and examples for integrating long-term memory.
+- **Simplified loader wrapper**: replace the more complex nunjucks loaders with simple function or interface
