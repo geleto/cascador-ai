@@ -205,14 +205,23 @@ Every renderer shares a few key traits:
 
 - **Nested in Scripts and Templates**: Drop renderers into your `context` to use them within other scripts or templates, chaining tasks effortlessly:
   ```typescript
+  import { create } from 'cascador-ai';
+  import { openai } from '@ai-sdk/openai';
+
+  // Define a renderer that calls another renderer from its template
   const mainRenderer = create.TemplateRenderer({
     context: {
-      translateRenderer // Assume this is a configured TextGenerator
+      // Define the nested renderer directly in the context
+      translator: create.TextGenerator({
+        model: openai('gpt-4o-mini'),
+        prompt: 'Translate to {{ language }}: "{{ text }}"',
+      }),
     },
-    prompt: `Original: "It always seems impossible until it's done."
-Spanish: "{{ (translateRenderer({ text: "It always seems impossible until it's done", language: 'Spanish' })).text }}"
-`
-  }, baseConfig);
+    prompt: `Spanish: "{{ (translator({ text: 'It always seems impossible until it\\'s done.', language: 'Spanish' })).text }}"`
+  });
+
+  // Run the renderer and log the result
+  mainRenderer().then(console.log).catch(console.error);
   ```
   [Check out Using Renderers in Templates and Scripts](#using-renderers-in-templates-and-scripts) for examples.
 
