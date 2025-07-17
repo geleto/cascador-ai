@@ -155,12 +155,12 @@ At the core of *Cascador-AI* are **renderers**—versatile objects that transfor
 All renderers that generate output from a language model (e.g., `TextGenerator`, `ObjectGenerator`) accept a `prompt` that is processed by the Cascada templating engine. This allows you to dynamically construct prompts using data from the `context`. The `ScriptRunner` is the exception; it executes a `script` instead of rendering a `prompt`.
 
 Here's a quick overview of the primary renderers you'll use:
-*   [**`create.Config`**](#renderer-config): Not a renderer, but a factory for creating reusable configuration objects. Define a base config with a shared model, temperature, or context, and have other renderers inherit from it to keep your code DRY.
-*   [**`create.ScriptRunner`**](#renderer-scriptrunner): **For data-layer orchestration.** Executes a Cascada script to orchestrate complex, multi-step workflows. Its primary output is a structured data object (JSON), making it ideal for building agents and data pipelines.
-*   [**`create.TemplateRenderer`**](#renderer-templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output, with no LLM involved. Perfect for generating HTML, Markdown, or other text-based formats from dynamic data.
-*   [**`create.TextGenerator` / `create.TextStreamer`**](#renderer-textgenerator): **For LLM-based text generation.** Generates or streams unstructured text from an LLM. Use it for tasks like summarization, translation, or creative writing.
-*   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#renderer-objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects or arrays from an LLM, validated against a Zod schema. Ideal for data extraction, classification, or function-like outputs.
-*   [**`create.Tool`**](#renderer-tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool. This allows an LLM to decide when and how to call your custom logic.
+*   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects. Define a base config with a shared model, temperature, or context, and have other renderers inherit from it to keep your code DRY.
+*   [**`create.ScriptRunner`**](#scriptrunner): **For data-layer orchestration.** Executes a Cascada script to orchestrate complex, multi-step workflows. Its primary output is a structured data object (JSON), making it ideal for building agents and data pipelines.
+*   [**`create.TemplateRenderer`**](#templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output, with no LLM involved. Perfect for generating HTML, Markdown, or other text-based formats from dynamic data.
+*   [**`create.TextGenerator` / `create.TextStreamer`**](#textgenerator): **For LLM-based text generation.** Generates or streams unstructured text from an LLM. Use it for tasks like summarization, translation, or creative writing.
+*   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects or arrays from an LLM, validated against a Zod schema. Ideal for data extraction, classification, or function-like outputs.
+*   [**`create.Tool`**](#tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool. This allows an LLM to decide when and how to call your custom logic.
 
 Every renderer shares a few key traits:
 
