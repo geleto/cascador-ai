@@ -286,7 +286,7 @@ const childRenderer = create.TextGenerator({
 
 *Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function. Here’s the lineup:
 
-### <a id="renderer-templaterenderer"></a>TemplateRenderer
+### TemplateRenderer
 **What it does**: Pure template processing for string generation, with no LLMs involved. Perfect for stitching together dynamic content from data or async sources into a final text output like HTML or Markdown.
 
 ```typescript
@@ -309,7 +309,7 @@ const templatedRenderer = create.TemplateRenderer({
 
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
-### <a id="renderer-scriptrunner"></a>ScriptRunner
+### ScriptRunner
 **What it does**: Executes powerful, data-centric workflows using **[Cascada Script](script.md)**, a language designed for effortless concurrency. Unlike `TemplateRenderer`, which primarily produces a string, `ScriptRunner`'s main output is a structured data object (e.g., JSON), making it the ideal choice for your application's data layer. It excels at orchestrating complex logic, fetching data from multiple async sources in parallel, and transforming it into a final, clean object.
 
 ```typescript
@@ -352,7 +352,7 @@ const userDashboardBuilder = create.ScriptRunner({
 **Use it for**: Implementing complex data layers, orchestrating multi-step agentic workflows, fetching and aggregating data from multiple APIs/databases, and any task where the primary output is structured data rather than a rendered string. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 
-### <a id="renderer-textgenerator"></a>TextGenerator
+### TextGenerator
 **What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). Ideal for one-shot outputs like summaries or creative writing.
 
 ```typescript
@@ -401,7 +401,7 @@ const streamer = create.TextStreamer({
 
 **Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs on text streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-text#streamtext) for streaming specifics.
 
-### <a id="renderer-objectgenerator"></a>ObjectGenerator
+### ObjectGenerator
 **What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), complete with schema validation. Think JSON outputs or classifications.
 
 ```typescript
@@ -466,7 +466,7 @@ You can specify how the data should be structured by setting `output` to:
 
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
-### <a id="renderer-tool"></a>Tool
+### Tool
 **What it does**: Wraps an existing `TextGenerator`, `ObjectGenerator`, `TemplateRenderer` or `ScriptRunner` into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
 
 ```typescript
