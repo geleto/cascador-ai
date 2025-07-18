@@ -122,15 +122,27 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				const result = await new Promise<string>((resolve, reject) => {
 					const env = this.env as cascada.Environment;
 					try {
-						env.renderTemplateString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
-							if (err) {
-								reject(err);
-							} else if (res !== null) {
-								resolve(res);
-							} else {
-								reject(new TemplateError('Template render returned null result'));
-							}
-						});
+						if (this.config.promptType === 'template-name' || this.config.promptType === 'async-template-name') {
+							env.renderTemplate(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
+								if (err) {
+									reject(err);
+								} else if (res !== null) {
+									resolve(res);
+								} else {
+									reject(new TemplateError('Named template render returned null result'));
+								}
+							});
+						} else {
+							env.renderTemplateString(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
+								if (err) {
+									reject(err);
+								} else if (res !== null) {
+									resolve(res);
+								} else {
+									reject(new TemplateError('Template render returned null result'));
+								}
+							});
+						}
 					} catch (error) {
 						reject(new Error(error instanceof Error ? error.message : String(error)));
 					}
