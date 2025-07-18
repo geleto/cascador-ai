@@ -64,14 +64,11 @@ export function createLLMRenderer<
 			if (typeof promptOrContext === 'string') {
 				renderedPrompt = await renderer(promptOrContext, maybeContext);
 			} else {
+				//no prompt provided, use the config prompt
 				renderedPrompt = await renderer(config.prompt!, promptOrContext);
 			}
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
-			}
-			if (config.messages) {
-				//todo: add the prompt to the messages
-				//config.messages.push(renderedPrompt);
 			}
 			const result = await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
 			if (config.debug) {
