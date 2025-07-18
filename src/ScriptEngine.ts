@@ -116,7 +116,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 				console.log('[DEBUG] ScriptEngine.run - merged context:', mergedContext);
 			}
 
-			// If we have a script override, use renderString directly
+			// If we have a script override, use renderScript[String] directly
 			if (scriptOverride) {
 				if (this.env instanceof cascada.AsyncEnvironment) {
 					const result = await this.env.renderScriptString(scriptOverride, mergedContext);

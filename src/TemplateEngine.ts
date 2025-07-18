@@ -110,26 +110,37 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 				console.log('[DEBUG] TemplateEngine.render - merged context:', mergedContext);
 			}
 
-			// If we have a prompt override, use renderString directly
+			// If we have a prompt override, use renderTemplate[String] directly
 			if (promptOverride) {
 				if (this.env instanceof cascada.AsyncEnvironment) {
-					const result = await this.env.renderTemplateString(promptOverride, mergedContext);
-					if ('debug' in this.config && this.config.debug) {
-						console.log('[DEBUG] TemplateEngine.render - async renderString result:', result);
+					let result: string;
+					if (this.config.promptType === 'async-template-name') {
+						result = await this.env.renderTemplate(promptOverride, mergedContext);//@todo - can it return null?
+						if ('debug' in this.config && this.config.debug) {
+							console.log('[DEBUG] TemplateEngine.render - named async renderTemplate result:', result);
+						}
+					} else {
+						result = await this.env.renderTemplateString(promptOverride, mergedContext);
+						if ('debug' in this.config && this.config.debug) {
+							console.log('[DEBUG] TemplateEngine.render - async renderTemplateString result:', result);
+						}
 					}
 					return result;
 				}
 				const result = await new Promise<string>((resolve, reject) => {
 					const env = this.env as cascada.Environment;
 					try {
-						if (this.config.promptType === 'template-name' || this.config.promptType === 'async-template-name') {
+						if (this.config.promptType === 'template-name') {
 							env.renderTemplate(promptOverride, mergedContext, (err: Error | null, res: string | null) => {
 								if (err) {
 									reject(err);
 								} else if (res !== null) {
+									if ('debug' in this.config && this.config.debug) {
+										console.log('[DEBUG] TemplateEngine.render - sync renderTemplateString result:', result);
+									}
 									resolve(res);
 								} else {
-									reject(new TemplateError('Named template render returned null result'));
+									reject(new TemplateError('Named sync template render returned null result'));
 								}
 							});
 						} else {
@@ -137,9 +148,12 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 								if (err) {
 									reject(err);
 								} else if (res !== null) {
+									if ('debug' in this.config && this.config.debug) {
+										console.log('[DEBUG] TemplateEngine.render - sync renderTemplateString result:', result);
+									}
 									resolve(res);
 								} else {
-									reject(new TemplateError('Template render returned null result'));
+									reject(new TemplateError('Template sync render returned null result'));
 								}
 							});
 						}
@@ -147,9 +161,6 @@ export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
 						reject(new Error(error instanceof Error ? error.message : String(error)));
 					}
 				});
-				if ('debug' in this.config && this.config.debug) {
-					console.log('[DEBUG] TemplateEngine.render - sync renderString result:', result);
-				}
 				return result;
 			}
 
