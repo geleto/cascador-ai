@@ -89,6 +89,27 @@ describe('create.TextGenerator', function () {
 			expect(result.text).to.equal('(apples)');
 		});
 
+		// Test inheritance from another TextGenerator
+		it('should inherit from another TextGenerator instance', async () => {
+			const parentGenerator = create.TextGenerator({
+				model,
+				context: {
+					user: 'Alice',
+				},
+				filters: {
+					scream: (s: string) => s.toUpperCase() + '!!!',
+				},
+			});
+
+			const childGenerator = create.TextGenerator({
+				prompt: 'Write this and nothing else: {{ user | scream }}',
+			}, parentGenerator);
+
+			const result = await childGenerator();
+			expect(childGenerator.config.model).to.exist;
+			expect(result.text).to.equal('ALICE!!!');
+		});
+
 		it('should override parent properties with child properties', async () => {
 			const generator = create.TextGenerator(
 				{
@@ -184,6 +205,17 @@ describe('create.TextGenerator', function () {
 			expect(result.text).to.equal('functional');
 		});
 
+		// Test context function with arguments
+		it('should resolve a context function with arguments', async () => {
+			const generator = create.TextGenerator({
+				model,
+				prompt: 'Only write the value and nothing else. The value is {{ add(5, 3) }}.',
+				context: { add: (a: number, b: number) => a + b },
+			});
+			const result = await generator();
+			expect(result.text).to.equal('8');
+		});
+
 		it('should resolve an asynchronous function in the context', async () => {
 			const generator = create.TextGenerator({
 				model,
@@ -203,6 +235,17 @@ describe('create.TextGenerator', function () {
 			});
 			const result = await generator();
 			expect(result.text).to.equal('TEST');
+		});
+
+		// Test filter with arguments
+		it('should apply a filter with an argument', async () => {
+			const generator = create.TextGenerator({
+				model,
+				prompt: 'Only write this and nothing else: {{ "hello" | repeat(3) }}',
+				filters: { repeat: (s: string, count: number) => s.repeat(count) },
+			});
+			const result = await generator();
+			expect(result.text).to.equal('hellohellohello');
 		});
 
 		it('should apply an asynchronous filter', async () => {
@@ -275,33 +318,51 @@ describe('create.TextGenerator', function () {
 	});
 
 	describe('Callable Interface Overloads', () => {
-		const generator = create.TextGenerator({
+		const generatorWithPrompt = create.TextGenerator({
 			model,
 			prompt: 'Only write the value in "" quotes and nothing else. The value is {{ val }}.',
 			context: { val: 'A' },
 		});
 
 		it('handles call with no arguments: generator()', async () => {
-			const result = await generator();
+			const result = await generatorWithPrompt();
 			expect(result.text).to.equal('"A"');
 		});
 
 		it('handles call with prompt override: generator("new prompt {{val}}")', async () => {
-			const result = await generator('Only write the value in () parenthesis and nothing else, the value is: {{ val }}.');
+			const result = await generatorWithPrompt('Only write the value in () parenthesis and nothing else, the value is: {{ val }}.');
 			expect(result.text).to.equal('(A)');
 		});
 
 		it('handles call with context override: generator({ val: "B" })', async () => {
-			const result = await generator({ val: 'B' });
+			const result = await generatorWithPrompt({ val: 'B' });
 			expect(result.text).to.equal('"B"');
 		});
 
 		it('handles call with prompt and context override', async () => {
-			const result = await generator(
+			const result = await generatorWithPrompt(
 				'Only write the value in () parenthesis and nothing else, the value is: {{ val }}.',
 				{ val: 'C' },
 			);
 			expect(result.text).to.equal('(C)');
+		});
+
+		// Test the call signature for a generator without a pre-configured prompt
+		describe('for generator without configured prompt', () => {
+			const generatorWithoutPrompt = create.TextGenerator({
+				model,
+				context: { val: 'A' },
+			});
+
+			it('handles call with prompt: generator(prompt)', async () => {
+				const result = await generatorWithoutPrompt('Only write the value, nothing else. The value is {{ val }}.');
+				expect(result.text).to.equal('A');
+			});
+
+			it('handles call with prompt and context: generator(prompt, context)', async () => {
+				const result = await generatorWithoutPrompt('Only write the value, nothing else. The value is {{ val }}.', { val: 'B' });
+				expect(result.text).to.equal('B');
+			});
 		});
 	});
 
@@ -356,10 +417,12 @@ describe('create.TextGenerator', function () {
 			);
 		});
 
+		// Refined test for missing prompt.
 		it('should throw an error at runtime if no prompt is provided in config or call', async () => {
 			const generator = create.TextGenerator({ model });
-
-			await expect(generator('')).to.be.rejectedWith(
+			// Calling with no arguments should fail.
+			await expect(generator(undefined as unknown as string)).to.be.rejectedWith(
+				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);
 		});
@@ -375,6 +438,7 @@ describe('create.TextGenerator', function () {
 				},
 			});
 
+			// The error from cascada-engine is now wrapped.
 			await expect(generator()).to.be.rejectedWith(
 				'Filter failed',
 			);
@@ -389,7 +453,7 @@ describe('create.TextGenerator', function () {
 			});
 
 			await expect(generator()).to.be.rejectedWith(
-				'Template render failed: Template not found: nonexistent.njk',
+				'Template not found: nonexistent.njk',
 			);
 		});
 
@@ -403,8 +467,10 @@ describe('create.TextGenerator', function () {
 					},
 				},
 			});
-
-			await expect(generator()).to.be.rejectedWith('Context failed');
+			// The error from cascada-engine is now wrapped.
+			await expect(generator()).to.be.rejectedWith(
+				'Context failed',
+			);
 		});
 	});
 });
