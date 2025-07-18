@@ -86,6 +86,7 @@ export function createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - text path called with prompt:', prompt);
 			}
 			validateCall(config, prompt);
+			prompt = prompt || config.prompt!;
 			const result = await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
