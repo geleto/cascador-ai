@@ -79,6 +79,8 @@ export function TemplateRenderer<
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] TemplateRenderer - call function called with:', { promptOrContext, maybeContext });
 		}
+
+		//the contexts are merged in render
 		if (typeof promptOrContext === 'string') {
 			const result = await renderer.render(promptOrContext, maybeContext);
 			if ('debug' in merged && merged.debug) {
@@ -87,7 +89,7 @@ export function TemplateRenderer<
 			return result;
 		} else {
 			if (maybeContext !== undefined) {
-				throw new Error('Second argument must be undefined when not providing prompt.');
+				throw new Error('Second argument must be undefined when the first is not a string prompt.');
 			}
 			const result = await renderer.render(undefined, promptOrContext);
 			if ('debug' in merged && merged.debug) {
