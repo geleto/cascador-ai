@@ -48,8 +48,8 @@
 		"clean": "rimraf dist",
 		"lint": "eslint src tests",
 		"typecheck": "tsc --noEmit",
-		"test": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\"",
-		"test:watch": "mocha --require dotenv/config --node-option loader=ts-node/esm \"tests/**/*.test.ts\" --ignore \"tests/type-safety/**/*.ts\" --watch",
+		"test": "mocha",
+		"test:watch": "mocha --watch",
 		"test-type": "eslint tests/type-safety",
 		"start": "tsx examples/story.ts"
 	},
@@ -60,11 +60,13 @@
 		"@babel/preset-env": "^7.28.0",
 		"@eslint/js": "^9.20.1",
 		"@types/chai": "^5.0.1",
+		"@types/chai-as-promised": "^8.0.2",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "^22.13.4",
 		"@typescript-eslint/eslint-plugin": "^8.24.0",
 		"@typescript-eslint/parser": "^8.24.0",
 		"chai": "^5.1.2",
+		"chai-as-promised": "^8.0.1",
 		"dotenv": "^16.4.5",
 		"eslint": "^9.20.1",
 		"mocha": "^11.0.1",
@@ -81,6 +83,7 @@
 		"ai": "^4.3.17"
 	},
 	"dependencies": {
-		"cascada-engine": "^0.0.9"
+		"cascada-engine": "^0.0.9",
+		"ts-node": "^10.9.2"
 	}
 }

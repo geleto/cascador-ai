@@ -15,6 +15,10 @@
 		"noImplicitReturns": true,
 		"declarationMap": true
 	},
+	"ts-node": {
+		"moduleResolution": "bundler",
+		"experimentalSpecifierResolution": "node"
+	},
 	"include": ["src/**/*", "tests/**/*"],
 	"exclude": ["node_modules", "dist"]
 }

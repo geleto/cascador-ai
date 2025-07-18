@@ -1,5 +1,7 @@
 {
-	"extension": [".ts"],
+	"extension": ["ts"],
+	"spec": "tests/**/*.test.ts",
+	"ignore": "tests/type-safety/**/*.ts",
 	"node-option": ["loader=ts-node/esm"],
 	"require": ["dotenv/config"]
 }
