@@ -2,12 +2,6 @@ import { OptionalTemplateConfig, ScriptConfig } from "./types-config";
 import type * as TypesConfig from "./types-config";
 import { Context } from "./types";
 
-type ObjectConfigUnion =
-	| TypesConfig.GenerateObjectObjectConfig<unknown>
-	| TypesConfig.GenerateObjectArrayConfig<unknown>
-	| TypesConfig.GenerateObjectEnumConfig<string>
-	| TypesConfig.GenerateObjectNoSchemaConfig;
-
 export class ConfigError extends Error {
 	constructor(message: string, cause?: Error) {
 		super(message);
