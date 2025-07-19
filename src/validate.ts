@@ -62,6 +62,7 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Scr
 
 	// --- Shared validation for Cascada-based configs (templates and scripts) ---
 	if ('filters' in config && config.filters) {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 		if (typeof config.filters !== 'object' || config.filters === null || Array.isArray(config.filters)) {
 			throw new ConfigError("'filters' must be a record object of filter functions.");
 		}
@@ -112,6 +113,7 @@ export function validateObjectConfig(config?: Record<string, any>, isStream = fa
 	}
 
 	// The 'output' property defaults to 'object' if not specified or is undefined.
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const outputType = config.output ?? 'object';
 
 	if (!('model' in config)) {
@@ -122,7 +124,7 @@ export function validateObjectConfig(config?: Record<string, any>, isStream = fa
 		case 'object':
 		case 'array':
 			if (!('schema' in config)) {
-				throw new ConfigError(`${outputType} output requires schema`);
+				throw new ConfigError(`${outputType as string} output requires schema`);
 			}
 			break;
 		case 'enum':
