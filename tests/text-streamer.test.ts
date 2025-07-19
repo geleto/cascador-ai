@@ -21,11 +21,11 @@ async function streamToString(stream: StreamTextResult<any, any>['textStream']):
 	return text;
 }
 
-describe.only('create.TextStreamer', function () {
+describe('create.TextStreamer', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real streaming API
 
 	// Simple prompts for easy and cheap verification
-	const simplePrompt = "Write only the word 'Hello' and nothing else.";
+	const simplePrompt = "Write only the word 'Hello' without the quotes and nothing else.";
 	const simpleExpected = 'Hello';
 
 	describe('Core Functionality', () => {
@@ -237,6 +237,64 @@ describe.only('create.TextStreamer', function () {
 			);
 			expect(streamer.config.loader).to.be.an('array').with.lengthOf(2);
 			expect(streamer.config.loader).to.deep.equal([loader1, loader2]);
+		});
+
+		// Inside 'Configuration & Inheritance' describe block
+		it('should correctly handle a three-level inheritance chain and call the LLM', async () => {
+			// 1. SETUP: Define the inheritance chain
+			const grandparent = create.Config({
+				context: {
+					// These will be rendered into a list
+					items: ['Apple'],
+					source: 'Grandparent'
+				},
+				filters: {
+					f1: (arr: string[]) => [...arr, 'Banana'] // Add Banana
+				},
+			});
+
+			const parent = create.Config({
+				context: {
+					// This will override the grandparent's value, but it's not used in the prompt
+					source: 'Parent'
+				},
+				filters: {
+					f2: (arr: string[]) => [...arr, 'Cherry'] // Add Cherry
+				},
+			}, grandparent);
+
+			const childStreamer = create.TextStreamer({
+				model,
+				context: {
+					// Child context is not needed for this test, but we test it is merged correctly
+					source: 'Child'
+				},
+				// 2. TEMPLATE: This will be rendered by Cascador-AI
+				// The result will be: "Items: Apple, Banana, Cherry."
+				prompt: 'You are a summarizer. Your task is to summarize the following list of items into a single sentence starting with "The final list contains" followed immediately by the comma-separated list items wuth no "and" or quotes. Do not include the word "Items:". List: {{ items | f1 | f2 | join(", ") }}.',
+			}, parent);
+
+
+			// 3. ASSERTION (CONFIG): Verify Cascador-AI's internal config merging
+			expect(childStreamer.config.context).to.deep.equal({ items: ['Apple'], source: 'Child' });
+			expect(childStreamer.config.filters).to.have.keys('f1', 'f2');
+
+
+			// 4. EXECUTION: Call the streamer
+			const result = await childStreamer();
+			const streamedText = await streamToString(result.textStream);
+
+
+			// 5. ASSERTION (OUTPUT): Verify the LLM's transformed output
+			expect(streamedText).to.match(/^The final list contains/);
+
+			// Check that it contains the expected items after removing all spaces
+			const textWithoutSpaces = streamedText.replace(/\s/g, '');
+			expect(textWithoutSpaces).to.include('Apple,Banana,Cherry');
+
+			// This proves the LLM was not skipped, because this text is not in the original prompt.
+			expect(streamedText).to.not.include('You are a summarizer');
+			expect(streamedText).to.not.include('List:');
 		});
 	});
 
