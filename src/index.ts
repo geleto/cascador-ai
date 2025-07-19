@@ -21,6 +21,7 @@ export { Context, SchemaType, TemplatePromptType, ScriptType, LLMPromptType, Pro
 // Result types
 export {
 	ScriptResult,
+	GenerateTextResult, StreamTextResult,
 	GenerateObjectResultAll, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
 	StreamObjectResultAll, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult
 } from './types-result';
