@@ -91,7 +91,7 @@ export function validateCall(config: Record<string, any>, promptOrContext?: Cont
 	}
 
 	if (!promptOrContext) {
-		if (!('prompt' in config || 'messages' in config)) {
+		if (!('prompt' in config)) {
 			throw new ConfigError('Either prompt argument or config.prompt/messages required');
 		}
 		return;

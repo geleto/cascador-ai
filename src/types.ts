@@ -1,6 +1,5 @@
 import { Schema } from 'ai';
 import { z } from 'zod';
-import { GenerateTextConfig } from './types-config';
 
 // Template types
 export type Context = Record<string, any>;
@@ -14,5 +13,6 @@ export type ScriptType = 'script' | 'async-script' | 'script-name' | 'async-scri
 export type LLMPromptType = TemplatePromptType | 'text';
 
 // Define PromptOrMessage after importing config types
-export type PromptOrMessage = { prompt: string } | { messages: NonNullable<GenerateTextConfig['messages']> };
+
+//export type PromptOrMessage = { prompt: string } | { messages: NonNullable<GenerateTextConfig['messages']> };
 

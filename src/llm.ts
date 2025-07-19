@@ -1,4 +1,4 @@
-import { Context, PromptOrMessage, TemplatePromptType } from './types';
+import { Context, TemplatePromptType } from './types';
 import * as configs from './types-config';
 import { validateCall } from './validate';
 import * as utils from './type-utils';
@@ -10,7 +10,7 @@ export type LLMCallSignature<
 > = TConfig extends { promptType: 'text' }
 	? (
 		//TConfig has no template, no context argument is needed
-		TConfig extends PromptOrMessage
+		TConfig extends configs.PromptConfig
 		? {
 			(prompt?: string): TResult;//TConfig has prompt, prompt is optional
 			config: TConfig;
@@ -23,7 +23,7 @@ export type LLMCallSignature<
 	: (
 		// TConfig has template, an optional context argument can be used
 		// and the return type is always a promise because we wait for the result
-		TConfig extends PromptOrMessage
+		TConfig extends configs.PromptConfig
 		? {
 			//TConfig has prompt, prompt is optional
 			(promptOrContext?: Context | string): utils.EnsurePromise<TResult>;//one optional argument, prompt or context

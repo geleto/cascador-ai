@@ -8,7 +8,7 @@ export { Config } from './factory-config';
 export { ConfigProvider, ConfigData } from './ConfigData';
 
 export {
-	TemplateConfig, ScriptConfig,
+	PromptConfig, TemplateConfig, ScriptConfig,
 	GenerateTextConfig, StreamTextConfig,
 	GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
@@ -16,7 +16,7 @@ export {
 } from './types-config';
 
 // Core types
-export { Context, SchemaType, TemplatePromptType, ScriptType, LLMPromptType, PromptOrMessage } from './types';
+export { Context, SchemaType, TemplatePromptType, ScriptType, LLMPromptType } from './types';
 
 // Result types
 export {

@@ -30,6 +30,8 @@ interface CascadaConfig extends BaseConfig {
 
 interface LLMConfig extends BaseConfig { promptType?: LLMPromptType }
 
+export interface PromptConfig { prompt: string };
+
 // Config for the template engine with type safety for loader requirement
 export interface TemplateConfig extends CascadaConfig {
 	prompt?: string;
