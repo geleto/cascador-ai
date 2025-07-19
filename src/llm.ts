@@ -78,15 +78,24 @@ export function createLLMRenderer<
 		};
 	} else {
 		// No need to run the prompt through a template.
-		call = async (prompt: string): Promise<TFunctionResult> => {
+		// depending on the vercelFunc, the result may be a promise or not
+		call = (prompt: string): TFunctionResult => {
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - text path called with prompt:', prompt);
 			}
 			validateCall(config, prompt);
 			prompt = prompt || config.prompt!;
-			const result = await vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
+			const result = vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				if (result instanceof Promise) {
+					result.then((r) => {
+						console.log('[DEBUG] createLLMRenderer - awauted vercelFunc result:', r);
+					}).catch((error: unknown) => {
+						console.error('[DEBUG] createLLMRenderer - vercelFunc error:', error);
+					});
+				} else {
+					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				}
 			}
 			return result;
 		};
