@@ -1,7 +1,12 @@
 import 'dotenv/config';
-import { anthropic } from '@ai-sdk/anthropic';
+import { anthropic, createAnthropic, AnthropicProviderSettings } from '@ai-sdk/anthropic';
 import { ILoader, LoaderSource } from 'cascada-engine';
-export const model = anthropic('claude-3-5-haiku-latest');
+
+export const modelName = 'claude-3-5-haiku-latest';
+export const model = anthropic(modelName);
+export const createProvider = (options: AnthropicProviderSettings) => createAnthropic(options);
+
+export const timeout = 10000;
 
 /**
  * StringLoader class for testing purposes.

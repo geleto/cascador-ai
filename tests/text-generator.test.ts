@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
-import { model, StringLoader } from './common';
+import { model, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 
 // Configure chai-as-promised
@@ -12,7 +12,7 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 
 describe('create.TextGenerator', function () {
-	this.timeout(10000); // Increase timeout for tests that call the real API
+	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	// Simple prompts for easy and cheap verification
 	const simplePrompt = 'Output only the number 2.';
