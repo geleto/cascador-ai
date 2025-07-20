@@ -21,40 +21,54 @@ export type ObjectGeneratorInstance<
 
 // Array output
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>,
+	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>
+	& { output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
 	ELEMENT = any
 >(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectArrayConfig<ELEMENT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<ELEMENT>>>;
+	config:
+		utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectArrayConfig<ELEMENT>> &
+		utils.RequireTemplateLoaderIfNeeded<TConfig>
+): LLMCallSignature<
+	TConfig,
+	Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>
+>;
 
 // Enum output
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectEnumConfig<ENUM>,
-	ENUM extends string = string
+	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectEnumConfig<ENUM>
+	& { output: 'enum', model: LanguageModel },
+	ENUM extends string
 >(
 	config: utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectEnumConfig<ENUM>> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'enum', enum: ENUM[], model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.GenerateObjectEnumResult<ENUM>>>;
+		utils.RequireTemplateLoaderIfNeeded<TConfig> &
+	{ enum: readonly ENUM[] }
+): LLMCallSignature<
+	TConfig,
+	Promise<results.GenerateObjectEnumResult<ENUM>>
+>;
 
 // No schema output
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectNoSchemaConfig
+	& { output: 'no-schema', model: LanguageModel }
 >(
 	config: utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectNoSchemaConfig> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
+		utils.RequireTemplateLoaderIfNeeded<TConfig>
 ): LLMCallSignature<TConfig, Promise<results.GenerateObjectNoSchemaResult>>;
 
 // Object output (default)
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
-	OBJECT = any
+	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>
+	& { model: LanguageModel, schema: SchemaType<OBJECT>, output?: 'object' | undefined },
+	OBJECT
 >(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectObjectConfig<OBJECT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
+	config:
+		utils.StrictTypeWithTemplate<TConfig, configs.GenerateObjectObjectConfig<OBJECT>> &
+		utils.RequireTemplateLoaderIfNeeded<TConfig>
+): LLMCallSignature<
+	TConfig,
+	Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>
+>;
 
 
 // Array with parent
@@ -144,7 +158,6 @@ export function ObjectGenerator<
 		> extends never ? never : TParentConfig
 	>
 ): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
-
 
 // Implementation
 export function ObjectGenerator<
