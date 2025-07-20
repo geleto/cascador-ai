@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { create, StreamTextResult } from '../src/index'; // Adjust path to your 'index.ts'
+import { create, StreamTextResult } from '../src/index';
 import { model, modelName, StringLoader, createProvider, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { streamText } from 'ai';

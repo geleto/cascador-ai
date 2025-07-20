@@ -23,6 +23,21 @@ export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & configs.TemplateConfig>;
 
+/*export type Strict<T, Shape> = T & {
+	[K in keyof T as K extends keyof Shape ? never : K]: never;
+};
+
+// We will now rename our old StrictType to use the new Strict implementation,
+// as it serves the same purpose but correctly.
+export type StrictType<T, Shape> = T extends Shape ? Strict<T, Shape> : never;
+
+
+// Helper for types that can optionally have template properties.
+// This utility does not need to change, as it now correctly uses the new StrictType.
+export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
+	? StrictType<T, Shape & { promptType: 'text' }>
+	: StrictType<T, Shape & configs.TemplateConfig>;*/
+
 // Helper to infer parameters from the schema
 export type InferParameters<T extends configs.ToolParameters> = T extends z.ZodTypeAny
 	? z.infer<T>

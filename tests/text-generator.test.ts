@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { create } from '../src/index'; // Adjust path to your 'index.ts'
+import { create } from '../src/index';
 import { model, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 

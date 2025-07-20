@@ -38,7 +38,7 @@ export interface TemplateConfig extends CascadaConfig {
 	promptType?: TemplatePromptType;
 }
 
-export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text' };
+export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text'/*, prompt?: string */ };
 
 // Script types
 export interface ScriptConfig extends CascadaConfig {
@@ -106,7 +106,7 @@ export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
 
 export type GenerateObjectEnumConfig<ENUM extends string> = GenerateObjectBaseConfig & {
 	output?: 'enum';
-	enum?: ENUM[];
+	enum?: readonly ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
