@@ -18,10 +18,25 @@ export type StrictType<T, Shape> = T extends Shape
 	? keyof T extends keyof Shape ? T : never
 	: never;
 
+/*export type StrictType<T, Shape> = T & {
+	[K in keyof T as K extends keyof Shape ? never : K]: never;
+};*/
+
 // Helper for types that can optionally have template properties
 export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
 	: StrictType<T, Shape & configs.TemplateConfig>;
+
+
+// Makes sure the override of T and ParentT is a strict subtype of Shape, returns T if it is
+export type StrictOverrideType<T, ParentT, Shape> = Override<ParentT, T> extends Shape
+	? keyof Override<ParentT, T> extends keyof Shape ? T : never
+	: never;
+
+// Like StrictOverrideType, but allows TemplateConfig if the overide does not have promptType: 'text'
+export type StrictOverrideTypeWithTemplate<Config, ParentConfig, Shape> = Override<Config, ParentConfig> extends { promptType: 'text' }
+	? StrictOverrideType<Config, ParentConfig, Shape & { promptType: 'text' }>
+	: StrictOverrideType<Config, ParentConfig, Shape>;
 
 /*export type Strict<T, Shape> = T & {
 	[K in keyof T as K extends keyof Shape ? never : K]: never;
@@ -54,12 +69,14 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 
 export type GetMissingProperties<TRequired, TRefConfig> = Exclude<keyof TRequired, keyof TRefConfig>;
 
+// This type takes a base configuration and ensures it includes any required properties
+// that are missing when compared to a reference configuration.
 // Regular RequireMissing removes properties from TConfig that need to be made required
 // and adds them back from TRequired.
 export type RequireMissing<
 	TConfig,
 	TRequired,
-	TRefConfig,
+	TRefConfig //this is usually the parent config, so any requiredproperties that it misses are added to the config
 > = TConfig & Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
 
 // Makes properties from TRequired required only if they don't exist in TRefConfig.

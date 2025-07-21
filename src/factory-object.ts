@@ -8,6 +8,8 @@ import * as utils from './type-utils';
 import { SchemaType } from './types';
 import { GenerateObjectObjectConfig, StreamObjectObjectConfig } from './types-config';
 
+// any extends Partial<Shape> where Shape does not define generic types like ELEMENT, ENUM, OBJECT is unneeded
+
 export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> =
 	configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>
 	| configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>
@@ -56,7 +58,7 @@ export function ObjectGenerator<
 		utils.RequireTemplateLoaderIfNeeded<TConfig>
 ): LLMCallSignature<TConfig, Promise<results.GenerateObjectNoSchemaResult>>;
 
-// Object output (default)
+// Object output, no parent (default)
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>
 	& { model: LanguageModel, schema: SchemaType<OBJECT>, output?: 'object' | undefined },
@@ -70,94 +72,194 @@ export function ObjectGenerator<
 	Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>
 >;
 
-
-// Array with parent
+// output: 'array' and schema in config, with parent
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectArrayConfig<ELEMENT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> },
+	TParentConfig extends Record<string, any>,
+	ELEMENT
 >(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.GenerateObjectArrayConfig<ELEMENT>
-		>,
-		{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
-		TParentConfig
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectArrayConfig<ELEMENT>
 	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.GenerateObjectArrayConfig<ELEMENT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectArrayResult<ELEMENT>>>;
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>
+>;
 
-// Enum with parent
+// output: 'array' in config and schema in parent config
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectEnumConfig<ENUM>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TConfig extends { output: 'array' },
+	TParentConfig extends { schema: SchemaType<ELEMENT> },
+	ELEMENT
 >(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.GenerateObjectEnumConfig<ENUM>
-		>,
-		{ output: 'enum', enum: ENUM[], model: LanguageModel },
-		TParentConfig
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectArrayConfig<ELEMENT>
 	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.GenerateObjectEnumConfig<ENUM>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectEnumResult<ENUM>>>;
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectArrayResult<utils.InferParameters<TParentConfig['schema']>>>
+>;
 
-// No schema with parent
+// output: 'array' in parent and schema in config
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectNoSchemaConfig,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TConfig extends { schema: SchemaType<ELEMENT> },
+	TParentConfig extends { output: 'array' },
+	ELEMENT
 >(
-	config: utils.RequireMissing<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.GenerateObjectNoSchemaConfig
-		>,
-		{ output: 'no-schema', model: LanguageModel },
-		TParentConfig
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectArrayConfig<ELEMENT>
 	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.GenerateObjectNoSchemaConfig
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectNoSchemaResult>>;
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>
+>;
 
-// Object with parent (default)
+// output: 'array' and schema in parent config
 export function ObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & configs.GenerateObjectObjectConfig<OBJECT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TConfig extends Record<string, any>,
+	TParentConfig extends { output: 'array', schema: SchemaType<ELEMENT> },
+	ELEMENT
 >(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplate<
-			TConfig,
-			configs.GenerateObjectObjectConfig<OBJECT>
-		>,
-		{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
-		TParentConfig
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectArrayConfig<ELEMENT>
 	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
-			utils.Override<TParentConfig, TConfig>,
-			configs.GenerateObjectObjectConfig<OBJECT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, Promise<results.GenerateObjectObjectResult<OBJECT>>>;
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectArrayResult<utils.InferParameters<TParentConfig['schema']>>>
+>;
+
+//  output:'enum' and enum:... in config, with parent
+export function ObjectGenerator<
+	TConfig extends { output: 'enum', enum: readonly ENUM[] },
+	TParentConfig extends Record<string, any>,
+	ENUM extends string
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectEnumConfig<ENUM>
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectEnumResult<TConfig["enum"][number]>>
+>;
+
+//  output:'enum' in config, enum:... in parent
+export function ObjectGenerator<
+	TConfig extends { output: 'enum' },
+	TParentConfig extends { enum: readonly ENUM[] },
+	ENUM extends string
+>(
+
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectEnumConfig<ENUM>
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectEnumResult<TParentConfig["enum"][number]>>
+>;
+
+
+// output:'enum' in parent config, enum:... in config
+export function ObjectGenerator<
+	TConfig extends { enum: readonly ENUM[] },
+	TParentConfig extends { output: 'enum' },
+	ENUM extends string
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectEnumConfig<ENUM>
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectEnumResult<TConfig["enum"][number]>>
+>;
+
+// output:'enum' and enum:... in parent config
+export function ObjectGenerator<
+	TConfig extends Record<string, any>,
+	TParentConfig extends { output: 'enum', enum: readonly ENUM[] },
+	ENUM extends string
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectEnumConfig<ENUM>
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	Promise<results.GenerateObjectEnumResult<TParentConfig['enum'][number]>>
+>;
+
+
+// 'no-schema' in config, with parent
+export function ObjectGenerator<
+	TConfig extends { output: 'no-schema' },
+	TParentConfig extends Record<string, any>
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectNoSchemaConfig
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig, Promise<results.GenerateObjectNoSchemaResult>>;
+
+// 'no-schema' in parent config
+export function ObjectGenerator<
+	TConfig extends Record<string, any>,
+	TParentConfig extends { output: 'no-schema' }
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectNoSchemaConfig
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig, Promise<results.GenerateObjectNoSchemaResult>>;
+
+// Object with parent (default), schema in config
+export function ObjectGenerator<
+	TConfig extends { schema: SchemaType<OBJECT> },
+	TParentConfig extends Record<string, any>,
+	OBJECT
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectObjectConfig<OBJECT>//this makes 'model' and 'schema' required, all previous overloads caught any other 'output'
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	//Promise<results.GenerateObjectObjectResult<OBJECT>>
+	Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>
+>;
+
+// Object with parent (default), schema in parent
+export function ObjectGenerator<
+	TConfig extends Record<string, any>,
+	TParentConfig extends { schema: SchemaType<OBJECT> },
+	OBJECT
+>(
+	config: utils.StrictOverrideTypeWithTemplate<
+		TConfig, TParentConfig,
+		configs.GenerateObjectObjectConfig<OBJECT>//this makes 'model' and 'schema' required, all previous overloads caught any other 'output'
+	>,
+	parent: ConfigProvider<TParentConfig>
+): LLMCallSignature<
+	utils.Override<TParentConfig, TConfig> & configs.OptionalTemplateConfig,
+	//Promise<results.GenerateObjectObjectResult<OBJECT>>
+	Promise<results.GenerateObjectObjectResult<utils.InferParameters<TParentConfig['schema']>>>
+>;
 
 // Implementation
 export function ObjectGenerator<
