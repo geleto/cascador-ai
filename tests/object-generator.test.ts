@@ -5,11 +5,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
 import { model, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
-import { z } from 'zod';
-
-
-//TODO: Make sure all of the added tests are done with and without parent config as
-//the overrides are very different and need to be tested, especially for the return types correctness.
+import { z, ZodError } from 'zod';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
@@ -46,7 +42,7 @@ describe('create.ObjectGenerator', function () {
 			const { object } = await generator();
 			// Test direct property access and type
 			expect(object.name).to.equal('Test');
-			expect(object.value).to.equal(42);
+			expect(object.value).to.equal(42);//check type
 			// Ensure the schema was used for validation
 			expect(() => simpleSchema.parse(object)).to.not.throw();
 		});
@@ -61,7 +57,7 @@ describe('create.ObjectGenerator', function () {
 
 			const { object } = await generator();
 			expect(object).to.be.an('array').with.lengthOf(2);
-			expect(object[0]?.item).to.equal('A');
+			expect(object[0].item).to.equal('A');//check type
 			expect(object).to.deep.equal([
 				{ id: 1, item: 'A' },
 				{ id: 2, item: 'B' },
@@ -78,7 +74,7 @@ describe('create.ObjectGenerator', function () {
 			});
 
 			const { object: color } = await generator();
-			// This line confirms that TypeScript infers the correct, specific enum type
+			// This compile-time check confirms TypeScript infers the correct, specific enum type
 			const resultColor: Color = color;
 
 			expect(resultColor).to.be.oneOf(enumValues);
@@ -104,6 +100,7 @@ describe('create.ObjectGenerator', function () {
 
 			// Prompt is provided in the call
 			const { object } = await generator('Generate an object for "RuntimePrompt" with value 101.');
+			expect(object.value).to.equal(101);//check type
 			expect(object).to.deep.equal({ name: 'RuntimePrompt', value: 101 });
 		});
 
@@ -145,7 +142,10 @@ describe('create.ObjectGenerator', function () {
 
 			expect(generator.config.model).to.exist;
 			expect(generator.config.temperature).to.equal(0);
+
 			const { object } = await generator();
+			expect(object.value).to.equal(123);//check type
+
 			expect(object).to.deep.equal({ name: 'USER', value: 123 });
 		});
 
@@ -163,24 +163,64 @@ describe('create.ObjectGenerator', function () {
 			expect(childGenerator.config.output).to.equal('array');
 			const { object } = await childGenerator();
 			expect(object).to.be.an('array').with.lengthOf(1);
+			expect(object[0].id).to.equal(9);//check type
 			expect(object).to.deep.equal([{ id: 9, item: 'Inherited' }]);
 		});
 
 		it('should correctly assign enum type when inheriting from a parent config', async () => {
-			const parentGenerator = create.ObjectGenerator({
+			const parentConfig = create.Config({
 				model,
-				output: 'enum',
-				enum: enumValues,
+				output: 'enum'
 			});
 			const childGenerator = create.ObjectGenerator({
+				enum: enumValues,
 				prompt: 'From the available colors, what color is a fire truck?'
-			}, parentGenerator);
+			}, parentConfig);
 
 			const result = await childGenerator();
 			const { object: color } = result;
-			// This line confirms that TypeScript infers the correct, specific enum type
+			// This compile-time check confirms TypeScript infers the correct, specific enum type
 			const resultColor: Color = color;
 			expect(resultColor).to.equal('Red');
+		});
+
+		/*it('should inherit `output: no-schema` from a parent object generator', async () => {
+			const parentGenerator = create.ObjectGenerator({
+				model,
+				output: 'no-schema',
+			});
+
+			const childGenerator = create.ObjectGenerator({
+				prompt: 'Generate a raw JSON object with a "success" key set to true.'
+			}, parentGenerator);
+
+			const { object } = await childGenerator();
+			expect(object).to.deep.equal({ success: true });
+		});*/
+
+		it('should inherit `output: no-schema` from a parent config', async () => {
+			const parentConfig = create.Config({
+				model,
+				output: 'no-schema',
+			});
+
+			const childGenerator = create.ObjectGenerator({
+				prompt: 'Generate a raw JSON object with a "success" key set to true.'
+			}, parentConfig);
+
+			const { object } = await childGenerator();
+			expect(object).to.deep.equal({ success: true });
+		});
+
+		it('should generate an object when inheriting and prompt is at runtime', async () => {
+			const parentWithSchema = create.ObjectGenerator({
+				model,
+				schema: simpleSchema
+			});
+			const childGenerator = create.ObjectGenerator({}, parentWithSchema);
+			const { object } = await childGenerator('Generate an object for "InheritedRuntime" with value 789.');
+			expect(object).to.deep.equal({ name: 'InheritedRuntime', value: 789 });
+			expect(object.value).to.equal(789);//check type
 		});
 
 		it('should override parent properties (context, temperature)', async () => {
@@ -194,15 +234,48 @@ describe('create.ObjectGenerator', function () {
 			expect(generator.config.temperature).to.equal(0.8);
 			const { object } = await generator();
 			expect(object).to.deep.equal({ name: 'product', value: 123 });
+			expect(object.value).to.equal(123);//check type
 		});
 
-		it('should merge and deduplicate loader arrays from parent configs', () => {
+		it('should override an inherited schema with a child schema', async () => {
+			const locationSchema = z.object({ city: z.string(), country: z.string() });
+			const parentWithSchema = create.ObjectGenerator({
+				model,
+				schema: simpleSchema, // Parent has the 'name'/'value' schema
+			});
+			const childWithSchema = create.ObjectGenerator({
+				schema: locationSchema, // Child has the 'city'/'country' schema
+				prompt: 'Generate a JSON object for the location: Paris, France.',
+			}, parentWithSchema);
+
+			const { object } = await childWithSchema();
+			expect(object).to.deep.equal({ city: 'Paris', country: 'France' });
+			expect(object.city).to.equal('Paris');//check type
+		});
+
+		it('should merge and deduplicate loader arrays from parent configs', async () => {
 			const loader1 = new StringLoader();
+			loader1.addTemplate('object1.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
 			const loader2 = new StringLoader();
+			loader2.addTemplate('object2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
+
 			const parent = create.Config({ loader: [loader1] });
-			const generator = create.ObjectGenerator({ model, schema: simpleSchema, loader: [loader1, loader2] }, parent);
+			const generator = create.ObjectGenerator({
+				promptType: 'template-name',
+				model,
+				schema: simpleSchema,
+				loader: [loader2]
+			}, parent);
+
 			expect(generator.config.loader).to.be.an('array').with.lengthOf(2);
 			expect(generator.config.loader).to.deep.equal([loader1, loader2]);
+
+			//test the loader functionality using named templates
+			const { object: object1 } = await generator('object1.njk', { name: 'Test', value: 10 });
+			expect(object1).to.deep.equal({ name: 'Test', value: 10 });
+
+			const { object: object2 } = await generator('object2.njk', { name: 'Test2', value: 20 });
+			expect(object2).to.deep.equal({ name: 'Test2', value: -20 });
 		});
 	});
 
@@ -341,6 +414,19 @@ describe('create.ObjectGenerator', function () {
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);
+		});
+
+		it('should reject the promise if the LLM output fails schema validation', async () => {
+			const strictSchema = z.object({
+				name: z.string(),
+				value: z.string(), // Expecting a string, but prompt asks for a number
+			});
+			const generator = create.ObjectGenerator({
+				model,
+				schema: strictSchema,
+				prompt: 'Generate an object for "ValidationTest" with value 42. Make sure the value is a number.',
+			});
+			await expect(generator()).to.be.rejectedWith(ZodError);
 		});
 
 		it('should propagate errors from async context functions', async () => {
