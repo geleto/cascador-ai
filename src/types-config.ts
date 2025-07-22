@@ -1,6 +1,7 @@
 import {
 	generateText, generateObject, streamText, streamObject,
-	Schema, JSONValue,
+	Schema, //do not confuze the 'ai' Schema type with the 'zod' Schema type
+	JSONValue,
 	ToolSet,
 	ToolExecutionOptions
 } from 'ai';

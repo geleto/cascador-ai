@@ -1,4 +1,4 @@
-import { Schema } from 'ai';
+import { Schema } from 'ai';//do not confuze the 'ai' Schema type with the 'zod' Schema type
 import { z } from 'zod';
 
 // Template types
@@ -10,7 +10,7 @@ export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
 // Define the possible prompt types
 export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name' | undefined;
 export type ScriptType = 'script' | 'async-script' | 'script-name' | 'async-script-name' | undefined;
-export type LLMPromptType = TemplatePromptType | 'text';
+//export type LLMPromptType = TemplatePromptType | 'text';
 
 // Define PromptOrMessage after importing config types
 
