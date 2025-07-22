@@ -36,7 +36,7 @@ export type StrictOverrideType<T, ParentT, Shape> = Override<ParentT, T> extends
 // Like StrictOverrideType, but allows TemplateConfig if the overide does not have promptType: 'text'
 export type StrictOverrideTypeWithTemplate<Config, ParentConfig, Shape> = Override<Config, ParentConfig> extends { promptType: 'text' }
 	? StrictOverrideType<Config, ParentConfig, Shape & { promptType: 'text' }>
-	: StrictOverrideType<Config, ParentConfig, Shape>;
+	: StrictOverrideType<Config, ParentConfig, Shape & configs.TemplateConfig>;
 
 /*export type Strict<T, Shape> = T & {
 	[K in keyof T as K extends keyof Shape ? never : K]: never;

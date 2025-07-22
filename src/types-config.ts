@@ -6,7 +6,7 @@ import {
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
-import { TemplatePromptType, ScriptType, LLMPromptType } from './types';
+import { TemplatePromptType, ScriptType/*, LLMPromptType */ } from './types';
 import { InferParameters } from './type-utils';
 
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
@@ -27,8 +27,6 @@ interface CascadaConfig extends BaseConfig {
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
-
-interface LLMConfig extends BaseConfig { promptType?: LLMPromptType }
 
 export interface PromptConfig { prompt: string };
 
@@ -76,17 +74,17 @@ export type GenerateTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
+> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig>;
 
 // The first argument of streamText
 export type StreamTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & LLMConfig>;
+> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig>;
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & LLMConfig;
+export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & BaseConfig;
 
 export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	output?: 'object' | undefined;
@@ -116,7 +114,7 @@ export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 }
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & LLMConfig;
+export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & BaseConfig;
 
 export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	output?: 'object' | undefined;
