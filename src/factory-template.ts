@@ -47,7 +47,7 @@ export function TemplateRenderer<
 	? TemplateCallSignature<TConfig>
 	: TemplateCallSignature<utils.Override<TParentConfig, TConfig>> {
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
 	const merged = parent
 		? mergeConfigs(parent.config, config)

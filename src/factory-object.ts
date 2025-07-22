@@ -288,7 +288,7 @@ export function ObjectGenerator<
 		? utils.Override<TParentConfig, TConfig>
 		: TConfig;
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 
 	// Set default output value to make the config explicit.
@@ -426,7 +426,7 @@ export function ObjectStreamer<
 		? utils.Override<TParentConfig, TConfig>
 		: TConfig;
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 
 	// Set default output value to make the config explicit.

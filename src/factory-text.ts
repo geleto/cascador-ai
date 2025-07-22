@@ -59,7 +59,7 @@ export function TextGenerator<
 		? utils.Override<TParentConfig, TConfig>
 		: TConfig;
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);
@@ -119,7 +119,7 @@ export function TextStreamer<
 		? utils.Override<TParentConfig, TConfig>
 		: TConfig;
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
 	if (parent) {
 		validateBaseConfig(merged);

@@ -36,7 +36,7 @@ export function Config<
 	parent?: ConfigProvider<TParentConfig>
 ): ConfigData<TConfig> | ConfigData<utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>> {
 
-	validateBaseConfig(config);
+	//validateBaseConfig(config);
 
 	// Debug output if config.debug is true
 	if ('debug' in config && config.debug) {
