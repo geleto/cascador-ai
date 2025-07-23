@@ -19,6 +19,86 @@ import { GenerateObjectObjectConfig, StreamObjectObjectConfig } from './types-co
 // But if the generic parameter extends a type that has only partials,
 // then add a Record<string, any> & {optional props} so that the extends works (it requires at least 1 matching property)
 
+// Helper Types for Error Generation
+
+type KeysOfUnion<T> = T extends any ? keyof T : never;
+
+// The complete set of all allowed keys for any ObjectGenerator configuration.
+type AllAllowedKeys = KeysOfUnion<
+	| configs.GenerateObjectObjectConfig<any>
+	| configs.GenerateObjectArrayConfig<any>
+	| configs.GenerateObjectEnumConfig<any>
+	| configs.GenerateObjectNoSchemaConfig
+	| configs.OptionalTemplateConfig
+>;
+
+// The ParentConfigError interface is no longer needed and has been removed.
+
+// Gets the set of keys that are required in the final, merged configuration.
+type GetObjectGeneratorRequiredShape<TFinalConfig> =
+	(
+		TFinalConfig extends { output: 'array' } ? { schema: unknown; model: unknown } :
+		TFinalConfig extends { output: 'enum' } ? { enum: unknown; model: unknown } :
+		TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
+		{ schema: unknown; model: unknown }
+	);
+
+// Returns a specific error message string if template properties are used incorrectly.
+type GetTemplateError<TConfig> =
+	TConfig extends { promptType: 'text' } ? (
+		keyof TConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
+		? InvalidProps extends never
+		? never
+		: `Template properties ('${InvalidProps & string}') are not allowed when 'promptType' is 'text'.`
+		: never
+	) :
+	TConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
+		'loader' extends keyof TConfig
+		? never
+		: `Loader is required when promptType is '${TConfig['promptType']}'.`
+	) : never;
+
+
+// Validator for the child `config` object
+export type ValidateObjectGeneratorConfigShape<
+	TConfig,
+	TFinalConfig,
+	TParentConfig = never
+> =
+	// 1. Check for excess properties in TConfig.
+	keyof Omit<TConfig, AllAllowedKeys> extends never
+	// 2. If no excess, check for missing properties.
+	? keyof Omit<
+		GetObjectGeneratorRequiredShape<TFinalConfig>,
+		keyof TConfig | keyof TParentConfig
+	> extends never
+	// 3. If no missing, check for template errors.
+	? GetTemplateError<TFinalConfig> extends never
+	// 4. All checks passed.
+	? TConfig
+	: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
+	: `Config Error: Missing required properties - '${keyof Omit<
+		GetObjectGeneratorRequiredShape<TFinalConfig>,
+		keyof TConfig | keyof TParentConfig
+	> &
+	string}'`
+	: `Config Error: Unknown properties - '${keyof Omit<TConfig, AllAllowedKeys> & string}'`;
+
+
+// Validator for the `parent` config's GENERIC type
+export type ValidateObjectGeneratorParentConfig<TParentConfig> =
+	// 1. Check for excess properties in the parent config.
+	keyof Omit<TParentConfig, AllAllowedKeys> extends never
+	// 2. If no excess, check for template errors.
+	? GetTemplateError<TParentConfig> extends never
+	// 3. All checks passed, return the original config type.
+	? TParentConfig
+	// On template failure, return a descriptive string.
+	: `Parent Config Error: ${GetTemplateError<TParentConfig> & string}`
+	// On excess property failure, return a descriptive string.
+	: `Parent Config Error: Unknown properties - '${keyof Omit<TParentConfig, AllAllowedKeys> & string}'`;
+
+
 export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 	| configs.GenerateObjectObjectConfig<OBJECT>
 	| configs.GenerateObjectArrayConfig<ELEMENT>
@@ -26,20 +106,21 @@ export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 	| configs.GenerateObjectNoSchemaConfig
 ) & configs.OptionalTemplateConfig;
 
+
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
 	CONFIG extends ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
 > = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
 
 export function ObjectGenerator<
-	const TConfig extends
-	({ schema?: SchemaType<OBJECT>, enum?: readonly (ENUM)[] } & ({ output?: 'object' } | { output?: 'array' } | { output: 'no-schema' } | { output?: 'enum' } | { output?: undefined }))
-	& configs.OptionalTemplateConfig,
+	const TConfig extends configs.OptionalTemplateConfig & Record<string, any>
+	& { schema?: SchemaType<OBJECT>, enum?: readonly (ENUM)[], output?: 'object' | 'array' | 'no-schema' | 'enum' | undefined },
+
 	ELEMENT = any,
 	ENUM extends string = string,
 	OBJECT = any
 >(
-	config: TConfig
+	config: ValidateObjectGeneratorConfigShape<TConfig, TConfig>
 ):
 	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> }
 	? LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
@@ -67,21 +148,21 @@ export function ObjectGenerator<
 // Overload for the "with-parent" case
 export function ObjectGenerator<
 	// TConfig and TParentConfig can be partial.
-	const TConfig extends
-	({ schema?: SchemaType<OBJECT>, enum?: readonly (string)[] } & ({ output?: 'object' } | { output?: 'array' } | { output: 'no-schema' } | { output?: 'enum' } | { output?: undefined }))
-	& configs.OptionalTemplateConfig,
+	//@todo - check if the OptionalTemplateConfig is needed here
+	const TConfig extends configs.OptionalTemplateConfig & Record<string, any>
+	& { schema?: SchemaType<OBJECT>, enum?: readonly (string)[], output?: 'object' | 'array' | 'no-schema' | 'enum' | undefined },
 
-	const TParentConfig extends
-	({ schema?: SchemaType<PARENT_OBJECT>, enum?: readonly (string)[] } & ({ output?: 'object' } | { output?: 'array' } | { output: 'no-schema' } | { output?: 'enum' } | { output?: undefined }))
-	& configs.OptionalTemplateConfig,
+	const TParentConfig extends configs.OptionalTemplateConfig & Record<string, any>
+	& { schema?: SchemaType<PARENT_OBJECT>, enum?: readonly (string)[], output?: 'object' | 'array' | 'no-schema' | 'enum' | undefined },
 
 	OBJECT = any,
 	PARENT_OBJECT = any,
 
-	const TFinalConfig = utils.Override<{ output: 'object' }, utils.Override<TParentConfig, TConfig>>
+	// CORRECTED: TFinalConfig is now a clean merge without the confusing default.
+	const TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig,
-	parent: ConfigProvider<TParentConfig>
+	config: ValidateObjectGeneratorConfigShape<TConfig, TFinalConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig>>
 ):
 	// Final output is 'array' with a schema. We infer the element type directly from the final schema.
 	TFinalConfig extends { output: 'array', schema: SchemaType<any> }
@@ -110,6 +191,7 @@ export function ObjectGenerator<
 	// Fallback case: Final output is 'object' (or defaulted) but no schema is provided anywhere.
 	: LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.GenerateObjectObjectResult<any>>>
 
+// Implementation remains the same...
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig,
 	TParentConfig extends configs.OptionalTemplateConfig,

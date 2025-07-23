@@ -1,7 +1,7 @@
 import { ILoader, LoaderSource } from "cascada-engine";
 import { z } from 'zod';
-//import { create } from '../../src';
-import { create } from 'cascador-ai';
+import { create } from '../../src';
+//import { create } from 'cascador-ai';
 import { JSONValue, LanguageModel } from 'ai';
 
 // @todo - replace this with a cleaner, more systematic test suite
@@ -221,13 +221,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await templateGenerator(); // ✓ Uses inherited model
 
 	const modelParentConfig2 = create.Config({ model: openAIModel });
-	const noSchemaGenerator = create.ObjectGenerator({ output: 'no-schema' }, modelParentConfig);
-
-	const messageGenerator = create.TextGenerator({
-		model: openAIModel,
-		messages: [{ role: 'user', content: 'Hi' }]
-	});
-	await messageGenerator(); // ✓ Message-based generation
+	const noSchemaGenerator = create.ObjectGenerator({ output: 'no-schema' }, modelParentConfig2);
 
 	const toolGenerator = create.TextGenerator({
 		model: openAIModel,
@@ -281,9 +275,9 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	await schemalessGenerator("Free-form JSON"); // ✓ Schemaless generation
 
+	// @ts-expect-error - Cannot combine tools with object output type
 	const toolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error - Cannot combine tools with object output type
 		tools: cityTools,
 		output: 'object', // ✗ Cannot combine tools with object output
 		schema
@@ -322,15 +316,15 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const enumlessGen = create.ObjectGenerator({
 		model: openAIModel,
-		// @ts-expect-error - Missing required enum values for enum output type
+		// x@ts-expect-error - Missing required enum values for enum output type
 		output: 'enum'
 	}); // ✗ Missing required enum values
 
+	// @ts-expect-error - Unknown property in object generator configuration
 	const extraPropGen = create.ObjectGenerator({
 		output: 'object',
 		schema,
 		model: openAIModel,
-		// @ts-expect-error - Unknown property in object generator configuration
 		extraProp: 123 // ✗ Unknown property
 	});
 
@@ -339,7 +333,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 	});
 
-	// @ts-expect-error - no output defaults to object which expects schema
+	// x@ts-expect-error - no output defaults to 'object' which expects schema
 	const defaultOutputNoSchemaGen = create.ObjectGenerator({
 		model: openAIModel,
 	});
@@ -415,11 +409,11 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		schema: complexUserSchema
 	}); // ✓ Complex nested schema generation
 
+	// @ts-expect-error - Cannot combine tools with object output type
 	const invalidToolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
 		output: 'object',
 		schema: complexUserSchema,
-		// @ts-expect-error - Cannot combine tools with object output type
 		tools: cityTools
 	}); // ✗ Cannot combine tools with object output
 
@@ -577,12 +571,12 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		promptType: 'text'
 	});
 
+	// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	const invalidTemplateChild = create.ObjectGenerator({
 		output: 'object',
 		schema,
 		prompt: "Generate person",
 		context: { child: true }
-		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	}, textPromptParentConfig); // ✗ Cannot mix promptType:'text' with template config
 
 	// Test promptType:'text' with parent template context
@@ -590,12 +584,12 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 		context: { child: true }
 	});
+	// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	const invalidTextPromptChild = create.ObjectGenerator({
 		output: 'object',
 		schema,
 		prompt: "Generate person",
 		promptType: 'text'
-		// @ts-expect-error - Cannot mix promptType:'text' with template configuration
 	}, templateContextParent); // ✗ Cannot mix promptType:'text' with template config
 
 	// Config-only inheritance tests

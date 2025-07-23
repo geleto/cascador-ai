@@ -447,10 +447,10 @@ describe('create.ObjectGenerator', function () {
 
 		it('should throw ConfigError for invalid output type', () => {
 			expect(() =>
+				// @ts-expect-error - Intentionally invalid
 				create.ObjectGenerator({
 					model,
 					schema: simpleSchema,
-					// @ts-expect-error - Intentionally invalid
 					output: 'invalid-type',
 				}),
 			).to.throw(ConfigError, `Invalid output type: 'invalid-type'`);
