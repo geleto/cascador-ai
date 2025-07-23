@@ -16,7 +16,7 @@ export {
 } from './types-config';
 
 // Core types
-export { Context, SchemaType, TemplatePromptType, ScriptType, LLMPromptType } from './types';
+export { Context, SchemaType, TemplatePromptType, ScriptType/*, LLMPromptType */ } from './types';
 
 // Result types
 export {
