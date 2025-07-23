@@ -18,40 +18,34 @@ export type StrictType<T, Shape> = T extends Shape
 	? keyof T extends keyof Shape ? T : never
 	: never;
 
-/*export type StrictType<T, Shape> = T & {
-	[K in keyof T as K extends keyof Shape ? never : K]: never;
-};*/
+/** A union of all possible validation error objects for strong typing. */
+export type ConfigValidationError =
+	| { readonly 'Config Error': 'Excess properties are not allowed.', readonly excess: string[] }
+	| { readonly 'Config Error': 'Required properties are missing.', readonly missing: string[] }
+	| { readonly 'Config Error': "The 'loader' property is required when 'promptType' is 'template-name' or 'async-template-name'." }
+	| { readonly 'Config Error': "Template properties ('loader', 'filters', 'options') are not allowed when 'promptType' is 'text'." };
 
-// Helper for types that can optionally have template properties
-export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
-	? StrictType<T, Shape & { promptType: 'text' }>
-	: StrictType<T, Shape & configs.TemplateConfig>;
-
+// Helper to get keys as a string array for the error message
+export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F & string, ...KeysToStringArray<R>] : [];
 
 // Makes sure the override of T and ParentT is a strict subtype of Shape, returns T if it is
-export type StrictOverrideType<T, ParentT, Shape> = Override<ParentT, T> extends Shape
+type StrictOverrideType<T, ParentT, Shape> = Override<ParentT, T> extends Shape
 	? keyof Override<ParentT, T> extends keyof Shape ? T : never
 	: never;
 
-// Like StrictOverrideType, but allows TemplateConfig if the overide does not have promptType: 'text'
-export type StrictOverrideTypeWithTemplate<Config, ParentConfig, Shape> = Override<Config, ParentConfig> extends { promptType: 'text' }
-	? StrictOverrideType<Config, ParentConfig, Shape & { promptType: 'text' }>
-	: StrictOverrideType<Config, ParentConfig, Shape & configs.TemplateConfig>;
-
-/*export type Strict<T, Shape> = T & {
-	[K in keyof T as K extends keyof Shape ? never : K]: never;
-};
-
-// We will now rename our old StrictType to use the new Strict implementation,
-// as it serves the same purpose but correctly.
-export type StrictType<T, Shape> = T extends Shape ? Strict<T, Shape> : never;
-
-
-// Helper for types that can optionally have template properties.
-// This utility does not need to change, as it now correctly uses the new StrictType.
-export type StrictTypeWithTemplate<T, Shape> = T extends { promptType: 'text' }
+// Ensures T strictly matches Shape while enforcing template property rules.
+// Disallows template properties (e.g., loader, filters) for `promptType: 'text'`, but requires `loader` for named template modes.
+// For standalone configs (no parent).
+export type StrictTypeWithTemplateAndLoader<T extends configs.OptionalTemplateConfig, Shape> = T extends { promptType: 'text' }
 	? StrictType<T, Shape & { promptType: 'text' }>
-	: StrictType<T, Shape & configs.TemplateConfig>;*/
+	: StrictType<T, Shape & configs.TemplateConfig & RequireTemplateLoaderIfNeeded<T>>;
+
+// Ensures the merged Parent/Child config strictly matches Shape while enforcing template property rules.
+// Disallows template properties for `promptType: 'text'` on the merged object, but requires `loader` for named template modes.
+// For configs with a parent.
+export type StrictOverrideTypeWithTemplateAndLoader<Config extends configs.OptionalTemplateConfig, ParentConfig extends configs.OptionalTemplateConfig, Shape> = Override<Config, ParentConfig> extends { promptType: 'text' }
+	? StrictOverrideType<Config, ParentConfig, Shape & { promptType: 'text' }>
+	: StrictOverrideType<Config, ParentConfig, Shape & configs.TemplateConfig & RequireTemplateLoaderIfNeeded<Config>>;
 
 // Helper to infer parameters from the schema
 export type InferParameters<T extends configs.ToolParameters> = T extends z.ZodTypeAny

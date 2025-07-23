@@ -16,7 +16,7 @@ export function TextGenerator<
 	TConfig extends configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends ToolSet = ToolSet, OUTPUT = never
 >(
-	config: utils.StrictTypeWithTemplate<TConfig, configs.GenerateTextConfig<TOOLS, OUTPUT>> & utils.RequireTemplateLoaderIfNeeded<TConfig>
+	config: utils.StrictTypeWithTemplateAndLoader<TConfig, configs.GenerateTextConfig<TOOLS, OUTPUT>> & utils.RequireTemplateLoaderIfNeeded<TConfig>
 		& { model: LanguageModel }
 ): LLMCallSignature<TConfig, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
@@ -28,7 +28,7 @@ export function TextGenerator<
 	OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.RequireMissing<
-		utils.StrictTypeWithTemplate<
+		utils.StrictTypeWithTemplateAndLoader<
 			TConfig,
 			configs.GenerateTextConfig<TOOLS, OUTPUT>
 		>,
@@ -36,7 +36,7 @@ export function TextGenerator<
 		TParentConfig
 	>,
 	parent: ConfigProvider<
-		utils.StrictTypeWithTemplate<
+		utils.StrictTypeWithTemplateAndLoader<
 			utils.Override<TParentConfig, TConfig>,
 			configs.GenerateTextConfig<TOOLS, OUTPUT>
 		> extends never ? never : TParentConfig
