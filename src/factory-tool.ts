@@ -4,7 +4,7 @@ import * as configs from './types-config';
 import * as results from './types-result';
 
 import { TextGeneratorInstance } from './factory-text';
-import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object';
+import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object-generator';
 import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
 import * as utils from './type-utils';

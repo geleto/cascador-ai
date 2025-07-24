@@ -1,7 +1,8 @@
 export { TemplateRenderer, TemplateRendererInstance } from './factory-template';
 export { ScriptRunner, ScriptRunnerInstance } from './factory-script';
 export { TextGenerator, TextStreamer, TextGeneratorInstance, TextGeneratorConfig } from './factory-text';
-export { ObjectGenerator, ObjectStreamer, ObjectGeneratorInstance, ObjectGeneratorConfig } from './factory-object';
+export { ObjectGenerator, ObjectGeneratorInstance, ObjectGeneratorConfig } from './factory-object-generator';
+export { ObjectStreamer, ObjectStreamerInstance, ObjectStreamerConfig } from './factory-object-streamer';
 export { Tool } from './factory-tool';
 export { Config } from './factory-config';
 

@@ -1,4 +1,4 @@
-import { generateObject, streamObject, LanguageModel, ToolSet, } from 'ai';
+import { generateObject, LanguageModel } from 'ai';
 import { ConfigProvider, mergeConfigs } from './ConfigData';
 import { createLLMRenderer, LLMCallSignature } from './llm';
 import { validateBaseConfig, validateObjectConfig } from './validate';
@@ -6,7 +6,7 @@ import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
 import { SchemaType } from './types';
-import { GenerateObjectObjectConfig, StreamObjectObjectConfig } from './types-config';
+import { GenerateObjectObjectConfig } from './types-config';
 
 // You want to use the overload generic parameters only to help guide to the correct overload and not to do any type validation
 // so that the correct overload is selected (todo - later when we change config to be assignable to an error type)
@@ -234,141 +234,4 @@ export function ObjectGenerator<
 		configs.GenerateObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
 		Promise<results.GenerateObjectObjectResult<OBJECT>>
 	>(merged, generateObject);
-}
-
-// Array output
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectArrayConfig<ELEMENT>,
-	ELEMENT = any
->(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplateAndLoader<TConfig, configs.StreamObjectArrayConfig<ELEMENT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel }
-): LLMCallSignature<TConfig, results.StreamObjectArrayResult<ELEMENT>>;
-
-// No schema output
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectNoSchemaConfig
->(
-	config: utils.StrictTypeWithTemplateAndLoader<TConfig, configs.StreamObjectNoSchemaConfig> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> & { output: 'no-schema', model: LanguageModel }
-): LLMCallSignature<TConfig, results.StreamObjectNoSchemaResult>;
-
-// Object output (default)
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
-	OBJECT = any
->(
-	config: utils.DistributiveOmit<utils.StrictTypeWithTemplateAndLoader<TConfig, configs.StreamObjectObjectConfig<OBJECT>>, 'schema'> &
-		utils.RequireTemplateLoaderIfNeeded<TConfig> &
-	{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel }
-): LLMCallSignature<TConfig, results.StreamObjectObjectResult<OBJECT>>;
-
-
-// Array with parent
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectArrayConfig<ELEMENT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
->(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplateAndLoader<
-			TConfig,
-			configs.StreamObjectArrayConfig<ELEMENT>
-		>,
-		{ output: 'array', schema: SchemaType<ELEMENT>, model: LanguageModel },
-		TParentConfig
-	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplateAndLoader<
-			utils.Override<TParentConfig, TConfig>,
-			configs.StreamObjectArrayConfig<ELEMENT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectArrayResult<ELEMENT>>;
-
-// No schema with parent
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectNoSchemaConfig,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
->(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplateAndLoader<
-			TConfig,
-			configs.StreamObjectNoSchemaConfig
-		>,
-		{ output: 'no-schema', model: LanguageModel },
-		TParentConfig
-	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplateAndLoader<
-			utils.Override<TParentConfig, TConfig>,
-			configs.StreamObjectNoSchemaConfig
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectNoSchemaResult>;
-
-// Object with parent (default)
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<OBJECT>,
-	TParentConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
->(
-	config: utils.RequireMissingWithSchema<
-		utils.StrictTypeWithTemplateAndLoader<
-			TConfig,
-			configs.StreamObjectObjectConfig<OBJECT>
-		>,
-		{ output?: 'object' | undefined, schema: SchemaType<OBJECT>, model: LanguageModel },
-		TParentConfig
-	>,
-	parent: ConfigProvider<
-		utils.StrictTypeWithTemplateAndLoader<
-			utils.Override<TParentConfig, TConfig>,
-			configs.StreamObjectObjectConfig<OBJECT>
-		> extends never ? never : TParentConfig
-	>
-): LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectObjectResult<OBJECT>>;
-
-// Implementation
-export function ObjectStreamer<
-	TConfig extends configs.OptionalTemplateConfig,
-	TParentConfig extends configs.OptionalTemplateConfig,
-	OBJECT = any, ELEMENT = any
->(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
-):
-	LLMCallSignature<TConfig, results.StreamObjectResultAll<OBJECT, ELEMENT>> |
-	LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectResultAll<OBJECT, ELEMENT>> {
-
-	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? utils.Override<TParentConfig, TConfig>
-		: TConfig;
-
-	//validateBaseConfig(config);
-	const merged = parent ? mergeConfigs(parent.config, config) : config;
-
-	// Set default output value to make the config explicit.
-	if ((merged as StreamObjectObjectConfig<OBJECT>).output === undefined) {
-		(merged as StreamObjectObjectConfig<OBJECT>).output = 'object';
-	}
-
-	if (parent) {
-		validateBaseConfig(merged);
-	}
-	validateObjectConfig(merged, true);
-
-	// Debug output if config.debug is true
-	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
-	}
-
-	// One of several possible overloads (config.output = 'object' / undefined), but they all compile to the same thing
-	return createLLMRenderer<
-		CombinedType,
-		configs.StreamObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
-		results.StreamObjectObjectResult<OBJECT>
-	>(merged, streamObject);
 }
