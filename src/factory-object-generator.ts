@@ -21,82 +21,150 @@ import { GenerateObjectObjectConfig } from './types-config';
 
 // Helper Types for Error Generation
 
-type KeysOfUnion<T> = T extends any ? keyof T : never;
+// Gets the set of allowed keys based on the config's `output` property.
+// This is much more precise than a single union of all possible keys.
+interface ConfigShapeMap {
+	array: configs.GenerateObjectArrayConfig<any> & configs.OptionalTemplateConfig;
+	enum: configs.GenerateObjectEnumConfig<any> & configs.OptionalTemplateConfig;
+	'no-schema': configs.GenerateObjectNoSchemaConfig & configs.OptionalTemplateConfig;
+	object: configs.GenerateObjectObjectConfig<any> & configs.OptionalTemplateConfig;
+}
 
-// The complete set of all allowed keys for any ObjectGenerator configuration.
-type AllAllowedKeys = KeysOfUnion<
-	| configs.GenerateObjectObjectConfig<any>
-	| configs.GenerateObjectArrayConfig<any>
-	| configs.GenerateObjectEnumConfig<any>
-	| configs.GenerateObjectNoSchemaConfig
-	| configs.OptionalTemplateConfig
->;
+//type ConfigOutput = keyof ConfigShapeMap | undefined;
+type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
 
-// The ParentConfigError interface is no longer needed and has been removed.
+//export type XOverride<A extends { output?: ConfigOutput } & configs.OptionalTemplateConfig, B extends { output?: ConfigOutput } & configs.OptionalTemplateConfig> = Omit<A, keyof B> & B;
+
+// A helper to safely extract the output type from a config, defaulting to 'object'.
+// A helper to safely extract the output type from a config, defaulting to 'object'.
+type GetOutputType<TConfig extends { output?: ConfigOutput }> =
+	TConfig extends { output: any } //we have the property output
+	? TConfig['output']
+	: 'object';
+
+// Gets the set of allowed keys by looking up the correct config shape in the map.
+// This is the robust replacement for the previous conditional type.
+type GetAllowedKeysForConfig<TConfig extends { output?: ConfigOutput } & Record<string, any>> = keyof ConfigShapeMap[GetOutputType<TConfig>];
 
 // Gets the set of keys that are required in the final, merged configuration.
-type GetObjectGeneratorRequiredShape<TFinalConfig> =
-	(
-		TFinalConfig extends { output: 'array' } ? { schema: unknown; model: unknown } :
-		TFinalConfig extends { output: 'enum' } ? { enum: unknown; model: unknown } :
-		TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
-		{ schema: unknown; model: unknown }
-	);
+type GetObjectGeneratorRequiredShape<TFinalConfig extends { output?: ConfigOutput }> =
+	TFinalConfig extends { output: 'enum' } ? { enum: unknown; model: unknown } :
+	TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
+	// Default case for 'object', 'array', or undefined output.
+	{ schema: unknown; model: unknown };
 
 // Returns a specific error message string if template properties are used incorrectly.
-type GetTemplateError<TConfig> =
-	TConfig extends { promptType: 'text' } ? (
-		keyof TConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
+type GetTemplateError<TFinalConfig extends configs.OptionalTemplateConfig> =
+	TFinalConfig extends { promptType: 'text' } ? (
+		keyof TFinalConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
 		? InvalidProps extends never
 		? never
 		: `Template properties ('${InvalidProps & string}') are not allowed when 'promptType' is 'text'.`
 		: never
 	) :
-	TConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
-		'loader' extends keyof TConfig
+	TFinalConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
+		'loader' extends keyof TFinalConfig
 		? never
-		: `Loader is required when promptType is '${TConfig['promptType']}'.`
+		: `Loader is required when promptType is '${TFinalConfig['promptType']}'.`
 	) : never;
 
-
 // Validator for the child `config` object
-export type ValidateObjectGeneratorConfigShape<
-	TConfig,
-	TFinalConfig,
-	TParentConfig = never
+/*export type ValidateObjectGeneratorConfigShape<
+	TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig,
+	TFinalConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig
 > =
-	// 1. Check for excess properties in TConfig.
-	keyof Omit<TConfig, AllAllowedKeys> extends never
-	// 2. If no excess, check for missing properties.
+	// 1. Check for excess properties in TConfig based on its specific `output` mode.
+	keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> extends never
+	// 2. If no excess, check for properties missing from the FINAL merged config.
 	? keyof Omit<
 		GetObjectGeneratorRequiredShape<TFinalConfig>,
-		keyof TConfig | keyof TParentConfig
+		keyof TFinalConfig // Corrected: Check against the final config
 	> extends never
-	// 3. If no missing, check for template errors.
+	// 3. If no missing properties, check for template rule violations in the FINAL config.
 	? GetTemplateError<TFinalConfig> extends never
 	// 4. All checks passed.
 	? TConfig
 	: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
 	: `Config Error: Missing required properties - '${keyof Omit<
 		GetObjectGeneratorRequiredShape<TFinalConfig>,
-		keyof TConfig | keyof TParentConfig
+		keyof TFinalConfig
 	> &
 	string}'`
-	: `Config Error: Unknown properties - '${keyof Omit<TConfig, AllAllowedKeys> & string}'`;
+	: `Config Error: Unknown properties for output mode '${GetOutputType<TConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`;
+*/
+export type ValidateObjectGeneratorConfigShape<
+	TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig,
+	// The parent config type. Use a default for the no-parent case.
+	TParentConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig = Record<string, any>,
+> =
+	utils.Override<TParentConfig, TConfig> extends infer TFinalConfig
+	? TFinalConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig // Re-assert shape
+	// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
+	? keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+	// 2. If no excess, check for properties missing from the FINAL merged config.
+	? keyof Omit<GetObjectGeneratorRequiredShape<TFinalConfig>, keyof TFinalConfig> extends never
+	// 3. If no missing properties, check for template rule violations in the FINAL config.
+	? GetTemplateError<TFinalConfig> extends never
+	// 4. All checks passed. Return the original config type.
+	? TConfig
+	: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
+	: `Config Error: Missing required properties - '${keyof Omit<GetObjectGeneratorRequiredShape<TFinalConfig>, keyof TFinalConfig> & string}'`
+	: `Config Error: Unknown properties for output mode '${GetOutputType<TConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
+	: TConfig // Should not happen, but return TConfig to satisfy constraint.
+	: TConfig; // Should not happen
 
+/*
+const enumValues = ['Red', 'Green', 'Blue'] as const;
+const pconf = {
+	model: 1 as unknown as LanguageModel,
+	output: 'enum' as const
+};
+type ptype = typeof pconf
+const cconfig = {
+	enum: enumValues,
+	prompt: 'From the available colors, what color is a fire truck?'
+} as const;
+type ctype = typeof cconfig;
+type t = utils.Override<ptype, ctype>
+
+type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
+type test = [t] extends [({ output?: ConfigOutput } & configs.OptionalTemplateConfig)] ? 'yes' : 'no';
+
+type g = GetAllowedKeysForConfig<ctype>
+
+type v = ValidateObjectGeneratorConfigShape<ctype, ptype>
+
+type over = utils.Override<ptype, ctype>
+
+type extra = keyof Omit<ctype, GetAllowedKeysForConfig<over>>*/
+
+export type ValidateObjectGeneratorParentConfig<
+	TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig,
+	TParentConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig
+> =
+	// 1. Check for excess properties in the parent config based on its specific `output` mode.
+	keyof Omit<TParentConfig, GetAllowedKeysForConfig<TParentConfig>> extends never//@todo - on overloaded output mode
+	// 2. All checks passed, return the original config type.
+	? TParentConfig
+	// On excess property failure, return a descriptive string.
+	: `Parent Config Error: Unknown properties for output mode '${GetOutputType<TParentConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TParentConfig>> & string}'`;
 
 // Validator for the `parent` config's GENERIC type
-export type ValidateObjectGeneratorParentConfig<TParentConfig> =
-	// 1. Check for excess properties in the parent config.
-	keyof Omit<TParentConfig, AllAllowedKeys> extends never
-	// 2. If no excess, check for template errors.
-	? GetTemplateError<TParentConfig> extends never
-	// 3. All checks passed, return the original config type.
+export type ValidateObjectGeneratorParentConfig2<
+	TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig,
+	// The parent config type. Use a default for the no-parent case.
+	TParentConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig = Record<string, any>,
+> =
+	utils.Override<TParentConfig, TConfig> extends infer TFinalConfig
+	? TFinalConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig // Re-assert shape
+	// 1. Check for excess properties in the parent config based on its specific `output` mode.
+	? keyof Omit<TParentConfig, GetAllowedKeysForConfig<TParentConfig>> extends never//@todo - on overloaded output mode
+	// 2. All checks passed, return the original config type.
 	? TParentConfig
-	// On template failure, return a descriptive string.
-	: `Parent Config Error: ${GetTemplateError<TParentConfig> & string}`
 	// On excess property failure, return a descriptive string.
-	: `Parent Config Error: Unknown properties - '${keyof Omit<TParentConfig, AllAllowedKeys> & string}'`;
+	: `Parent Config Error: Unknown properties for output mode '${GetOutputType<TParentConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TParentConfig>> & string}'`
+	: TConfig // Should not happen, but return TConfig to satisfy constraint.
+	: TConfig; // Should not happen
 
 
 export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
@@ -161,8 +229,8 @@ export function ObjectGenerator<
 	// CORRECTED: TFinalConfig is now a clean merge without the confusing default.
 	const TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateObjectGeneratorConfigShape<TConfig, TFinalConfig>,
-	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig>>
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TConfig, TParentConfig>>
 ):
 	// Final output is 'array' with a schema. We infer the element type directly from the final schema.
 	TFinalConfig extends { output: 'array', schema: SchemaType<any> }
