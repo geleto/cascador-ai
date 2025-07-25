@@ -22,14 +22,13 @@ interface BaseConfig {
 	debug?: boolean;
 }
 
-interface CascadaConfig extends BaseConfig {
+// Shared for scripts and templates
+export interface CascadaConfig extends BaseConfig {
 	context?: Record<string, any>;
 	filters?: Record<string, (input: any, ...args: any[]) => any>;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
-
-export interface PromptConfig { prompt: string };
 
 // Config for the template engine with type safety for loader requirement
 export interface TemplateConfig extends CascadaConfig {

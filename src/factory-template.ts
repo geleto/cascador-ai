@@ -9,7 +9,7 @@ import { Context } from './types';
 export type TemplateRendererInstance<CONFIG extends configs.OptionalTemplateConfig> = TemplateCallSignature<CONFIG>;
 
 type TemplateCallSignature<TConfig extends configs.OptionalTemplateConfig> =
-	TConfig extends configs.PromptConfig
+	TConfig extends { prompt: string }
 	? {
 		//TConfig has prompt, no prompt argument is needed
 		(promptOrContext?: Context | string): Promise<string>;//one optional argument, prompt or context
