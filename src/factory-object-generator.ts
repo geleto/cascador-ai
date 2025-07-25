@@ -99,19 +99,25 @@ type allowed = GetAllowedKeysForConfig<typeof conf>*/
 
 type val = ValidateObjectGeneratorConfigShape<typeof conf, typeof conf, any, string, any, string>;*/
 
+/*const conf1 = { model: openAIModel };
+const conf2 = { output: 'no-schema' };
+type final = utils.Override<typeof conf1, typeof conf2>;
+type valid = ValidateObjectGeneratorConfigShape<typeof conf1, typeof conf1, final, any, string, any, string>;*/
+
 // This constraint is permissive on purpose, the actual validation is done in the ValidateObjectGeneratorConfigShape type
+
 type ObjectGeneratorPermissiveConstraint<OBJECT, ENUM extends string> =
 	{ output?: ConfigOutput }
 	& configs.OptionalTemplateConfig
 	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; enum?: readonly ENUM[]; }
-	;//& Record<string, any>;
+	& Record<string, any>;
 
 type FinalObjectGeneratorPermissiveConstraint<OBJECT, ENUM extends string> =
 	{ output?: ConfigOutput }
 	//& TemplateConfig & { promptType?: TemplatePromptType | 'text' }
 	& CascadaConfig & { prompt?: string, promptType?: TemplatePromptType | 'text' }///possibly the impossible combination of promptType: 'text' and TemplateConfig
 	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; enum?: readonly ENUM[]; }
-	;//& Record<string, any>;
+	& Record<string, any>;
 
 // Validator for the child `config` object
 export type ValidateObjectGeneratorConfigShape<
@@ -261,7 +267,7 @@ export function ObjectGenerator<
 	// Fallback case: Final output is 'object' (or defaulted) but no schema is provided anywhere.
 	: LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.GenerateObjectObjectResult<any>>>
 
-// Implementation remains the same...
+// Implementation.
 export function ObjectGenerator<
 	TConfig extends configs.OptionalTemplateConfig,
 	TParentConfig extends configs.OptionalTemplateConfig,
