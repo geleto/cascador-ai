@@ -242,6 +242,13 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// SECTION 4: Object Generation Tests
 
+	// x@ts-expect-error - Invalid output
+	const schemalessGenerator4 = create.ObjectGenerator({
+		model: openAIModel,
+		output: 'invalid'
+	});
+	await schemalessGenerator("Free-form JSON"); // ✗ Invalid model
+
 	const objectGenerator = create.ObjectGenerator({
 		model: openAIModel,
 		output: 'object',
@@ -249,11 +256,44 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	await objectGenerator("Generate person"); // ✓ Single object generation
 
+	// @ts-expect-error - Invalid property in object generator configuration
 	const objectGenerator2 = create.ObjectGenerator({
 		model: openAIModel,
-		schema
+		schema,
+		invalid: 123
 	});
-	await objectGenerator("Generate person"); // ✓ Single object generation is default if no output is provided
+	await objectGenerator2("Generate person"); // ✓ Single object generation is default if no output is provided
+
+	//invalid function property (used to break the regular invlid property check error text by ignoring invalid)
+	const objectGenerator2 = create.ObjectGenerator({
+		model: openAIModel,
+		schema,
+		invalid: 123,
+		invalidFunctionProperty: () => { console.log('Hi'); }
+	});
+	await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
+
+
+	//invalid function property (used to break the regular invlid property check error text by outputing ${string}')
+	const objectGenerator2 = create.ObjectGenerator({
+		model: openAIModel,
+		schema,
+		invalid: 123,
+		invalidFunctionProperty: (event) => { console.log(event); }
+	});
+	await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
+
+	// @ts-expect-error - Missing required schema for object output type
+	const schemalessObjGen = create.ObjectGenerator({
+		model: openAIModel,
+		output: 'object'
+	}); // ✗ Missing required schema
+
+	// @ts-expect-error - Missing required schema for object output type
+	const schemalessDefaultObjGen = create.ObjectGenerator({
+		model: openAIModel,
+	}); // ✗ Missing required schema
+
 
 	const arrayGenerator = create.ObjectGenerator({
 		model: openAIModel,
@@ -275,6 +315,23 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	await schemalessGenerator("Free-form JSON"); // ✓ Schemaless generation
 
+
+	// @ts-expect-error - 'no-schema' with schema is invalid
+	const schemalessGenerator3 = create.ObjectGenerator({
+		model: openAIModel,
+		output: 'no-schema',
+		schema
+	});
+	await schemalessGenerator3("Free-form JSON"); // ✓ Schemaless generation
+
+
+	// @ts-expect-error - Invalid model
+	const schemalessGenerator2 = create.ObjectGenerator({
+		model: 1,
+		output: 'no-schema'
+	});
+	await schemalessGenerator("Free-form JSON"); // ✗ Invalid model
+
 	// @ts-expect-error - Cannot combine tools with object output type
 	const toolObjectGen = create.ObjectGenerator({
 		model: openAIModel,
@@ -289,9 +346,20 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 		output: 'object',
 		schema,
-		onFinish: (event) => { console.log(event); }
+		onFinish: (event: any) => { console.log(event); }
+		//onFinish: (event: { object: z.infer<typeof schema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => { console.log(event); }
 	});
 	for await (const chunk of (await objectStreamer("Stream person")).partialObjectStream) { /* consume stream */ } // ✓ Object streaming
+
+	// object streamer incompartable onFinish
+	const objectStreamerIncompatible = create.ObjectStreamer({
+		model: openAIModel,
+		output: 'object',
+		schema,
+		onFinish: (event) => { console.log(event); }
+		//onFinish: (event: any) => { console.log(event); }
+		//onFinish: (event: { object: z.infer<typeof schema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => { console.log(event); }
+	});
 
 	// SECTION 6: Error Cases
 
@@ -299,15 +367,18 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const modellessGen = create.TextGenerator({}); // ✗ Missing required model
 
 	// @ts-expect-error - Missing required schema for object output type
+
 	const schemalessObjStream = create.ObjectStreamer({
 		model: openAIModel,
 		output: 'object'
 	}); // ✗ Missing required schema
+	const x = 1;
 
 	// @ts-expect-error - Missing required schema for object output type
 	const schemalessDefaultObjStream = create.ObjectStreamer({
 		model: openAIModel,
 	}); // ✗ Missing required schema
+
 
 	const schemaDefaultObjStream = create.ObjectStreamer({
 		model: openAIModel,
@@ -451,9 +522,9 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		schema
 	}, objectParentConfig);
 
+	// x@ts-expect-error - Enum output type not supported with streaming
 	const invalidEnumStreamer = create.ObjectStreamer({
 		model: openAIModel,
-		// @ts-expect-error - Enum output type not supported with streaming
 		output: 'enum',
 		enum: ['yes', 'no']
 	}); // ✗ Enum not supported with streaming
