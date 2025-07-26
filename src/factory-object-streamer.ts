@@ -5,84 +5,172 @@ import { validateBaseConfig, validateObjectConfig } from './validate';
 import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
-import { SchemaType } from './types';
-import { StreamObjectObjectConfig } from './types-config';
+import { SchemaType, TemplatePromptType } from './types';
+import { StreamObjectObjectConfig, TemplateConfig, CascadaConfig } from './types-config';
 
-type KeysOfUnion<T> = T extends any ? keyof T : never;
+// You want to use the overload generic parameters only to help guide to the correct overload and not to do any type validation
+// so that the correct overload is selected (todo - later when we change config to be assignable to an error type)
+// The actual validation should be done in the argument type so that the error will at least pinpoint the correct overload
 
-// The complete set of all allowed keys for any ObjectStreamer configuration.
-type AllAllowedKeys = KeysOfUnion<
-	| configs.StreamObjectObjectConfig<any>
-	| configs.StreamObjectArrayConfig<any>
-	| configs.StreamObjectNoSchemaConfig
-	| configs.OptionalTemplateConfig
->;
+// Any generic parameter extends part that only has partials
+// and that does not define generic types like ELEMENT, ENUM, OBJECT
+// and does not specialize some type (e.g. promptType?: 'template-name' | 'template-id' | 'text')
+// - then that part is not needed.
+// But if the generic parameter extends a type that has only partials,
+// then add a Record<string, any> & {optional props} so that the extends works (it requires at least 1 matching property)
 
-// The ParentConfigError interface is no longer needed and has been removed.
+// Helper Types for Error Generation
+
+// A mapping from the 'output' literal to its full, correct config type.
+interface ConfigShapeMap {
+	array: configs.StreamObjectArrayConfig<any> & configs.OptionalTemplateConfig;
+	'no-schema': configs.StreamObjectNoSchemaConfig & configs.OptionalTemplateConfig;
+	object: configs.StreamObjectObjectConfig<any> & configs.OptionalTemplateConfig;
+}
+//type ConfigOutput = keyof ConfigShapeMap | undefined;
+type ConfigOutput = 'array' | 'no-schema' | 'object' | undefined;
+// A helper to safely extract the output type from a config, defaulting to 'object'.
+type GetOutputType<TConfig> = TConfig extends { output: any }
+	? TConfig['output'] extends keyof ConfigShapeMap
+	? TConfig['output']
+	: 'object'
+	: 'object';
+
+type GetConfigShape<TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>> =
+	TConfig extends { promptType: 'text' } ? ConfigShapeMap[GetOutputType<TConfig>] & { promptType: 'text' } :
+	ConfigShapeMap[GetOutputType<TConfig>] & TemplateConfig;
+
+// Gets the set of allowed keys by looking up the correct config shape in the map.
+type GetAllowedKeysForConfig<TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>>
+	= keyof GetConfigShape<TConfig>;
 
 // Gets the set of keys that are required in the final, merged configuration.
-type GetObjectStreamerRequiredShape<TFinalConfig> =
-	(
-		TFinalConfig extends { output: 'array' } ? { schema: unknown; model: unknown } :
-		TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
-		{ schema: unknown; model: unknown }
-	);
+type GetObjectStreamerRequiredShape<TFinalConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>> =
+	TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
+	// Default case for 'object', 'array', or undefined output.
+	{ schema: unknown; model: unknown };
 
 // Returns a specific error message string if template properties are used incorrectly.
-type GetTemplateError<TConfig> =
-	TConfig extends { promptType: 'text' } ? (
-		keyof TConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
+type GetTemplateError<TFinalConfig extends configs.OptionalTemplateConfig & Record<string, any>> =
+	TFinalConfig extends { promptType: 'text' } ? (
+		keyof TFinalConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
 		? InvalidProps extends never
 		? never
 		: `Template properties ('${InvalidProps & string}') are not allowed when 'promptType' is 'text'.`
 		: never
 	) :
-	TConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
-		'loader' extends keyof TConfig
+	TFinalConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
+		'loader' extends keyof TFinalConfig
 		? never
-		: `Loader is required when promptType is '${TConfig['promptType']}'.`
+		: `Loader is required when promptType is '${TFinalConfig['promptType']}'.`
 	) : never;
+/*
+import { z } from 'zod';
+const simpleSchema = z.object({
+	name: z.string().describe('The name of the item'),
+	value: z.number().describe('A numerical value'),
+});
+const conf = {
+	model: 1 as unknown as LanguageModel,
+	output: 'object' as const
+}
+type required = GetObjectStreamerRequiredShape<typeof conf>;
+type missing = Omit<
+	GetObjectStreamerRequiredShape<typeof conf>,
+	keyof (typeof conf)
+>*/
 
+/*const conf = {
+	promptType: 'template',
+	schema: simpleSchema,
+	context: { entity: 'product' },
+	prompt: 'Stream an object for "{{ entity }}" with value {{ defaultId }}.',
+};
+type val = ValidateObjectStreamerConfigShape<typeof conf, typeof conf>;
+type extra = keyof Omit<typeof conf, GetAllowedKeysForConfig<typeof conf>>
+type allowed = GetAllowedKeysForConfig<typeof conf>*/
+
+/*const conf = {
+	model: 1 as unknown as LanguageModel,
+	output: 'invalid' as const,
+}
+
+type val = ValidateObjectStreamerConfigShape<typeof conf, typeof conf, any, string, any, string>;*/
+
+/*const conf1 = { model: openAIModel };
+const conf2 = { output: 'no-schema' };
+type final = utils.Override<typeof conf1, typeof conf2>;
+type valid = ValidateObjectStreamerConfigShape<typeof conf1, typeof conf1, final, any, string, any, string>;*/
+
+// This constraint is permissive on purpose, the actual validation is done in the ValidateObjectStreamerConfigShape type
+
+type ObjectStreamerPermissiveConstraint<OBJECT> =
+	{ output?: ConfigOutput }
+	& configs.OptionalTemplateConfig
+	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
+	& Record<string, any>;
+
+type FinalObjectStreamerPermissiveConstraint<OBJECT> =
+	{ output?: ConfigOutput }
+	//& TemplateConfig & { promptType?: TemplatePromptType | 'text' }
+	& CascadaConfig & { prompt?: string, promptType?: TemplatePromptType | 'text' }///possibly the impossible combination of promptType: 'text' and TemplateConfig
+	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
+	& Record<string, any>;
 
 // Validator for the child `config` object
 export type ValidateObjectStreamerConfigShape<
-	TConfig,
-	TFinalConfig,
-	TParentConfig = never
+	TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
+	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
+	TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>,
+	OBJECT,
+	PARENT_OBJECT
 > =
-	// 1. Check for excess properties in TConfig.
-	keyof Omit<TConfig, AllAllowedKeys> extends never
-	// 2. If no excess, check for missing properties.
-	? keyof Omit<
-		GetObjectStreamerRequiredShape<TFinalConfig>,
-		keyof TConfig | keyof TParentConfig
-	> extends never
-	// 3. If no missing, check for template errors.
-	? GetTemplateError<TFinalConfig> extends never
-	// 4. All checks passed.
-	? TConfig
-	: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
-	: `Config Error: Missing required properties - '${keyof Omit<
-		GetObjectStreamerRequiredShape<TFinalConfig>,
-		keyof TConfig | keyof TParentConfig
-	> &
-	string}'`
-	: `Config Error: Unknown properties - '${keyof Omit<TConfig, AllAllowedKeys> & string}'`;
-
+	// GATEKEEPER: Is the config a valid shape? We use StrictUnionSubtype to prevent extra properties.
+	TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
+	? (
+		TParentConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT>
+		? (
+			// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
+			keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+			// 2. If no excess, check for properties missing from the FINAL merged config.
+			? keyof Omit<
+				GetObjectStreamerRequiredShape<TFinalConfig>,
+				keyof TFinalConfig
+			> extends never
+			// 3. If no missing properties, check for template rule violations in the FINAL config.
+			? GetTemplateError<TFinalConfig> extends never
+			// 4. All checks passed.
+			? TConfig
+			: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
+			: `Config Error: Missing required properties - '${keyof Omit<
+				GetObjectStreamerRequiredShape<TFinalConfig>,
+				keyof TFinalConfig
+			> &
+			string}'`
+			: `Config Error: Unknown properties for output mode '${GetOutputType<TConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
+		) : (
+			//Parent Shape is invalid - for parent TypeScript will produce its standard error.
+			TConfig
+			//@todo maybe check TConfig for excess properties?
+		)
+	) : TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
 
 // Validator for the `parent` config's GENERIC type
-export type ValidateObjectStreamerParentConfig<TParentConfig> =
-	// 1. Check for excess properties in the parent config.
-	keyof Omit<TParentConfig, AllAllowedKeys> extends never
-	// 2. If no excess, check for template errors.
-	? GetTemplateError<TParentConfig> extends never
-	// 3. All checks passed, return the original config type.
-	? TParentConfig
-	// On template failure, return a descriptive string.
-	: `Parent Config Error: ${GetTemplateError<TParentConfig> & string}`
-	// On excess property failure, return a descriptive string.
-	: `Parent Config Error: Unknown properties - '${keyof Omit<TParentConfig, AllAllowedKeys> & string}'`;
-
+export type ValidateObjectStreamerParentConfig<
+	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
+	TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>,
+	OBJECT,
+	PARENT_OBJECT,
+> =
+	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>
+	? (
+		// Check for excess properties in the parent, validated against the FINAL config's shape.
+		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+		// The check has passed, return the original config type.
+		? TParentConfig
+		// On excess property failure, return a descriptive string.
+		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}'`
+	) : TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
 
 export type ObjectStreamerConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>
@@ -97,15 +185,13 @@ export type ObjectStreamerInstance<
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
 
 export function ObjectStreamer<
-	const TConfig extends configs.OptionalTemplateConfig & Record<string, any>
-	& { schema?: SchemaType<OBJECT>, output?: 'object' | 'array' | 'no-schema' | undefined },
+	const TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
 
-	ELEMENT = any,
 	OBJECT = any
 >(
-	config: ValidateObjectStreamerConfigShape<TConfig, TConfig>
+	config: ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT>
 ):
-	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> }
+	TConfig extends { output: 'array', schema: SchemaType<OBJECT> }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
 
 	: TConfig extends { output: 'no-schema' }
@@ -114,6 +200,7 @@ export function ObjectStreamer<
 	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
 
+	//no schema, no enum
 	: TConfig extends { output: 'array' }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<any>>>
 
@@ -124,22 +211,18 @@ export function ObjectStreamer<
 
 // Overload for the "with-parent" case
 export function ObjectStreamer<
-	// TConfig and TParentConfig can be partial.
-	//@todo - check if the OptionalTemplateConfig is needed here
-	const TConfig extends configs.OptionalTemplateConfig & Record<string, any>
-	& { schema?: SchemaType<OBJECT>, output?: 'object' | 'array' | 'no-schema' | undefined },
+	const TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
 
-	const TParentConfig extends configs.OptionalTemplateConfig & Record<string, any>
-	& { schema?: SchemaType<PARENT_OBJECT>, output?: 'object' | 'array' | 'no-schema' | undefined },
+	const TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
+
+	const TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>
+	= utils.Override<TParentConfig, TConfig>,
 
 	OBJECT = any,
 	PARENT_OBJECT = any,
-
-	// CORRECTED: TFinalConfig is now a clean merge without the confusing default.
-	const TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateObjectStreamerConfigShape<TConfig, TFinalConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig>>
+	config: ValidateObjectStreamerConfigShape<TConfig, TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>>
 ):
 	// Final output is 'array' with a schema. We infer the element type directly from the final schema.
 	TFinalConfig extends { output: 'array', schema: SchemaType<any> }
