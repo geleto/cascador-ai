@@ -4,49 +4,54 @@ import { ScriptEngine } from './ScriptEngine';
 import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
-import { Context } from './types';
+import { Context, SchemaType } from './types';
 
-export type ScriptRunnerInstance<CONFIG extends configs.ScriptConfig> = ScriptCallSignature<CONFIG>;
+export type ScriptRunnerInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
+
+type ScriptResultPromise<TConfig extends configs.ScriptConfig<any>> =
+	Promise<TConfig extends { schema: SchemaType<infer OBJECT> } ? OBJECT : results.ScriptResult>;
 
 // Script call signature type
-export type ScriptCallSignature<TConfig extends configs.ScriptConfig> =
+export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	TConfig extends { script: string }
 	? {
-		//TConfig has script, no script argument is needed
-		(scriptOrContext?: Context | string): Promise<results.ScriptResult>;//one optional argument, script or context
-		(script: string, context: Context): Promise<results.ScriptResult>;//two arguments, script and context
+		// TConfig has a script, so the script argument is optional.
+		(scriptOrContext?: Context | string): ScriptResultPromise<TConfig>;
+		(script: string, context: Context): ScriptResultPromise<TConfig>;
 		config: TConfig;
 	}
 	: {
-		//TConfig has no script, script argument is needed
-		(script: string, context?: Context): Promise<results.ScriptResult>;//script is a must, context is optional
+		// TConfig has no script, so the script argument is required.
+		(script: string, context?: Context): ScriptResultPromise<TConfig>;
 		config: TConfig;
 	};
 
 // Single config overload
-export function ScriptRunner<TConfig extends configs.ScriptConfig>(
-	config: utils.StrictType<TConfig, configs.ScriptConfig> & utils.RequireScriptLoaderIfNeeded<TConfig>
+export function ScriptRunner<
+	const TConfig extends configs.ScriptConfig<any>
+>(
+	config: utils.StrictType<TConfig, configs.ScriptConfig<any>> & utils.RequireScriptLoaderIfNeeded<TConfig>
 ): ScriptCallSignature<TConfig>;
 
 // Config with parent overload
 export function ScriptRunner<
-	TConfig extends configs.ScriptConfig,
-	TParentConfig extends configs.ScriptConfig
+	const TConfig extends configs.ScriptConfig<any>,
+	const TParentConfig extends configs.ScriptConfig<any>
 >(
-	config: utils.StrictType<TConfig, configs.ScriptConfig> & utils.RequireScriptLoaderIfNeeded<utils.Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig>>
+	config: utils.StrictType<TConfig, configs.ScriptConfig<any>> & utils.RequireScriptLoaderIfNeeded<utils.Override<TParentConfig, TConfig>>,
+	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<any>>>
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
 
 // Implementation
 export function ScriptRunner<
-	TConfig extends configs.ScriptConfig,
-	TParentConfig extends configs.ScriptConfig
+	TConfig extends configs.ScriptConfig<OBJECT>,
+	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT>,
+	OBJECT,
+	PARENT_OBJECT
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): [typeof parent] extends [undefined]
-	? ScriptCallSignature<TConfig>
-	: ScriptCallSignature<utils.Override<TParentConfig, TConfig>> {
+): ScriptCallSignature<any> {
 
 	//validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
@@ -73,10 +78,10 @@ export function ScriptRunner<
 		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');
 	}
 
-	const runner = new ScriptEngine(merged);
+	const runner = new ScriptEngine<typeof merged, OBJECT>(merged);
 
 	// Define the call function that handles both cases
-	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<results.ScriptResult> => {
+	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] ScriptRunner - call function called with:', { scriptOrContext, maybeContext });
 		}

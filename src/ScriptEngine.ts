@@ -1,6 +1,9 @@
 import cascada from 'cascada-engine';
-import { Context } from './types';
+import { z } from 'zod';
+import { Context, SchemaType } from './types';
 import { ScriptConfig } from './types-config';
+import * as results from './types-result';
+import { JSONValue } from 'ai';
 
 class ScriptError extends Error {
 	constructor(message: string, cause?: Error) {
@@ -10,7 +13,7 @@ class ScriptError extends Error {
 	}
 }
 
-export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
+export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT> {
 	protected env: cascada.Environment | cascada.AsyncEnvironment;
 	protected scriptPromise?: Promise<cascada.Script | cascada.AsyncScript>;
 	protected script?: cascada.Script | cascada.AsyncScript;
@@ -96,7 +99,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 	async run(
 		scriptOverride?: string,
 		contextOverride?: Context
-	): Promise<Record<string, any> | string | null> {
+	): Promise<TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult> {
 		// Debug output if config.debug is true
 		if ('debug' in this.config && this.config.debug) {
 			console.log('[DEBUG] ScriptEngine.run called with:', { scriptOverride, contextOverride });
@@ -106,6 +109,8 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 		if (!scriptOverride && !('script' in this.config) && !('script' in this.config && this.config.script)) {
 			throw new ScriptError('No script provided. Either provide a script in the configuration or as a call argument.');
 		}
+
+		let rawResult: Record<string, any> | string | null;
 
 		try {
 			const mergedContext = contextOverride
@@ -123,68 +128,69 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 					if ('debug' in this.config && this.config.debug) {
 						console.log('[DEBUG] ScriptEngine.run - async renderScriptString result:', result);
 					}
-					return result;
-				}
-				const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
-					const env = this.env as cascada.Environment;
-					try {
-						env.renderScriptString(scriptOverride, mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
-							if (err) {
-								reject(err);
-							} else if (res !== null) {
-								resolve(res);
-							} else {
-								reject(new ScriptError('Script render returned null result'));
-							}
-						});
-					} catch (error) {
-						reject(new Error(error instanceof Error ? error.message : String(error)));
+					rawResult = result;
+				} else {
+					const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
+						const env = this.env as cascada.Environment;
+						try {
+							env.renderScriptString(scriptOverride, mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
+								if (err) {
+									reject(err);
+								} else if (res !== null) {
+									resolve(res);
+								} else {
+									reject(new ScriptError('Script render returned null result'));
+								}
+							});
+						} catch (error) {
+							reject(new Error(error instanceof Error ? error.message : String(error)));
+						}
+					});
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] ScriptEngine.run - sync renderScriptString result:', result);
 					}
-				});
-				if ('debug' in this.config && this.config.debug) {
-					console.log('[DEBUG] ScriptEngine.run - sync renderScriptString result:', result);
+					rawResult = result;
 				}
-				return result;
-			}
+			} else {
+				// Otherwise use the compiled script
+				if (!this.script && this.scriptPromise) {
+					this.script = await this.scriptPromise;
+					this.scriptPromise = undefined;
+				}
 
-			// Otherwise use the compiled script
-			if (!this.script && this.scriptPromise) {
-				this.script = await this.scriptPromise;
-				this.scriptPromise = undefined;
-			}
+				if (!this.script) {
+					throw new ScriptError('No script available to render');
+				}
 
-			if (!this.script) {
-				throw new ScriptError('No script available to render');
-			}
-
-			if (this.script instanceof cascada.Script) {
-				const script = this.script;
-				const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
-					try {
-						script.render(mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
-							if (err) {
-								reject(err);
-							} else if (res !== null) {
-								resolve(res);
-							} else {
-								reject(new ScriptError('Script render returned null result'));
-							}
-						});
-					} catch (error) {
-						reject(error instanceof Error ? error : new Error(String(error)));
+				if (this.script instanceof cascada.Script) {
+					const script = this.script;
+					const result = await new Promise<Record<string, any> | string | null>((resolve, reject) => {
+						try {
+							script.render(mergedContext, (err: Error | null, res: string | Record<string, any> | null) => {
+								if (err) {
+									reject(err);
+								} else if (res !== null) {
+									resolve(res);
+								} else {
+									reject(new ScriptError('Script render returned null result'));
+								}
+							});
+						} catch (error) {
+							reject(error instanceof Error ? error : new Error(String(error)));
+						}
+					});
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] ScriptEngine.run - sync script result:', result);
 					}
-				});
-				if ('debug' in this.config && this.config.debug) {
-					console.log('[DEBUG] ScriptEngine.run - sync script result:', result);
+					rawResult = result;
+				} else {
+					const result = await this.script.render(mergedContext);
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] ScriptEngine.run - async script result:', result);
+					}
+					rawResult = result;
 				}
-				return result;
 			}
-
-			const result = await this.script.render(mergedContext);
-			if ('debug' in this.config && this.config.debug) {
-				console.log('[DEBUG] ScriptEngine.run - async script result:', result);
-			}
-			return result;
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new ScriptError(`Script render failed: ${error.message}`, error);
@@ -193,5 +199,52 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig>> {
 			}
 			throw new ScriptError('Script render failed due to an unknown error');
 		}
+
+		const schema: SchemaType<OBJECT> | undefined = 'schema' in this.config ? this.config.schema : undefined;
+
+		if (schema) {
+			// Check if it's a Zod schema (has parse method)
+			if ('parse' in schema && typeof schema.parse === 'function') {
+				try {
+					const validatedResult = (schema as z.Schema<OBJECT>).parse(rawResult);
+					if ('debug' in this.config && this.config.debug) {
+						console.log('[DEBUG] ScriptEngine.run - Zod validation successful:', validatedResult);
+					}
+					return validatedResult as (TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : JSONValue);
+				} catch (error) {
+					if (error instanceof z.ZodError) {
+						throw new ScriptError(`Script output validation failed: ${error.message}`, error);
+					}
+					// Re-throw other, unexpected errors
+					throw error;
+				}
+			}
+			// Check if it's a Vercel AI Schema (has validate method)
+			else if ('validate' in schema && typeof schema.validate === 'function') {
+				try {
+					// Type assertion to access the validate method safely
+					const vercelSchema = schema as { validate: (value: unknown) => { success: true; value: OBJECT } | { success: false; error: Error } };
+					const validationResult = vercelSchema.validate(rawResult);
+					if (validationResult.success) {
+						if ('debug' in this.config && this.config.debug) {
+							console.log('[DEBUG] ScriptEngine.run - Vercel Schema validation successful:', validationResult.value);
+						}
+						return validationResult.value as TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult;
+					} else {
+						throw new ScriptError(`Script output validation failed: ${validationResult.error.message}`, validationResult.error);
+					}
+				} catch (error) {
+					if (error instanceof ScriptError) {
+						throw error;
+					}
+					throw new ScriptError(`Script output validation failed: ${error instanceof Error ? error.message : 'Unknown validation error'}`, error instanceof Error ? error : undefined);
+				}
+			} else if ('debug' in this.config && this.config.debug) {
+				// Warn if a schema was provided but we can't do anything with it.
+				console.warn('[DEBUG] ScriptEngine.run - a schema was provided, but it is not a Zod schema or Vercel Schema. Skipping validation.');
+			}
+		}
+
+		return rawResult as TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult;
 	}
 }

@@ -7,7 +7,10 @@ import {
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
-import { TemplatePromptType, ScriptType/*, LLMPromptType */ } from './types';
+import {
+	TemplatePromptType, ScriptType, /*, LLMPromptType */
+	SchemaType
+} from './types';
 import { InferParameters } from './type-utils';
 
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
@@ -22,10 +25,12 @@ interface BaseConfig {
 	debug?: boolean;
 }
 
+export type CascadaFilter = Record<string, (input: any, ...args: any[]) => any>;
+
 // Shared for scripts and templates
 export interface CascadaConfig extends BaseConfig {
 	context?: Record<string, any>;
-	filters?: Record<string, (input: any, ...args: any[]) => any>;
+	filters?: CascadaFilter;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
@@ -39,12 +44,13 @@ export interface TemplateConfig extends CascadaConfig {
 export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text'/*, prompt?: string */ };
 
 // Script types
-export interface ScriptConfig extends CascadaConfig {
+export interface ScriptConfig<OBJECT> extends CascadaConfig {
 	script?: string;
 	scriptType?: ScriptType;
+	schema?: SchemaType<OBJECT>;
 };
 
-export type ToolParameters = z.ZodTypeAny | Schema<any>;
+export type ToolParameters = z.ZodTypeAny | Schema<any>;//@todo - specialize for OBJECT
 
 /**
  * The configuration object passed to the `create.Tool` factory.

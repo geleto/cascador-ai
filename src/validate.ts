@@ -10,7 +10,7 @@ export class ConfigError extends Error {
 	}
 }
 
-export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | ScriptConfig>) {
+export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | ScriptConfig<any>> & Record<string, any>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');
 	}
@@ -48,7 +48,7 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Scr
 
 	// --- Script-specific validation ---
 	if (hasScriptKeys) {
-		const scriptConfig = config as Partial<ScriptConfig>;
+		const scriptConfig = config as Partial<ScriptConfig<any>>;
 		if (scriptConfig.scriptType) {
 			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.scriptType)) {
 				throw new ConfigError(`Invalid scriptType: '${scriptConfig.scriptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
@@ -62,11 +62,11 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Scr
 
 	// --- Shared validation for Cascada-based configs (templates and scripts) ---
 	if ('filters' in config && config.filters) {
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
 		if (typeof config.filters !== 'object' || config.filters === null || Array.isArray(config.filters)) {
 			throw new ConfigError("'filters' must be a record object of filter functions.");
 		}
-		for (const [name, filter] of Object.entries(config.filters)) {
+		for (const [name, filter] of Object.entries(config.filters as TypesConfig.CascadaFilter)) {
 			if (typeof filter !== 'function') {
 				throw new ConfigError(`Filter '${name}' must be a function.`);
 			}
