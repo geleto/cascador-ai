@@ -5,7 +5,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
 import { model, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
-import { z, ZodError } from 'zod';
+import { z } from 'zod';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
@@ -419,14 +419,14 @@ describe('create.ObjectGenerator', function () {
 		it('should reject the promise if the LLM output fails schema validation', async () => {
 			const strictSchema = z.object({
 				name: z.string(),
-				value: z.string(), // Expecting a string, but prompt asks for a number
+				value: z.number().min(100), // Expecting a number >= 100
 			});
 			const generator = create.ObjectGenerator({
 				model,
 				schema: strictSchema,
-				prompt: 'Generate an object for "ValidationTest" with value 42. Make sure the value is a number.',
+				prompt: 'Generate an object for "ValidationTest" with value 42. The value must be a number.',
 			});
-			await expect(generator()).to.be.rejectedWith(ZodError);
+			await expect(generator()).to.be.rejectedWith('response did not match schema');
 		});
 
 		it('should propagate errors from async context functions', async () => {
