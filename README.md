@@ -319,47 +319,59 @@ const templatedRenderer = create.TemplateRenderer({
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
 ### ScriptRunner
-**What it does**: Executes powerful, data-centric workflows using **[Cascada Script](script.md)**, a language designed for effortless concurrency. Unlike `TemplateRenderer`, which primarily produces a string, `ScriptRunner`'s main output is a structured data object (e.g., JSON), making it the ideal choice for your application's data layer. It excels at orchestrating complex logic, fetching data from multiple async sources in parallel, and transforming it into a final, clean object.
+
+**What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application.
+
+For added reliability, you can provide an **optional** Zod `schema` to validate the script's output, ensuring it is type-safe.
 
 ```typescript
 import { create } from 'cascador-ai';
+import { z } from 'zod';
 
-// A user service mock
-const userService = {
-  fetchProfile: async (id) => ({ id, name: 'Alice', email: 'alice@example.com' }),
-  fetchPosts: async (id) => ([{ id: 101, title: 'First Post' }, { id: 102, title: 'Second Post' }]),
-};
-
-const userDashboardBuilder = create.ScriptRunner({
+const dealFinder = create.ScriptRunner({
+  schema: z.record(
+    z.string(), // e.g., "sku-a123"
+    z.array(z.object({ vendor: z.string(), price: z.number() }))
+  ),
   context: {
-    // Provide async functions to the script
-    fetchProfile: userService.fetchProfile,
-    fetchPosts: userService.fetchPosts,
+    productIds: ['sku-a123', 'sku-b456'],
+    vendors: ['VendorX', 'VendorY'],
+    // Fake an async API call to fetch prices
+    getPrice: async (productId, vendor) => ({
+      vendor,
+      price: Math.floor(Math.random() * 101) + 100,
+    }),
   },
   script: `
-    // The :data directive focuses the output to be a clean data object
     :data
-
-    // These two async calls run in parallel automatically
-    var profile = fetchProfile(userId)
-    var posts = fetchPosts(userId)
-
-    // The @data commands are buffered and run after the fetches complete,
-    // assembling the final object in a predictable order.
-    @data.user.id = profile.id
-    @data.user.name = profile.name
-    @data.posts = posts
-  `
+    for productId in productIds
+      for vendor in vendors
+        var priceInfo = getPrice(productId, vendor)
+        @data[productId].push(priceInfo)
+      endfor
+    endfor
+  `,
 });
 
 (async () => {
-  const dashboardData = await userDashboardBuilder({ userId: 123 });
-  console.log('Dashboard Data:', JSON.stringify(dashboardData, null, 2));
+  const report = await dealFinder();
+  console.log(JSON.stringify(report, null, 2));
+  /* Output:
+    {
+      "sku-a123": [ { "vendor": "VendorX", "price": 154 }, { "vendor": "VendorY", "price": 182 } ],
+      "sku-b456": [ { "vendor": "VendorX", "price": 110 }, { "vendor": "VendorY", "price": 195 } ]
+    }
+  */
 })();
 ```
 
-**Use it for**: Implementing complex data layers, orchestrating multi-step agentic workflows, fetching and aggregating data from multiple APIs/databases, and any task where the primary output is structured data rather than a rendered string. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
+#### Key Properties
 
+*   **`script`**: A string containing the Cascada script that defines the orchestration logic.
+*   **`context`**: An object providing data and functions (both sync and async) to the script. Promises returned from functions are resolved automatically.
+*   **`schema`** (Optional): A Zod schema to validate the final output object. If validation fails, an error is thrown.
+
+**Use it for**: Building type-safe data layers, orchestrating multi-step agentic workflows, fetching and aggregating data from multiple APIs/databases, and any task where the primary output is a reliable, structured data object. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 ### TextGenerator
 **What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). Ideal for one-shot outputs like summaries or creative writing.
