@@ -58,9 +58,7 @@ export function ScriptRunner<
 	const merged = parent
 		? mergeConfigs(parent.config, config)
 		: config;
-	if (parent) {
-		validateBaseConfig(merged);
-	}
+	validateBaseConfig(merged);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

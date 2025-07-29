@@ -61,9 +61,7 @@ export function TextGenerator<
 
 	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
-	if (parent) {
-		validateBaseConfig(merged);
-	}
+	validateBaseConfig(merged);
 	if (!('model' in merged)) {
 		throw new ConfigError('TextGenerator config requires model');
 	}
@@ -121,9 +119,7 @@ export function TextStreamer<
 
 	//validateBaseConfig(config);
 	const merged = parent ? mergeConfigs(parent.config, config) : config;
-	if (parent) {
-		validateBaseConfig(merged);
-	}
+	validateBaseConfig(merged);
 
 	if (!('model' in merged)) {
 		throw new ConfigError('TextStreamer config requires model');

@@ -294,9 +294,7 @@ export function ObjectGenerator<
 		(merged as GenerateObjectObjectConfig<OBJECT>).output = 'object';
 	}
 
-	if (parent) {
-		validateBaseConfig(merged);
-	}
+	validateBaseConfig(merged);
 	validateObjectConfig(merged, false);
 
 	// Debug output if config.debug is true

@@ -50,5 +50,6 @@ export function Config<
 		return new ConfigData(merged);
 	}
 
+	validateBaseConfig(config);
 	return new ConfigData(config);
 }

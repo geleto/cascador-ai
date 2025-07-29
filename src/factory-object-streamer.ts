@@ -266,9 +266,7 @@ export function ObjectStreamer<
 		(merged as StreamObjectObjectConfig<OBJECT>).output = 'object';
 	}
 
-	if (parent) {
-		validateBaseConfig(merged);
-	}
+	validateBaseConfig(merged);
 	// The key change: call validation with isStream = true
 	validateObjectConfig(merged, true);
 
