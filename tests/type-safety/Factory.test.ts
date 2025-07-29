@@ -245,9 +245,9 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// x@ts-expect-error - Invalid output
 	const schemalessGenerator4 = create.ObjectGenerator({
 		model: openAIModel,
-		output: 'invalid'
-	});
-	await schemalessGenerator("Free-form JSON"); // ✗ Invalid model
+		output: 'invalid',
+	});// ✗ Invalid output type
+	await schemalessGenerator4("Free-form JSON");
 
 	const objectGenerator = create.ObjectGenerator({
 		model: openAIModel,
@@ -367,7 +367,6 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const modellessGen = create.TextGenerator({}); // ✗ Missing required model
 
 	// @ts-expect-error - Missing required schema for object output type
-
 	const schemalessObjStream = create.ObjectStreamer({
 		model: openAIModel,
 		output: 'object'

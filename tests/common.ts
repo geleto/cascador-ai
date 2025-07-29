@@ -3,6 +3,8 @@ import { anthropic, createAnthropic, AnthropicProviderSettings } from '@ai-sdk/a
 import { ILoader, LoaderSource } from 'cascada-engine';
 
 export const modelName = 'claude-3-5-haiku-latest';
+//export const modelName = 'claude-4-sonnet-latest';
+//export const modelName = 'gpt-4.1-nano';
 export const model = anthropic(modelName);
 export const createProvider = (options: AnthropicProviderSettings) => createAnthropic(options);
 

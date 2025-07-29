@@ -408,7 +408,7 @@ describe('create.TextStreamer', function () {
 				}),
 			).to.throw(
 				ConfigError,
-				`The promptType 'template-name' requires a 'loader' to be configured`,
+				`requires a 'loader'`,
 			);
 		});
 

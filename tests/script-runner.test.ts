@@ -32,7 +32,7 @@ describe('create.ScriptRunner', function () {
 				script: `
           var message = "Hello"
           @data.greeting = message
-          @text "Done"
+          @text("Done")
         `,
 			});
 			const result = await scriptRunner();
@@ -57,7 +57,8 @@ describe('create.ScriptRunner', function () {
 		it('merges and overrides context at runtime', async () => {
 			const scriptRunner = create.ScriptRunner({
 				context: { user: 'Alice', role: 'admin' },
-				script: `:data; @data.message = "User: " + user + ", Role: " + role`,
+				script: `:data
+				@data.message = "User: " + user + ", Role: " + role`
 			});
 			const result = await scriptRunner({ user: 'Bob' });
 			expect(result).to.deep.equal({ message: 'User: Bob, Role: admin' });
@@ -67,7 +68,10 @@ describe('create.ScriptRunner', function () {
 			const scriptRunner = create.ScriptRunner({
 				context: { val: 10 },
 			});
-			const result = await scriptRunner(':data; @data.result = val * 2');
+			const result = await scriptRunner(
+				`:data
+				@data.result = val * 2`
+			);
 			expect(result).to.deep.equal({ result: 20 });
 		});
 
@@ -112,7 +116,7 @@ describe('create.ScriptRunner', function () {
           var text = capture:text
             var stream = (streamReader()).textStream
             for chunk in stream
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
           @data.result = text
@@ -133,7 +137,7 @@ describe('create.ScriptRunner', function () {
             var prompt = "Write only the word '" + word + "'."
             var stream = (streamReader(prompt)).textStream
             for chunk in stream
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
           @data.result = text
@@ -152,14 +156,14 @@ describe('create.ScriptRunner', function () {
           var text1 = capture:text
             var s1 = (streamReader("Write only 'A'.")).textStream
             for chunk in s1
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
 
           var text2 = capture:text
             var s2 = (streamReader("Write only 'B'.")).textStream
             for chunk in s2
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
 
@@ -182,10 +186,10 @@ describe('create.ScriptRunner', function () {
           var text = capture:text
             var stream = (streamReader()).textStream
             for chunk in stream
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
-          var num = parseInt(text)
+          var num = text | int
           @data.original = num
           @data.doubled = num * 2
         `,
@@ -205,7 +209,7 @@ describe('create.ScriptRunner', function () {
           var text = capture:text
             var stream = (streamReader()).textStream
             for chunk in stream
-              @text chunk
+              @text(chunk)
             endfor
           endcapture
           @data = { text: text }
@@ -248,12 +252,12 @@ describe('create.ScriptRunner', function () {
           var ids = []
           var stream = (streamer()).elementStream
           for item in stream
-            @text item.id
+            @text(item.id)
           endfor
           var text = capture:text
-            var stream = (streamer()).elementStream
-            for item in stream
-              @text item.id
+            var str = (streamer()).elementStream
+            for item in str
+              @text(item.id)
             endfor
           endcapture
           // Split, parse as numbers and push to ids array
@@ -278,7 +282,10 @@ describe('create.ScriptRunner', function () {
 
 		it('inherits context and filters from parent Config', async () => {
 			const scriptRunner = create.ScriptRunner({
-				script: `:data; @data.result = base | prefix("p:")`,
+				script: `
+				:data
+				@data.result = base | prefix("p:")
+				`
 			}, parentConfig);
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ result: 'p:parent' });
@@ -286,7 +293,11 @@ describe('create.ScriptRunner', function () {
 
 		it('inherits from another ScriptRunner', async () => {
 			const parent = create.ScriptRunner({ context: { inherited: 'ok' } });
-			const child = create.ScriptRunner({ script: `:data; @data.x = inherited` }, parent);
+			const child = create.ScriptRunner({
+				script:
+					`:data
+					@data.x = inherited`
+			}, parent);
 			const result = await child();
 			expect(result).to.deep.equal({ x: 'ok' });
 		});
@@ -295,7 +306,8 @@ describe('create.ScriptRunner', function () {
 			const child = create.ScriptRunner({
 				context: { base: 'child' },
 				filters: { suffix: (s: string, x: string) => `${s}${x}` },
-				script: `:data; @data.out = (base | prefix("v")) | suffix("!")`,
+				script: `:data
+				@data.out = (base | prefix("v")) | suffix("!")`,
 			}, parentConfig);
 			const result = await child();
 			expect(result).to.deep.equal({ out: 'vchild!' });
@@ -304,7 +316,9 @@ describe('create.ScriptRunner', function () {
 		it('merges context and child overrides parent keys', async () => {
 			const scriptRunner = create.ScriptRunner({
 				context: { base: 'child', newVal: 'n' },
-				script: `:data; @data = { base: base, new: newVal, mult: mult }`,
+				script:
+					`:data
+					@data = { base: base, new: newVal, mult: mult }`
 			}, parentConfig);
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ base: 'child', new: 'n', mult: 2 });
@@ -347,7 +361,7 @@ describe('create.ScriptRunner', function () {
 
 		it('rejects if script contains a syntax error', async () => {
 			const scriptRunner = create.ScriptRunner({ script: 'var x =' });
-			await expect(scriptRunner()).to.be.rejectedWith(/Unexpected end of input/);
+			await expect(scriptRunner()).to.be.rejectedWith('Script render failed');
 		});
 
 		it('rejects if script throws a runtime error', async () => {
@@ -363,7 +377,8 @@ describe('create.ScriptRunner', function () {
 		it('rejects if an async function in context rejects', async () => {
 			const scriptRunner = create.ScriptRunner({
 				context: { badFetch: async () => Promise.reject(new Error('API Down')) },
-				script: `:data; @data.result = badFetch()`,
+				script: `:data
+				@data.result = badFetch()`
 			});
 			await expect(scriptRunner()).to.be.rejectedWith('API Down');
 		});
@@ -374,7 +389,7 @@ describe('create.ScriptRunner', function () {
 				scriptType: 'async-script-name',
 				script: 'nope',
 			});
-			await expect(scriptRunner()).to.be.rejectedWith('Template not found');
+			await expect(scriptRunner()).to.be.rejectedWith('Script not found');
 		});
 	});
 
@@ -430,8 +445,7 @@ describe('create.ScriptRunner', function () {
 					vals: [1, 2, 3],
 					add: (x: number) => { sum += x; return sum; },
 				},
-				script: `
-          :data
+				script: `:data
           @data.results = []
           each x in vals
             @data.results.push(add(x))

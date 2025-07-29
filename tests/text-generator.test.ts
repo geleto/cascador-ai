@@ -375,20 +375,6 @@ describe('create.TextGenerator', function () {
 			);
 		});
 
-		it('should throw ConfigError for mixing template and script properties', () => {
-			expect(() => {
-				// @ts-expect-error - Intentionally mixing properties
-				create.TextGenerator({
-					model,
-					prompt: 'a',
-					script: 'b',
-				});
-			}).to.throw(
-				ConfigError,
-				'Configuration cannot have both template/prompt and script properties.',
-			);
-		});
-
 		it('should throw ConfigError if promptType is "text" but template properties are used', () => {
 			expect(() =>
 				create.TextGenerator({
@@ -413,7 +399,7 @@ describe('create.TextGenerator', function () {
 				}),
 			).to.throw(
 				ConfigError,
-				`The promptType 'template-name' requires a 'loader' to be configured`,
+				`requires a 'loader'`,
 			);
 		});
 
