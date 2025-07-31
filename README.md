@@ -462,22 +462,20 @@ import { create } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-const characterStreamer = create.ObjectStreamer({
-  model: openai('gpt-4o'),
-  schema: z.array(z.object({
+cconst characterStreamer = create.ObjectStreamer({
+  model,
+  schema: z.object({
     name: z.string(),
     description: z.string()
-  })),
+  }),
   output: 'array',
-  prompt: 'Generate 3 character descriptions.'
-}, baseConfig);
+  prompt: 'Generate 3 character descriptions with names Peter, Paul and Mary, in this order.'
+});
 
-(async () => {
-  const { elementStream } = await characterStreamer();
-  for await (const character of elementStream) {
-    console.log('Character:', character);
-  }
-})();
+const { elementStream } = await characterStreamer();
+for await (const character of elementStream) {
+  console.log('Character:', character);
+}
 ```
 
 You can specify how the data should be structured by setting `output` to:
