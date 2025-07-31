@@ -113,7 +113,7 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				output: 'array',
 				schema: characterSchema,
-				prompt: `Generate three fantasy character descriptions.
+				prompt: `Generate three short fantasy character descriptions.
 					The tree character names are: Gandalf, Aragorn and Legolas.
 					Each description must include the character name.
 					Output them in this exact order: Gandalf, Aragorn, Legolas.`,
@@ -343,7 +343,9 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',
+				prompt: `Generate an array with these exact two objects in it:
+				{"id": 1}, {"id": 2}.
+				`,
 			});
 			const scriptRunner = create.ScriptRunner({
 				context: { streamer: objectStreamer },

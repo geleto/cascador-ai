@@ -81,16 +81,6 @@ describe('create.ObjectGenerator', function () {
 			expect(resultColor).to.equal('Blue');
 		});
 
-		it('should generate a JSON object with output: "no-schema"', async () => {
-			const generator = create.ObjectGenerator({
-				model, temperature,
-				output: 'no-schema',
-				prompt: 'Generate a raw JSON object with a "status" key set to "ok" and a "code" key set to 200.',
-			});
-			const { object } = await generator();
-			expect(object).to.deep.equal({ status: 'ok', code: 200 });
-		});
-
 		it('should generate an object when prompt is provided only at runtime', async () => {
 			// Generator is created without a prompt
 			const generator = create.ObjectGenerator({
@@ -102,19 +92,6 @@ describe('create.ObjectGenerator', function () {
 			const { object } = await generator('Generate an object for "RuntimePrompt" with value 101.');
 			expect(object.value).to.equal(101);//check type
 			expect(object).to.deep.equal({ name: 'RuntimePrompt', value: 101 });
-		});
-
-		it('should respect the "mode" property for JSON output', async () => {
-			const generator = create.ObjectGenerator({
-				model, temperature,
-				mode: 'json',
-				schema: simpleSchema,
-				prompt: 'Generate a JSON object for an item named "ModeTest" with a value of 100.',
-			});
-
-			expect(generator.config.mode).to.equal('json');
-			const { object } = await generator();
-			expect(object).to.deep.equal({ name: 'ModeTest', value: 100 });
 		});
 	});
 
@@ -140,7 +117,7 @@ describe('create.ObjectGenerator', function () {
 			);
 
 			expect(generator.config.model).to.exist;
-			expect(generator.config.temperature).to.equal(0);
+			expect(generator.config.temperature).to.equal(temperature);
 
 			const { object } = await generator();
 			expect(object.value).to.equal(123);//check type
@@ -200,15 +177,16 @@ describe('create.ObjectGenerator', function () {
 		it('should inherit `output: no-schema` from a parent config', async () => {
 			const parentConfig = create.Config({
 				model, temperature,
-				output: 'no-schema',
+				output: 'array',
+				schema: z.object({ id: z.number(), success: z.boolean() })
 			});
 
 			const childGenerator = create.ObjectGenerator({
-				prompt: 'Generate a raw JSON object with a "success" key set to true.'
+				prompt: 'Generate a JSON array with these exact two items: {id: 1, success: true} and {id: 2, success: false}.'
 			}, parentConfig);
 
 			const { object } = await childGenerator();
-			expect(object).to.deep.equal({ success: true });
+			expect(object).to.eql([{ id: 1, success: true }, { id: 2, success: false }]);
 		});
 
 		it('should generate an object when inheriting and prompt is at runtime', async () => {

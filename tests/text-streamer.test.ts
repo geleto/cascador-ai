@@ -25,7 +25,7 @@ describe('create.TextStreamer', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real streaming API
 
 	// Simple prompts for easy and cheap verification
-	const simplePrompt = "Write only the word 'Hello' without the quotes and nothing else.";
+	const simplePrompt = "Write only the exact word 'Hello' without the quotes while keeping the case. Output it in this exact case: 'Hello'. Write nothing else.";
 	const simpleExpected = 'Hello';
 
 	describe('Core Functionality', () => {
@@ -39,7 +39,7 @@ describe('create.TextStreamer', function () {
 			expect(streamedText).to.equal(simpleExpected);
 		});
 
-		// vercel bug, result.text does not resolve
+		// vercel bug, result.text does not resolve, the stream is ok
 		it.skip('should provide the full text in the resolved .text promise', async () => {
 			const streamer = create.TextStreamer({ model, temperature, prompt: simplePrompt });
 			const result = await streamer();
@@ -47,7 +47,7 @@ describe('create.TextStreamer', function () {
 			expect(fullText).to.equal(simpleExpected);
 		});
 
-		// vercel bug, result.text does not resolve
+		// vercel bug, result.text does not resolve, the stream is ok
 		it.skip('should provide the full text using Vercel streamText directly', async () => {
 			const result = streamText({
 				model, temperature,
