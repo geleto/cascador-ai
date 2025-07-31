@@ -229,7 +229,7 @@ describe('create.TextGenerator', function () {
 		it('should apply a synchronous filter', async () => {
 			const generator = create.TextGenerator({
 				model,
-				prompt: 'Only write this and nothing else, keep the capitalization: {{ word | upper }}',
+				prompt: 'Write the following text exactly as shown, preserving and the original case of each letter: {{ word | upper }}',
 				context: { word: 'test' },
 				filters: { upper: (s: string) => s.toUpperCase() },
 			});
@@ -251,7 +251,7 @@ describe('create.TextGenerator', function () {
 		it('should apply an asynchronous filter', async () => {
 			const generator = create.TextGenerator({
 				model,
-				prompt: 'Only write this and nothing else, keep the capitalization: {{ word | asyncUpper }}',
+				prompt: 'Write the following text exactly as shown, preserving the original case of each letter: {{ word | asyncUpper }}',
 				context: { word: 'test' },
 				filters: { asyncUpper: async (s: string) => Promise.resolve(s.toUpperCase()) },
 			});
@@ -265,7 +265,7 @@ describe('create.TextGenerator', function () {
 
 		// Add templates to the StringLoader
 		stringLoader.addTemplate('simple.njk', 'Only write the number in "" quotes and nothing else. The number is {{ number }}.');
-		stringLoader.addTemplate('filtered.njk', 'Only write, this, keep the capitalization and punctuation: {{ text | shout }}');
+		stringLoader.addTemplate('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
 
 		it('should load and render a template using promptType: "template-name"', async () => {
 			const generator = create.TextGenerator({

@@ -324,7 +324,7 @@ describe('create.TextStreamer', function () {
 		it('should apply an asynchronous filter', async () => {
 			const streamer = create.TextStreamer({
 				model,
-				prompt: 'Write only this and nothing else, keep the capitalization: {{ word | asyncUpper }}',
+				prompt: 'Write the following text exactly as shown, preserving the original case of each letter: {{ word | asyncUpper }}',
 				context: { word: 'test' },
 				filters: { asyncUpper: async (s: string) => Promise.resolve(s.toUpperCase()) },
 			});
@@ -337,7 +337,7 @@ describe('create.TextStreamer', function () {
 	describe('Loader Functionality', () => {
 		const stringLoader = new StringLoader();
 		stringLoader.addTemplate('simple.njk', 'Write only the number {{ number }} and nothing else.');
-		stringLoader.addTemplate('filtered.njk', 'Write this, keep the original letter cases and punctuation: {{ text | shout }}');
+		stringLoader.addTemplate('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
 
 		it('should load and render a template using promptType: "template-name"', async () => {
 			const streamer = create.TextStreamer({
