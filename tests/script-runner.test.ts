@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
-import { model, StringLoader, timeout } from './common';
+import { model, temperature, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { streamObject } from 'ai';
@@ -104,23 +104,19 @@ describe('create.ScriptRunner', function () {
 	describe('Vanilla Vercel AI Stream Consumer', () => {
 
 		it('should stream an array of objects and collect them successfully', async () => {
-			// This timeout might be needed for slower API responses
-			// You can adjust it as needed.
-			// In Mocha, you can set a timeout per test like this:
-			// this.timeout(15000);
-
-			// Call streamObject to get the streaming result
-
 			const characterSchema = z.object({
 				name: z.string().describe('The name of the character.'),
 				description: z.string().describe('A short description of the character.'),
 			});
 
 			const { elementStream } = streamObject({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: characterSchema,
-				prompt: 'Generate three fantasy character descriptions, each description must include the character type(knight, wizzard, rogue): a brave knight, a wise wizard, and a sneaky rogue. Output them in that exact order.',
+				prompt: `Generate three fantasy character descriptions.
+					The tree character names are: Gandalf, Aragorn and Legolas.
+					Each description must include the character name.
+					Output them in this exact order: Gandalf, Aragorn, Legolas.`,
 			});
 
 			// Array to collect the final, complete objects
@@ -139,10 +135,9 @@ describe('create.ScriptRunner', function () {
 			expect(collectedCharacters[2]).to.have.all.keys('name', 'description');
 
 			// Optional: Check if the content seems plausible (case-insensitive)
-			const allNames = collectedCharacters.map(c => c.name.toLowerCase()).join(' ');
-			expect(allNames).to.include('knight');
-			expect(allNames).to.include('wizard');
-			expect(allNames).to.include('rogue');
+			expect(collectedCharacters[0].name).to.equal('Gandalf');
+			expect(collectedCharacters[1].name).to.equal('Aragorn');
+			expect(collectedCharacters[2].name).to.equal('Legolas');
 		});
 	});
 
@@ -151,7 +146,7 @@ describe('create.ScriptRunner', function () {
 	describe('Stream and Renderer Interoperability', () => {
 		it('reads a stream from TextStreamer and collects text using @text', async () => {
 			const textStreamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: "Write only the word 'Hello'.",
 			});
 
@@ -222,7 +217,7 @@ describe('create.ScriptRunner', function () {
 
 		it('collects and processes numbers from a stream', async () => {
 			const textStreamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: "Write only the number 42.",
 			});
 			const scriptRunner = create.ScriptRunner({
@@ -246,7 +241,7 @@ describe('create.ScriptRunner', function () {
 
 		it('stream error disables result, error test is only that result is empty', async () => {
 			// Streamer configured to fail (simulate with bad model/config or empty result)
-			const badStreamer = create.TextStreamer({ model, prompt: "INVALID" });
+			const badStreamer = create.TextStreamer({ model, temperature, prompt: "INVALID" });
 			const scriptRunner = create.ScriptRunner({
 				schema: z.object({ text: z.string() }),
 				context: { streamReader: badStreamer },
@@ -267,7 +262,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from an ObjectGenerator and uses the result', async () => {
 			const locationGen = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: z.object({ city: z.string(), country: z.string() }),
 				prompt: `Generate a JSON object for the capital of {{ countryName }}.`,
 			});
@@ -286,7 +281,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from object array stream', async () => {
 			const characterStreamer = create.ObjectStreamer({
-				model,
+				model, temperature,
 				schema: z.object({
 					name: z.string(),
 					description: z.string()
@@ -309,7 +304,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from an ObjectStreamer (array mode), no script', async () => {
 			const objectStreamer = create.ObjectStreamer({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
 				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',
@@ -324,7 +319,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from an ObjectStreamer (array mode), with script', async () => {
 			const objectStreamer = create.ObjectStreamer({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
 				prompt: 'Generate a JSON array with these exact two objects: [{"id": 1}, {"id": 2}].',
@@ -345,7 +340,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from an ObjectStreamer (array mode) and collects element ids', async () => {
 			const objectStreamer = create.ObjectStreamer({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
 				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',

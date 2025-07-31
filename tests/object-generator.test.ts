@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
-import { model, StringLoader, timeout } from './common';
+import { model, temperature, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ describe('create.ObjectGenerator', function () {
 	describe('Core Functionality by Output Type', () => {
 		it('should generate a single object with output: "object" (default) and allow property access', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				prompt: 'Generate a JSON object for an item named "Test" with a value of 42.',
 			});
@@ -49,7 +49,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should generate an array of objects with output: "array"', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: arraySchema.element, // Pass the element schema for arrays
 				prompt: 'Generate a JSON array with two items: {id: 1, item: "A"} and {id: 2, item: "B"}.',
@@ -67,7 +67,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should generate an enum value and allow type-safe assignment', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				output: 'enum',
 				enum: enumValues,
 				prompt: 'From the list [Red, Green, Blue], choose the color of the sky. Output only the color name.',
@@ -83,7 +83,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should generate a JSON object with output: "no-schema"', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				output: 'no-schema',
 				prompt: 'Generate a raw JSON object with a "status" key set to "ok" and a "code" key set to 200.',
 			});
@@ -94,7 +94,7 @@ describe('create.ObjectGenerator', function () {
 		it('should generate an object when prompt is provided only at runtime', async () => {
 			// Generator is created without a prompt
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 			});
 
@@ -106,7 +106,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should respect the "mode" property for JSON output', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				mode: 'json',
 				schema: simpleSchema,
 				prompt: 'Generate a JSON object for an item named "ModeTest" with a value of 100.',
@@ -120,8 +120,7 @@ describe('create.ObjectGenerator', function () {
 
 	describe('Configuration & Inheritance', () => {
 		const parentConfig = create.Config({
-			model,
-			temperature: 0,
+			model, temperature,
 			context: {
 				entity: 'user',
 				defaultId: 123,
@@ -151,7 +150,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should inherit output type and schema from a parent config', async () => {
 			const parentGenerator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				output: 'array',
 				schema: arraySchema.element,
 			});
@@ -169,7 +168,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should correctly assign enum type when inheriting from a parent config', async () => {
 			const parentConfig = create.Config({
-				model,
+				model, temperature,
 				output: 'enum'
 			});
 			const childGenerator = create.ObjectGenerator({
@@ -186,7 +185,7 @@ describe('create.ObjectGenerator', function () {
 
 		/*it('should inherit `output: no-schema` from a parent object generator', async () => {
 			const parentGenerator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				output: 'no-schema',
 			});
 
@@ -200,7 +199,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should inherit `output: no-schema` from a parent config', async () => {
 			const parentConfig = create.Config({
-				model,
+				model, temperature,
 				output: 'no-schema',
 			});
 
@@ -214,7 +213,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should generate an object when inheriting and prompt is at runtime', async () => {
 			const parentWithSchema = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema
 			});
 			const childGenerator = create.ObjectGenerator({}, parentWithSchema);
@@ -240,7 +239,7 @@ describe('create.ObjectGenerator', function () {
 		it('should override an inherited schema with a child schema', async () => {
 			const locationSchema = z.object({ city: z.string(), country: z.string() });
 			const parentWithSchema = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema, // Parent has the 'name'/'value' schema
 			});
 			const childWithSchema = create.ObjectGenerator({
@@ -262,7 +261,7 @@ describe('create.ObjectGenerator', function () {
 			const parent = create.Config({ loader: [loader1] });
 			const generator = create.ObjectGenerator({
 				promptType: 'template-name',
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				loader: [loader2]
 			}, parent);
@@ -282,7 +281,7 @@ describe('create.ObjectGenerator', function () {
 	describe('Template Engine Features', () => {
 		it('should resolve an asynchronous function from context', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				context: {
 					fetchData: async () => ({ name: 'Async', value: await Promise.resolve(10) }),
@@ -296,7 +295,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should apply an asynchronous filter with arguments', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				filters: {
 					createObject: async (name: string, val: number) => {
@@ -313,7 +312,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should merge config and runtime context correctly', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				context: { name: 'Config', value: 1 },
 				prompt: 'Generate an object with name "{{ name }}" and value {{ value }}.',
@@ -330,7 +329,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should load a template using promptType: "async-template-name"', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				loader: stringLoader,
 				promptType: 'async-template-name',
@@ -344,7 +343,7 @@ describe('create.ObjectGenerator', function () {
 
 	describe('Callable Interface Overloads', () => {
 		const generatorWithPrompt = create.ObjectGenerator({
-			model,
+			model, temperature,
 			schema: simpleSchema,
 			prompt: 'Generate an object with name "{{ name }}" and value {{ value }}.',
 			context: { name: 'Default', value: 0 },
@@ -378,21 +377,21 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should throw ConfigError if output is "object" but no schema is provided', () => {
-			expect(() => create.ObjectGenerator({ model, output: 'object' } as never)).to.throw(
+			expect(() => create.ObjectGenerator({ model, temperature, output: 'object' } as never)).to.throw(
 				ConfigError,
 				'object output requires schema',
 			);
 		});
 
 		it('should throw ConfigError if output is "array" but no schema is provided', () => {
-			expect(() => create.ObjectGenerator({ model, output: 'array' } as never)).to.throw(
+			expect(() => create.ObjectGenerator({ model, temperature, output: 'array' } as never)).to.throw(
 				ConfigError,
 				'array output requires schema',
 			);
 		});
 
 		it('should throw ConfigError if output is "enum" but no enum array is provided', () => {
-			expect(() => create.ObjectGenerator({ model, output: 'enum' } as never)).to.throw(
+			expect(() => create.ObjectGenerator({ model, temperature, output: 'enum' } as never)).to.throw(
 				ConfigError,
 				'enum output requires non-empty enum array',
 			);
@@ -401,7 +400,7 @@ describe('create.ObjectGenerator', function () {
 		it('should throw ConfigError if output is "no-schema" but a schema is provided', () => {
 			expect(() =>
 				create.ObjectGenerator({
-					model,
+					model, temperature,
 					output: 'no-schema',
 					schema: simpleSchema,
 				} as never),
@@ -409,7 +408,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should throw at runtime if no prompt is provided in config or call', async () => {
-			const generator = create.ObjectGenerator({ model, schema: simpleSchema });
+			const generator = create.ObjectGenerator({ model, temperature, schema: simpleSchema });
 			await expect(generator(undefined as unknown as string)).to.be.rejectedWith(
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
@@ -422,7 +421,7 @@ describe('create.ObjectGenerator', function () {
 				value: z.number().min(100), // Expecting a number >= 100
 			});
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: strictSchema,
 				prompt: 'Generate an object for "ValidationTest" with value 42. The value must be a number.',
 			});
@@ -431,7 +430,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should propagate errors from async context functions', async () => {
 			const generator = create.ObjectGenerator({
-				model,
+				model, temperature,
 				schema: simpleSchema,
 				context: {
 					badFunc: async () => {
@@ -449,7 +448,7 @@ describe('create.ObjectGenerator', function () {
 			expect(() =>
 				// @ts-expect-error - Intentionally invalid
 				create.ObjectGenerator({
-					model,
+					model, temperature,
 					schema: simpleSchema,
 					output: 'invalid-type',
 				}),

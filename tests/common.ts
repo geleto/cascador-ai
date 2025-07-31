@@ -9,6 +9,7 @@ export const model = anthropic(modelName);
 export const createProvider = (options: AnthropicProviderSettings) => createAnthropic(options);
 
 export const timeout = 10000;
+export const temperature = 0.1;
 
 /**
  * StringLoader class for testing purposes.

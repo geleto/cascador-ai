@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create, StreamTextResult } from '../src/index';
-import { model, modelName, StringLoader, createProvider, timeout } from './common';
+import { model, temperature, modelName, StringLoader, createProvider, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { streamText } from 'ai';
 
@@ -31,7 +31,7 @@ describe('create.TextStreamer', function () {
 	describe('Core Functionality', () => {
 		it('should stream text with a simple prompt and model', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: simplePrompt,
 			});
 			const result = await streamer();
@@ -41,7 +41,7 @@ describe('create.TextStreamer', function () {
 
 		// vercel bug, result.text does not resolve
 		it.skip('should provide the full text in the resolved .text promise', async () => {
-			const streamer = create.TextStreamer({ model, prompt: simplePrompt });
+			const streamer = create.TextStreamer({ model, temperature, prompt: simplePrompt });
 			const result = await streamer();
 			const fullText = await result.text;
 			expect(fullText).to.equal(simpleExpected);
@@ -50,7 +50,7 @@ describe('create.TextStreamer', function () {
 		// vercel bug, result.text does not resolve
 		it.skip('should provide the full text using Vercel streamText directly', async () => {
 			const result = streamText({
-				model,
+				model, temperature,
 				prompt: simplePrompt,
 			});
 			const fullText = await result.text;
@@ -66,7 +66,7 @@ describe('create.TextStreamer', function () {
 
 		it('should handle promptType: "text" by not processing templates', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				promptType: 'text',
 				prompt: 'Write this exactly: {{ test }}',
 			});
@@ -77,12 +77,11 @@ describe('create.TextStreamer', function () {
 
 		it('should pass through Vercel AI SDK properties like temperature', async () => {
 			const streamer = create.TextStreamer({
-				model,
-				temperature: 0, // Deterministic
+				model, temperature,
 				prompt: 'Write a one-word color.',
 			});
 			// It's hard to test randomness, so we verify the property is set in the config
-			expect(streamer.config.temperature).to.equal(0);
+			expect(streamer.config.temperature).to.equal(temperature);
 			const result = await streamer();
 			const streamedText = await streamToString(result.textStream);
 			expect(streamedText).to.be.a('string').with.length.above(0);
@@ -95,7 +94,7 @@ describe('create.TextStreamer', function () {
 			});
 
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: simplePrompt,
 				onFinish(data) {
 					resolveFinish(data);
@@ -123,6 +122,7 @@ describe('create.TextStreamer', function () {
 
 			const streamer = create.TextStreamer({
 				model: badModel,
+				temperature,
 				prompt: 'This will fail.',
 				onError({ error }) {
 					resolveError(error as Error);
@@ -143,8 +143,7 @@ describe('create.TextStreamer', function () {
 
 	describe('Configuration & Inheritance', () => {
 		const parentConfig = create.Config({
-			model,
-			temperature: 0.1,
+			model, temperature,
 			context: {
 				item: 'apples',
 				source: 'parent',
@@ -171,7 +170,7 @@ describe('create.TextStreamer', function () {
 
 		it('should inherit from another TextStreamer instance', async () => {
 			const parentStreamer = create.TextStreamer({
-				model,
+				model, temperature,
 				context: { user: 'Alice' },
 				filters: { scream: (s: string) => s.toUpperCase() + '!!!' },
 			});
@@ -232,7 +231,7 @@ describe('create.TextStreamer', function () {
 			const loader2 = new StringLoader();
 			const parent = create.Config({ loader: loader1 });
 			const streamer = create.TextStreamer(
-				{ model, loader: [loader1, loader2] },
+				{ model, temperature, loader: [loader1, loader2] },
 				parent,
 			);
 			expect(streamer.config.loader).to.be.an('array').with.lengthOf(2);
@@ -264,7 +263,7 @@ describe('create.TextStreamer', function () {
 			}, grandparent);
 
 			const childStreamer = create.TextStreamer({
-				model,
+				model, temperature,
 				context: {
 					// Child context is not needed for this test, but we test it is merged correctly
 					source: 'Child'
@@ -301,7 +300,7 @@ describe('create.TextStreamer', function () {
 	describe('Template Engine Features', () => {
 		it('should render a template using a static context value from config', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: 'Write only the word and nothing else. The word is {{ word }}.',
 				context: { word: 'test' },
 			});
@@ -312,7 +311,7 @@ describe('create.TextStreamer', function () {
 
 		it('should resolve an asynchronous function in the context', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: 'Write only the value and nothing else. The value is {{ value() }}.',
 				context: { value: async () => Promise.resolve('async') },
 			});
@@ -323,7 +322,7 @@ describe('create.TextStreamer', function () {
 
 		it('should apply an asynchronous filter', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: 'Write the following text exactly as shown, preserving the original case of each letter: {{ word | asyncUpper }}',
 				context: { word: 'test' },
 				filters: { asyncUpper: async (s: string) => Promise.resolve(s.toUpperCase()) },
@@ -341,7 +340,7 @@ describe('create.TextStreamer', function () {
 
 		it('should load and render a template using promptType: "template-name"', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				loader: stringLoader,
 				promptType: 'template-name',
 				prompt: 'simple.njk',
@@ -353,7 +352,7 @@ describe('create.TextStreamer', function () {
 
 		it('should use context and filters with a loaded template', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				loader: stringLoader,
 				promptType: 'async-template-name',
 				prompt: 'filtered.njk',
@@ -367,7 +366,7 @@ describe('create.TextStreamer', function () {
 
 	describe('Callable Interface Overloads', () => {
 		const streamerWithPrompt = create.TextStreamer({
-			model,
+			model, temperature,
 			prompt: 'Write only the value {{ val }} and nothing else.',
 			context: { val: 'A' },
 		});
@@ -402,7 +401,7 @@ describe('create.TextStreamer', function () {
 			expect(() =>
 				// @ts-expect-error - no loader provided
 				create.TextStreamer({
-					model,
+					model, temperature,
 					promptType: 'template-name',
 					prompt: 'file.njk',
 				}),
@@ -424,7 +423,7 @@ describe('create.TextStreamer', function () {
 
 		it('should reject promises if a filter throws an error', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				prompt: '{{ "test" | badFilter }}',
 				filters: { badFilter: () => { throw new Error('Filter failed'); } },
 			});
@@ -434,7 +433,7 @@ describe('create.TextStreamer', function () {
 
 		it('should reject promises if a loader fails to find a template', async () => {
 			const streamer = create.TextStreamer({
-				model,
+				model, temperature,
 				loader: new StringLoader(),
 				promptType: 'template-name',
 				prompt: 'nonexistent.njk',

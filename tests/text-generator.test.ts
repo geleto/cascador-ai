@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
-import { model, StringLoader, timeout } from './common';
+import { model, temperature, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 
 // Configure chai-as-promised
@@ -21,7 +21,7 @@ describe('create.TextGenerator', function () {
 	describe('Core Functionality', () => {
 		it('should generate text with a simple prompt and model', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: simplePrompt,
 			});
 			const result = await generator();
@@ -35,14 +35,14 @@ describe('create.TextGenerator', function () {
 		});
 
 		it('should use prompt from config if no runtime prompt is given', async () => {
-			const generator = create.TextGenerator({ model, prompt: simplePrompt });
+			const generator = create.TextGenerator({ model, temperature, prompt: simplePrompt });
 			const result = await generator();
 			expect(result.text).to.equal(simpleExpected);
 		});
 
 		it('should handle promptType: "text" by not processing templates', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				promptType: 'text',
 				prompt: 'Output this exactly: {{ test }}',
 			});
@@ -52,12 +52,11 @@ describe('create.TextGenerator', function () {
 
 		it('should pass through Vercel AI SDK properties like temperature', async () => {
 			const generator = create.TextGenerator({
-				model,
-				temperature: 0, // Deterministic
+				model, temperature,
 				prompt: 'Tell me a one-word color.',
 			});
 			// It's hard to test randomness, so we verify the property is set in the config
-			expect(generator.config.temperature).to.equal(0);
+			expect(generator.config.temperature).to.equal(temperature);
 			const result = await generator();
 			expect(result.text).to.be.a('string').with.length.above(0);
 		});
@@ -65,8 +64,7 @@ describe('create.TextGenerator', function () {
 
 	describe('Configuration & Inheritance', () => {
 		const parentConfig = create.Config({
-			model,
-			temperature: 0.1,
+			model, temperature,
 			context: {
 				item: 'apples',
 				source: 'parent',
@@ -92,7 +90,7 @@ describe('create.TextGenerator', function () {
 		// Test inheritance from another TextGenerator
 		it('should inherit from another TextGenerator instance', async () => {
 			const parentGenerator = create.TextGenerator({
-				model,
+				model, temperature,
 				context: {
 					user: 'Alice',
 				},
@@ -157,7 +155,7 @@ describe('create.TextGenerator', function () {
 			const loader2 = new StringLoader();
 			const parent = create.Config({ loader: loader1 });
 			const generator = create.TextGenerator(
-				{ model, loader: [loader1, loader2] },
+				{ model, temperature, loader: [loader1, loader2] },
 				parent,
 			);
 			expect(generator.config.loader).to.be.an('array').with.lengthOf(2);
@@ -168,7 +166,7 @@ describe('create.TextGenerator', function () {
 	describe('Template Engine Features', () => {
 		it('should render a template using a static context value from config', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the word and nothing else. The word is {{ word }}.',
 				context: { word: 'test' },
 			});
@@ -178,7 +176,7 @@ describe('create.TextGenerator', function () {
 
 		it('should render a template using a context value from a runtime argument', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the word and nothing else. The word is {{ word }}.',
 			});
 			const result = await generator({ word: 'runtime' });
@@ -187,7 +185,7 @@ describe('create.TextGenerator', function () {
 
 		it('should merge config context and runtime context (runtime takes precedence)', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the word and number separated by a space and nothing else. The word is {{ word }} and the number is {{ num }}.',
 				context: { word: 'config', num: 1 },
 			});
@@ -197,7 +195,7 @@ describe('create.TextGenerator', function () {
 
 		it('should resolve a synchronous function in the context', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the value and nothing else. The value is {{ value() }}.',
 				context: { value: () => 'functional' },
 			});
@@ -208,7 +206,7 @@ describe('create.TextGenerator', function () {
 		// Test context function with arguments
 		it('should resolve a context function with arguments', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the value and nothing else. The value is {{ add(5, 3) }}.',
 				context: { add: (a: number, b: number) => a + b },
 			});
@@ -218,7 +216,7 @@ describe('create.TextGenerator', function () {
 
 		it('should resolve an asynchronous function in the context', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write the value and nothing else. The value is {{ value() }}.',
 				context: { value: async () => Promise.resolve('async') },
 			});
@@ -228,7 +226,7 @@ describe('create.TextGenerator', function () {
 
 		it('should apply a synchronous filter', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Write the following text exactly as shown, preserving and the original case of each letter: {{ word | upper }}',
 				context: { word: 'test' },
 				filters: { upper: (s: string) => s.toUpperCase() },
@@ -240,7 +238,7 @@ describe('create.TextGenerator', function () {
 		// Test filter with arguments
 		it('should apply a filter with an argument', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Only write this and nothing else: {{ "hello" | repeat(3) }}',
 				filters: { repeat: (s: string, count: number) => s.repeat(count) },
 			});
@@ -250,7 +248,7 @@ describe('create.TextGenerator', function () {
 
 		it('should apply an asynchronous filter', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Write the following text exactly as shown, preserving the original case of each letter: {{ word | asyncUpper }}',
 				context: { word: 'test' },
 				filters: { asyncUpper: async (s: string) => Promise.resolve(s.toUpperCase()) },
@@ -269,7 +267,7 @@ describe('create.TextGenerator', function () {
 
 		it('should load and render a template using promptType: "template-name"', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				loader: stringLoader,
 				promptType: 'template-name',
 				prompt: 'simple.njk',
@@ -280,7 +278,7 @@ describe('create.TextGenerator', function () {
 
 		it('should load and render a template using promptType: "async-template-name"', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				loader: stringLoader,
 				promptType: 'async-template-name',
 				prompt: 'simple.njk',
@@ -294,7 +292,7 @@ describe('create.TextGenerator', function () {
 			testLoader.addTemplate('my-prompt', 'Write this and nothing else: This is a test with {{ name }}.');
 
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				loader: testLoader,
 				promptType: 'template-name',
 				prompt: 'my-prompt',
@@ -306,7 +304,7 @@ describe('create.TextGenerator', function () {
 
 		it('should use context and filters with a loaded template', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				loader: stringLoader,
 				promptType: 'async-template-name',
 				prompt: 'filtered.njk',
@@ -319,7 +317,7 @@ describe('create.TextGenerator', function () {
 
 	describe('Callable Interface Overloads', () => {
 		const generatorWithPrompt = create.TextGenerator({
-			model,
+			model, temperature,
 			prompt: 'Only write the value in "" quotes and nothing else. The value is {{ val }}.',
 			context: { val: 'A' },
 		});
@@ -350,7 +348,7 @@ describe('create.TextGenerator', function () {
 		// Test the call signature for a generator without a pre-configured prompt
 		describe('for generator without configured prompt', () => {
 			const generatorWithoutPrompt = create.TextGenerator({
-				model,
+				model, temperature,
 				context: { val: 'A' },
 			});
 
@@ -378,7 +376,7 @@ describe('create.TextGenerator', function () {
 		it('should throw ConfigError if promptType is "text" but template properties are used', () => {
 			expect(() =>
 				create.TextGenerator({
-					model,
+					model, temperature,
 					promptType: 'text',
 					filters: { test: () => '' },
 				} as never),
@@ -393,7 +391,7 @@ describe('create.TextGenerator', function () {
 			expect(() =>
 				// @ts-expect-error - no loader provided
 				create.TextGenerator({
-					model,
+					model, temperature,
 					promptType: 'template-name',
 					prompt: 'file.njk',
 				}),
@@ -415,7 +413,7 @@ describe('create.TextGenerator', function () {
 
 		it('should throw if a filter function throws an error', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: '{{ "test" | badFilter }}',
 				filters: {
 					badFilter: () => {
@@ -432,7 +430,7 @@ describe('create.TextGenerator', function () {
 
 		it('should throw if a loader fails to find a template', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				loader: new StringLoader(),
 				promptType: 'template-name',
 				prompt: 'nonexistent.njk',
@@ -445,7 +443,7 @@ describe('create.TextGenerator', function () {
 
 		it('should throw if a context function throws an error', async () => {
 			const generator = create.TextGenerator({
-				model,
+				model, temperature,
 				prompt: 'Value: {{ value() }}',
 				context: {
 					value: () => {
