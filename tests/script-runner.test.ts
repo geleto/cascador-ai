@@ -120,7 +120,7 @@ describe('create.ScriptRunner', function () {
 				model,
 				output: 'array',
 				schema: characterSchema,
-				prompt: 'Generate three fantasy character descriptions: a brave knight, a wise wizard, and a sneaky rogue. Output them in that order.',
+				prompt: 'Generate three fantasy character descriptions, each description must include the character type(knight, wizzard, rogue): a brave knight, a wise wizard, and a sneaky rogue. Output them in that exact order.',
 			});
 
 			// Array to collect the final, complete objects
@@ -312,7 +312,7 @@ describe('create.ScriptRunner', function () {
 				model,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array: [{"id": 1}, {"id": 2}].',
+				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',
 			});
 			const { elementStream } = await objectStreamer();
 			const result: { id: number }[] = [];
@@ -322,12 +322,12 @@ describe('create.ScriptRunner', function () {
 			expect(result).to.deep.equal([{ id: 1 }, { id: 2 }]);
 		});
 
-		it.only('reads from an ObjectStreamer (array mode), with script', async () => {
+		it('reads from an ObjectStreamer (array mode), with script', async () => {
 			const objectStreamer = create.ObjectStreamer({
 				model,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array: [{"id": 1}, {"id": 2}].',
+				prompt: 'Generate a JSON array with these exact two objects: [{"id": 1}, {"id": 2}].',
 				promptType: 'text',
 			});
 			const scriptRunner = create.ScriptRunner({
@@ -348,29 +348,26 @@ describe('create.ScriptRunner', function () {
 				model,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array: [{"id": 1}, {"id": 2}].',
+				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',
 			});
 			const scriptRunner = create.ScriptRunner({
 				context: { streamer: objectStreamer },
-				script: `
-          :data
-          var ids = []
-          var stream = (streamer()).elementStream
-          for item in stream
-            @text(item.id)
-          endfor
-          var text = capture:text
-            var str = (streamer()).elementStream
-            for item in str
-              @text(item.id)
-            endfor
-          endcapture
-          // Split, parse as numbers and push to ids array
-          for s in text
-            ids.push(parseInt(s))
-          endfor
-          @data.ids = ids
-        `,
+				script:
+					`:data
+					var stream = (streamer()).elementStream
+					for item in stream
+						@text(item.id)
+					endfor
+					var text = capture:text
+						var str = (streamer()).elementStream
+						for item in str
+						@text(item.id)
+						endfor
+					endcapture
+					// Split, parse as numbers and push to ids array
+					for s in text.split('')
+						@data.ids.push(s | int)
+					endfor`,
 			});
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ ids: [1, 2] });
