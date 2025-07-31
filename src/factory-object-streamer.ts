@@ -64,45 +64,45 @@ type GetTemplateError<TFinalConfig extends configs.OptionalTemplateConfig & Reco
 		? never
 		: `Loader is required when promptType is '${TFinalConfig['promptType']}'.`
 	) : never;
+
 /*
-import { z } from 'zod';
-const simpleSchema = z.object({
-	name: z.string().describe('The name of the item'),
-	value: z.number().describe('A numerical value'),
+// The reason I had to disable the ObjectStreamerPermissiveConstraint for some parameters
+// to avoid what I think is a TS bug where function properties prevent us from getting config type keys
+// (e.g. onFinish in ObjectStreamer)
+export type BadValidator<TConfig> = `'${keyof TConfig & string}'`;
+
+export function TestConfig<
+	const TConfig extends Record<string, any>
+>(
+	config: TConfig extends Record<string, any> ? BadValidator<TConfig> : TConfig
+): void
+
+TestConfig({
+	aaa: "hello",
+	xxx: 123
 });
-const conf = {
-	model: 1 as unknown as LanguageModel,
-	output: 'object' as const
-}
-type required = GetObjectStreamerRequiredShape<typeof conf>;
-type missing = Omit<
-	GetObjectStreamerRequiredShape<typeof conf>,
-	keyof (typeof conf)
->*/
 
-/*const conf = {
-	promptType: 'template',
-	schema: simpleSchema,
-	context: { entity: 'product' },
-	prompt: 'Stream an object for "{{ entity }}" with value {{ defaultId }}.',
-};
-type val = ValidateObjectStreamerConfigShape<typeof conf, typeof conf>;
-type extra = keyof Omit<typeof conf, GetAllowedKeysForConfig<typeof conf>>
-type allowed = GetAllowedKeysForConfig<typeof conf>*/
+TestConfig({
+	aaa: "hello",
+	xxx: function () { return 123 } as const
+});
 
-/*const conf = {
-	model: 1 as unknown as LanguageModel,
-	output: 'invalid' as const,
-}
+TestConfig({
+	aaa: "hello",
+	xxx: function () { return 123 }
+});
 
-type val = ValidateObjectStreamerConfigShape<typeof conf, typeof conf, any, string, any, string>;*/
+export function TestConfig2<
+	const TConfig// extends Record<string, any>
+>(
+	config: TConfig extends Record<string, any> ? BadValidator<TConfig> : TConfig
+): void
 
-/*const conf1 = { model: openAIModel };
-const conf2 = { output: 'no-schema' };
-type final = utils.Override<typeof conf1, typeof conf2>;
-type valid = ValidateObjectStreamerConfigShape<typeof conf1, typeof conf1, final, any, string, any, string>;*/
-
-// This constraint is permissive on purpose, the actual validation is done in the ValidateObjectStreamerConfigShape type
+TestConfig2({
+	aaa: "hello",
+	xxx: function () { return 123 }
+});
+*/
 
 type ObjectStreamerPermissiveConstraint<OBJECT> =
 	{ output?: ConfigOutput }
@@ -149,11 +149,12 @@ export type ValidateObjectStreamerConfigShape<
 			string}'`
 			: `Config Error: Unknown properties for output mode '${GetOutputType<TConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
 		) : (
-			//Parent Shape is invalid - for parent TypeScript will produce its standard error.
-			TConfig
+			//Parent Shape is invalid
+			`Config Error: Invalid Parent Shape`
 			//@todo maybe check TConfig for excess properties?
 		)
-	) : TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
+	) : //TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
+	`Config Error: Invalid Shape`;
 
 // Validator for the `parent` config's GENERIC type
 export type ValidateObjectStreamerParentConfig<
@@ -185,29 +186,28 @@ export type ObjectStreamerInstance<
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
 
 export function ObjectStreamer<
-	const TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
-
+	const TConfig, // extends ObjectStreamerPermissiveConstraint<OBJECT>,
 	OBJECT = any
 >(
-	config: ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT>
+	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT> ? ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT> : TConfig
 ):
 	TConfig extends { output: 'array', schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
+	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
 
 	: TConfig extends { output: 'no-schema' }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>>
+	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectNoSchemaResult>>
 
 	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
+	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
 
 	//no schema, no enum
 	: TConfig extends { output: 'array' }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<any>>>
+	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<any>>>
 
 	: TConfig extends { output: 'object' }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>
+	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<any>>>
 
-	: LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>
+	: LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<any>>>
 
 // Overload for the "with-parent" case
 export function ObjectStreamer<
