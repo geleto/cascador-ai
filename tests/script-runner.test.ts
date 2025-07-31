@@ -5,6 +5,7 @@ import { create } from '../src/index';
 import { model, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
+import { streamObject } from 'ai';
 
 chai.use(chaiAsPromised);
 const { expect } = chai;
@@ -97,6 +98,51 @@ describe('create.ScriptRunner', function () {
 			});
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ name: 'Carol', permissions: ['read', 'write'] });
+		});
+	});
+
+	describe('Vanilla Vercel AI Stream Consumer', () => {
+
+		it('should stream an array of objects and collect them successfully', async () => {
+			// This timeout might be needed for slower API responses
+			// You can adjust it as needed.
+			// In Mocha, you can set a timeout per test like this:
+			// this.timeout(15000);
+
+			// Call streamObject to get the streaming result
+
+			const characterSchema = z.object({
+				name: z.string().describe('The name of the character.'),
+				description: z.string().describe('A short description of the character.'),
+			});
+
+			const { elementStream } = streamObject({
+				model,
+				output: 'array',
+				schema: characterSchema,
+				prompt: 'Generate three fantasy character descriptions: a brave knight, a wise wizard, and a sneaky rogue. Output them in that order.',
+			});
+
+			// Array to collect the final, complete objects
+			const collectedCharacters: z.infer<typeof characterSchema>[] = [];
+			// Consume the elementStream. Each `element` is a complete, validated object.
+			for await (const element of elementStream) {
+				collectedCharacters.push(element);
+			}
+
+			// Assertions to verify the result
+			expect(collectedCharacters).to.be.an('array').with.lengthOf(3);
+
+			// Check if the collected objects have the required structure
+			expect(collectedCharacters[0]).to.have.all.keys('name', 'description');
+			expect(collectedCharacters[1]).to.have.all.keys('name', 'description');
+			expect(collectedCharacters[2]).to.have.all.keys('name', 'description');
+
+			// Optional: Check if the content seems plausible (case-insensitive)
+			const allNames = collectedCharacters.map(c => c.name.toLowerCase()).join(' ');
+			expect(allNames).to.include('knight');
+			expect(allNames).to.include('wizard');
+			expect(allNames).to.include('rogue');
 		});
 	});
 
@@ -236,6 +282,65 @@ describe('create.ScriptRunner', function () {
 			});
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ result: 'Paris' });
+		});
+
+		it('reads from object array stream', async () => {
+			const characterStreamer = create.ObjectStreamer({
+				model,
+				schema: z.object({
+					name: z.string(),
+					description: z.string()
+				}),
+				output: 'array',
+				promptType: 'text',
+				prompt: 'Generate 3 character descriptions with names Peter, Paul and Mary, in this order.'
+			});
+
+			const { elementStream } = await characterStreamer();
+			const characters: { name: string, description: string }[] = [];
+			for await (const character of elementStream) {
+				characters.push(character);
+			}
+			expect(characters.length).to.equal(3);
+			expect(characters[0].name).to.equal('Peter');
+			expect(characters[1].name).to.equal('Paul');
+			expect(characters[2].name).to.equal('Mary');
+		});
+
+		it('reads from an ObjectStreamer (array mode), no script', async () => {
+			const objectStreamer = create.ObjectStreamer({
+				model,
+				output: 'array',
+				schema: z.object({ id: z.number() }),
+				prompt: 'Generate a JSON array: [{"id": 1}, {"id": 2}].',
+			});
+			const { elementStream } = await objectStreamer();
+			const result: { id: number }[] = [];
+			for await (const object of elementStream) {
+				result.push(object);
+			}
+			expect(result).to.deep.equal([{ id: 1 }, { id: 2 }]);
+		});
+
+		it.only('reads from an ObjectStreamer (array mode), with script', async () => {
+			const objectStreamer = create.ObjectStreamer({
+				model,
+				output: 'array',
+				schema: z.object({ id: z.number() }),
+				prompt: 'Generate a JSON array: [{"id": 1}, {"id": 2}].',
+				promptType: 'text',
+			});
+			const scriptRunner = create.ScriptRunner({
+				context: { streamer: objectStreamer },
+				script: `
+				:data
+				@data = []
+				for item in (streamer()).elementStream
+					@data.push(item)
+				endfor`
+			});
+			const result = await scriptRunner();
+			expect(result).to.eql([{ id: 1 }, { id: 2 }]);
 		});
 
 		it('reads from an ObjectStreamer (array mode) and collects element ids', async () => {
