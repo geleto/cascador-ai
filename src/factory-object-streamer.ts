@@ -171,7 +171,8 @@ export type ValidateObjectStreamerParentConfig<
 		? TParentConfig
 		// On excess property failure, return a descriptive string.
 		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}'`
-	) : TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
+	) : `Invalid Parent Shape`
+// TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
 
 export type ObjectStreamerConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>
@@ -185,11 +186,20 @@ export type ObjectStreamerInstance<
 	CONFIG extends ObjectStreamerConfig<OBJECT, ELEMENT>
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
 
+/*
+{ output?: ConfigOutput }
+	& configs.OptionalTemplateConfig
+	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
+	& Record<string, any>;
+*/
+
 export function ObjectStreamer<
 	const TConfig, // extends ObjectStreamerPermissiveConstraint<OBJECT>,
 	OBJECT = any
 >(
-	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT> ? ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT> : TConfig
+	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
+		? ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT>
+		: Record<string, any> & { output?: ConfigOutput }// `Invalid Config Shape` //TConfig
 ):
 	TConfig extends { output: 'array', schema: SchemaType<OBJECT> }
 	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
@@ -211,9 +221,9 @@ export function ObjectStreamer<
 
 // Overload for the "with-parent" case
 export function ObjectStreamer<
-	const TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
+	const TConfig, // extends ObjectStreamerPermissiveConstraint<OBJECT>,
 
-	const TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
+	const TParentConfig, // extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
 
 	const TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>
 	= utils.Override<TParentConfig, TConfig>,
@@ -221,8 +231,12 @@ export function ObjectStreamer<
 	OBJECT = any,
 	PARENT_OBJECT = any,
 >(
-	config: ValidateObjectStreamerConfigShape<TConfig, TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>>
+	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
+		? TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>
+		? ValidateObjectStreamerConfigShape<TConfig, TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>
+		: ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT> //Validate just the config individually
+		: `Invalid Config Shape`, //TConfig
+	parent: ConfigProvider<TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT> ? ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT> : `Invalid Parent Shape`>// TParentConfig
 ):
 	// Final output is 'array' with a schema. We infer the element type directly from the final schema.
 	TFinalConfig extends { output: 'array', schema: SchemaType<any> }
