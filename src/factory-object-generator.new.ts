@@ -29,8 +29,8 @@ type GenerateObjectConfig<OBJECT, ENUM extends string = string> =
 
 type GenerateObjectReturn<
 	TConfig extends configs.OptionalTemplateConfig,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 > =
 	TConfig extends { output: 'array', schema: SchemaType<OBJECT> }
 	? LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
@@ -47,72 +47,263 @@ type GenerateObjectReturn<
 	? LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
 	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<any>>>;// object with no schema, maybe return Error String
 
+type GenerateObjectWithParentReturn<
+	TConfig extends configs.OptionalTemplateConfig,
+	TParentConfig extends configs.OptionalTemplateConfig,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+	TFinalConfig extends configs.OptionalTemplateConfig = utils.Override<TParentConfig, TConfig>,
+> =
+	GenerateObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ENUM extends never ? ENUM : PARENT_ENUM>
+
 type ProcessedPromptObjectConfig<OBJECT, ENUM extends string = string> =
 	configs.CascadaConfig
 	& GenerateObjectConfig<OBJECT, ENUM>
 	& { prompt?: string | undefined };
 
+
 export function mainObjectGenerator<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'async-template', OBJECT, ENUM>(config, 'async-template', undefined);
-}
+): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, OBJECT, ENUM>;
 
+// Overload 2: With optional parent parameter
+export function mainObjectGenerator<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function mainObjectGenerator<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'async-template', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'async-template');
+	}
+}
 // The alias for the default factory
 const withTemplate = mainObjectGenerator;
 
 export function loadsTemplate<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'async-template-name' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'async-template-name', OBJECT, ENUM>(config, 'async-template-name', undefined);
+): GenerateObjectReturn<TConfig & { promptType: 'async-template-name' }, OBJECT, ENUM>;
+
+// Overload 2: With optional parent parameter
+export function loadsTemplate<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function loadsTemplate<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'async-template-name' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'async-template-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'async-template-name', undefined);
+	}
 }
 
 export function withScript<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'async-script' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'async-script', OBJECT, ENUM>(config, 'async-script', undefined);
+): GenerateObjectReturn<TConfig & { promptType: 'async-script' }, OBJECT, ENUM>;
+
+// Overload 2: With optional parent parameter
+export function withScript<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function withScript<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'async-script' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'async-script', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'async-script', undefined);
+	}
 }
 
 export function loadsScript<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'async-script-name' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'async-script-name', OBJECT, ENUM>(config, 'async-script-name', undefined);
+): GenerateObjectReturn<TConfig & { promptType: 'async-script-name' }, OBJECT, ENUM>;
+
+// Overload 2: With optional parent parameter
+export function loadsScript<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function loadsScript<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'async-script-name' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'async-script-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'async-script-name', undefined);
+	}
 }
 
 export function withText<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'text' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'text', OBJECT, ENUM>(config, 'text', undefined);
+): GenerateObjectReturn<TConfig & { promptType: 'text' }, OBJECT, ENUM>;
+
+// Overload 2: With optional parent parameter
+export function withText<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function withText<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'text' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'text', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'text');
+	}
 }
 
 export function loadsText<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	OBJECT = any,
 	ENUM extends string = string,
-	OBJECT = any
 >(
 	config: TConfig
-): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, ENUM, OBJECT> {
-	return _createObjectGenerator<TConfig, TConfig, 'text-name', OBJECT, ENUM>(config, 'text-name', undefined);
+): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, OBJECT, ENUM>;
+
+// Overload 2: With optional parent parameter
+export function loadsText<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function loadsText<
+	TConfig extends ProcessedPromptObjectConfig<OBJECT, ENUM>,
+	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	OBJECT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ENUM extends string = string,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, OBJECT, ENUM> | GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM> {
+	if (parent) {
+		return _createObjectGenerator(config, 'text-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ENUM, PARENT_OBJECT, PARENT_ENUM>;
+	} else {
+		return _createObjectGenerator(config, 'text-name');
+	}
 }
 
 //common function for the specialized from/loads Template/Script/Text
@@ -129,7 +320,7 @@ function _createObjectGenerator<
 	config: TConfig,
 	promptType: PType,
 	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig & { promptType: PType }, ENUM, OBJECT | PARENT_OBJECT> {
+): GenerateObjectReturn<TConfig & { promptType: PType }, any, any> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
@@ -147,7 +338,7 @@ function _createObjectGenerator<
 		console.log('[DEBUG] _ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(merged as configs.OptionalTemplateConfig, generateObject) as GenerateObjectReturn<TConfig & { promptType: PType }, ENUM, OBJECT | PARENT_OBJECT>;
+	return createLLMRenderer(merged as configs.OptionalTemplateConfig, generateObject) as GenerateObjectReturn<TConfig & { promptType: PType }, OBJECT, ENUM>;
 }
 
 export const ObjectGenerator = Object.assign(mainObjectGenerator, {
