@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateObject, LanguageModel } from "ai";
 
 import * as results from './types-result'
 import * as configs from './types-config';
@@ -66,6 +66,34 @@ type ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
 	& GenerateObjectConfig<OBJECT, ELEMENT, ENUM>
 	& { prompt?: string | undefined };
 
+// Required and optional props for the config, without prompt template/script coniguration (CascadaConfig)
+type ConfigShape<OBJECT, ELEMENT, ENUM extends string> =
+	{ prompt?: string | undefined } &
+	(
+		// Case 1: Standard object generation
+		| (configs.GenerateObjectObjectConfig<OBJECT> & {
+			output?: 'object'; // It can be 'object' or undefined, both are valid
+			schema: SchemaType<OBJECT>;
+			model: LanguageModel;
+		})
+		// Case 2: Array generation
+		| (configs.GenerateObjectArrayConfig<ELEMENT> & {
+			output: 'array';
+			schema: SchemaType<ELEMENT>;
+			model: LanguageModel;
+		})
+		// Case 3: Enum generation
+		| (configs.GenerateObjectEnumConfig<ENUM> & {
+			output: 'enum';
+			enum: readonly ENUM[];
+			model: LanguageModel;
+		})
+		// Case 4: No schema generation
+		| (configs.GenerateObjectNoSchemaConfig & {
+			output: 'no-schema';
+			model: LanguageModel;
+		})
+	);
 
 export function mainObjectGenerator<
 	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
@@ -73,7 +101,10 @@ export function mainObjectGenerator<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>
 ): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -86,9 +117,20 @@ export function mainObjectGenerator<
 	PARENT_OBJECT = any,
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
+	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	//config must have any required properties missing from parent
+	config: utils.StrictUnionSubtype<TFinalConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
+	//the parent must conform to the shape of TFinalConfig
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+			& configs.CascadaConfig //processed prompt
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
@@ -110,7 +152,10 @@ export function loadsTemplate<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: TConfig
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
 ): GenerateObjectReturn<TConfig & { promptType: 'async-template-name' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -124,8 +169,16 @@ export function loadsTemplate<
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+			& configs.CascadaConfig //processed prompt
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
@@ -145,7 +198,10 @@ export function withScript<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: TConfig
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
 ): GenerateObjectReturn<TConfig & { promptType: 'async-script' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -159,8 +215,16 @@ export function withScript<
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+			& configs.CascadaConfig //processed prompt
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
@@ -180,7 +244,10 @@ export function loadsScript<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: TConfig
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
 ): GenerateObjectReturn<TConfig & { promptType: 'async-script-name' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -194,8 +261,16 @@ export function loadsScript<
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>,
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+			& configs.CascadaConfig //processed prompt
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
@@ -215,7 +290,9 @@ export function withText<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: TConfig
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+	>
 ): GenerateObjectReturn<TConfig & { promptType: 'text' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -229,8 +306,14 @@ export function withText<
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+	>,
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
@@ -250,7 +333,9 @@ export function loadsText<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: TConfig
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+	>,
 ): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With optional parent parameter
@@ -264,8 +349,14 @@ export function loadsText<
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
 >(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+	>,
+	parent?: ConfigProvider<
+		utils.StrictUnionSubtype<TParentConfig,
+			ConfigShape<OBJECT, ELEMENT, ENUM>
+		>
+	>
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
