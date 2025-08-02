@@ -242,7 +242,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// SECTION 4: Object Generation Tests
 
-	// x@ts-expect-error - Invalid output
+	// @ts-expect-error - Invalid output
 	const schemalessGenerator4 = create.ObjectGenerator({
 		model: openAIModel,
 		output: 'invalid',
@@ -264,24 +264,24 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	await objectGenerator2("Generate person"); // ✓ Single object generation is default if no output is provided
 
-	//invalid function property (used to break the regular invlid property check error text by ignoring invalid)
+	//@ts-expect-error invalid function property (used to break the regular invlid property check error text by ignoring invalid)
 	const objectGenerator2 = create.ObjectGenerator({
 		model: openAIModel,
 		schema,
 		invalid: 123,
 		invalidFunctionProperty: () => { console.log('Hi'); }
 	});
-	await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
+	//await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
 
 
-	//invalid function property (used to break the regular invlid property check error text by outputing ${string}')
+	//@ts-expect-error invalid function property (used to break the regular invlid property check error text by outputing ${string}')
 	const objectGenerator2 = create.ObjectGenerator({
 		model: openAIModel,
 		schema,
 		invalid: 123,
-		invalidFunctionProperty: (event) => { console.log(event); }
+		invalidFunctionProperty: (event: any) => { console.log(event); }
 	});
-	await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
+	//await objectGenerator3("Generate person"); // ✓ Single object generation is default if no output is provided
 
 	// @ts-expect-error - Missing required schema for object output type
 	const schemalessObjGen = create.ObjectGenerator({
@@ -351,12 +351,13 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	for await (const chunk of (await objectStreamer("Stream person")).partialObjectStream) { /* consume stream */ } // ✓ Object streaming
 
-	// object streamer incompartable onFinish
+	// @ts-expect-error object streamer incompartable onFinish
 	const objectStreamerIncompatible = create.ObjectStreamer({
 		model: openAIModel,
 		output: 'object',
 		schema,
-		onFinish: (event) => { console.log(event); }
+
+		onFinish: (event: number) => { console.log(event); }
 		//onFinish: (event: any) => { console.log(event); }
 		//onFinish: (event: { object: z.infer<typeof schema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => { console.log(event); }
 	});
@@ -384,9 +385,9 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		schema
 	});
 
+	//@ts-expect-error - Missing required enum values for enum output type
 	const enumlessGen = create.ObjectGenerator({
 		model: openAIModel,
-		// x@ts-expect-error - Missing required enum values for enum output type
 		output: 'enum'
 	}); // ✗ Missing required enum values
 
@@ -403,7 +404,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		model: openAIModel,
 	});
 
-	// x@ts-expect-error - no output defaults to 'object' which expects schema
+	// @ts-expect-error - no output defaults to 'object' which expects schema
 	const defaultOutputNoSchemaGen = create.ObjectGenerator({
 		model: openAIModel,
 	});
@@ -521,7 +522,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		schema
 	}, objectParentConfig);
 
-	// x@ts-expect-error - Enum output type not supported with streaming
+	// @ts-expect-error - Enum output type not supported with streaming
 	const invalidEnumStreamer = create.ObjectStreamer({
 		model: openAIModel,
 		output: 'enum',
