@@ -48,7 +48,7 @@ export type StrictOverrideTypeWithTemplateAndLoader<Config extends configs.Optio
 	: StrictOverrideType<Config, ParentConfig, Shape & configs.TemplateConfig & RequireTemplateLoaderIfNeeded<Config>>;
 
 // Helper to infer parameters from the schema
-export type InferParameters<T extends configs.ToolParameters> = T extends z.ZodTypeAny
+export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 	? z.infer<T>
 	: T extends { parameters: z.ZodTypeAny }
 	? z.infer<T['parameters']>
@@ -102,7 +102,8 @@ export type RequireTemplateLoaderIfNeeded<
 	: object;
 
 export type RequireScriptLoaderIfNeeded<
-	TMergedConfig extends configs.ScriptConfig
+	TMergedConfig extends configs.ScriptConfig<OBJECT>,
+	OBJECT = any
 > = TMergedConfig['scriptType'] extends 'script-name' | 'async-script-name'
 	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
 	: object;

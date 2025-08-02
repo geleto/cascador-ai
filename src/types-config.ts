@@ -94,23 +94,23 @@ export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateOb
 
 export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	output?: 'object' | undefined;
-	schema?: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
-	output?: 'array';
-	schema?: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+	output: 'array';
+	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectEnumConfig<ENUM extends string> = GenerateObjectBaseConfig & {
-	output?: 'enum';
-	enum?: readonly ENUM[];
+	output: 'enum';
+	enum: readonly ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
