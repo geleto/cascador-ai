@@ -4,7 +4,7 @@ import * as configs from './types-config';
 import * as results from './types-result';
 
 import { TextGeneratorInstance } from './factory-text';
-import { ObjectGeneratorConfig, ObjectGeneratorInstance } from './factory-object-generator';
+import { LLMConfig, ObjectGeneratorInstance } from './factory-object-generator';
 import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
 import * as utils from './type-utils';
@@ -26,7 +26,7 @@ export function Tool<
 
 // Overload for ObjectGenerator
 export function Tool<
-	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>,
+	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMConfig<OBJECT, ELEMENT, ENUM>>,
 	TResult extends ToolResultFromObjectGenerator<TParent>,
 	TConfig extends configs.ToolConfig<PARAMETERS>,
 	PARAMETERS extends configs.ToolParameters,
@@ -53,7 +53,7 @@ export function Tool<
 	OBJECT, ELEMENT, ENUM extends string,
 	CONFIG extends configs.ToolConfig<PARAMETERS>,
 	PARENT_TYPE extends TextGeneratorInstance<TOOLS, OUTPUT>
-	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>>
+	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMConfig<OBJECT, ELEMENT, ENUM>>
 	| TemplateRendererInstance<configs.OptionalTemplateConfig>
 	| ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>,
 	TOOLS extends ToolSet,

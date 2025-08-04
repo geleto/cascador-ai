@@ -19,11 +19,12 @@ export type StrictType<T, Shape> = T extends Shape
 	: never;
 
 /** A union of all possible validation error objects for strong typing. */
-export type ConfigValidationError =
+/*export type ConfigValidationError =
 	| { readonly 'Config Error': 'Excess properties are not allowed.', readonly excess: string[] }
 	| { readonly 'Config Error': 'Required properties are missing.', readonly missing: string[] }
 	| { readonly 'Config Error': "The 'loader' property is required when 'promptType' is 'template-name' or 'async-template-name'." }
 	| { readonly 'Config Error': "Template properties ('loader', 'filters', 'options') are not allowed when 'promptType' is 'text'." };
+*/
 
 // Helper to get keys as a string array for the error message
 export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F & string, ...KeysToStringArray<R>] : [];

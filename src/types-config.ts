@@ -90,27 +90,27 @@ export type StreamTextConfig<
 > = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig>;
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type GenerateObjectBaseConfig = Partial<Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'>> & BaseConfig;
+export type GenerateObjectBaseConfig = Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'> & BaseConfig;
 
 export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	output?: 'object' | undefined;
-	schema?: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
-	output?: 'array';
-	schema?: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+	output: 'array';
+	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
 }
 
 export type GenerateObjectEnumConfig<ENUM extends string> = GenerateObjectBaseConfig & {
-	output?: 'enum';
-	enum?: readonly ENUM[];
+	output: 'enum';
+	enum: readonly ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 

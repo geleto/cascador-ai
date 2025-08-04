@@ -7,7 +7,7 @@ import { ToolSet } from 'ai';
 
 // Single config overload
 export function Config<
-	TConfig extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
+	TConfig, // extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
 	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
 >(
 	config: utils.StrictUnionSubtype<TConfig, Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>>,

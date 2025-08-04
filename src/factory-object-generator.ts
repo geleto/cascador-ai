@@ -9,7 +9,7 @@ import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "./validate";
 
-export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
+export type LLMConfig<OBJECT, ELEMENT, ENUM extends string> = (
 	| configs.GenerateObjectObjectConfig<OBJECT>
 	| configs.GenerateObjectArrayConfig<ELEMENT>
 	| configs.GenerateObjectEnumConfig<ENUM>
@@ -18,10 +18,10 @@ export type ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
-	CONFIG extends ObjectGeneratorConfig<OBJECT, ELEMENT, ENUM>
+	CONFIG extends LLMConfig<OBJECT, ELEMENT, ENUM>
 > = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
 
-type GenerateObjectConfig<OBJECT, ELEMENT, ENUM extends string = string> =
+type GenerateObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
 	configs.GenerateObjectObjectConfig<OBJECT> |
 	configs.GenerateObjectArrayConfig<ELEMENT> |
 	configs.GenerateObjectEnumConfig<ENUM> |
@@ -61,130 +61,295 @@ type GenerateObjectWithParentReturn<
 > =
 	GenerateObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT, ENUM extends never ? PARENT_ENUM : ENUM>
 
-type ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
-	configs.CascadaConfig
-	& GenerateObjectConfig<OBJECT, ELEMENT, ENUM>
-	& { prompt?: string | undefined };
-
-// Required and optional props for the config, without prompt template/script coniguration (CascadaConfig)
 type ConfigShape<OBJECT, ELEMENT, ENUM extends string> =
-	{ prompt?: string | undefined } &
+	// 1. ALL common/optional properties are defined ONCE at the top level.
+	configs.GenerateObjectBaseConfig & // Allows temperature, maxTokens, tools, etc.
+
+	// 2. The union contains ONLY the properties that are mutually exclusive
+	//    and define the specific "mode" of operation.
+	//    DO NOT re-include the `GenerateObject...Config` types here.
 	(
 		// Case 1: Standard object generation
-		| (configs.GenerateObjectObjectConfig<OBJECT> & {
-			output?: 'object'; // It can be 'object' or undefined, both are valid
+		{
+			output?: 'object'; // 'object' or undefined
 			schema: SchemaType<OBJECT>;
 			model: LanguageModel;
-		})
+		}
 		// Case 2: Array generation
-		| (configs.GenerateObjectArrayConfig<ELEMENT> & {
+		| {
 			output: 'array';
 			schema: SchemaType<ELEMENT>;
 			model: LanguageModel;
-		})
+		}
 		// Case 3: Enum generation
-		| (configs.GenerateObjectEnumConfig<ENUM> & {
+		| {
 			output: 'enum';
 			enum: readonly ENUM[];
 			model: LanguageModel;
-		})
+		}
 		// Case 4: No schema generation
-		| (configs.GenerateObjectNoSchemaConfig & {
+		| {
 			output: 'no-schema';
 			model: LanguageModel;
-		})
+			// NOTE: `schema` is NOT allowed here.
+		}
 	);
 
-export function mainObjectGenerator<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
+// A mapping from the 'output' literal to its full, correct config type.
+interface ConfigShapeMap {
+	array: configs.GenerateObjectArrayConfig<any> & configs.CascadaConfig;
+	enum: configs.GenerateObjectEnumConfig<any> & configs.CascadaConfig;
+	'no-schema': configs.GenerateObjectNoSchemaConfig & configs.CascadaConfig;
+	object: configs.GenerateObjectObjectConfig<any> & configs.CascadaConfig;
+}
+
+interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<any>, model?: LanguageModel, enum?: readonly string[] }
+
+//type ConfigOutput = keyof ConfigShapeMap | undefined;
+type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
+
+type GetOutputType<TConfig> =
+	TConfig extends { output: ConfigOutput }
+	? (TConfig['output'] extends keyof ConfigShapeMap
+		? TConfig['output']// not undefined
+		: 'object')
+	: 'object';
+
+type GetAllowedKeysForConfig<TConfig extends { output?: ConfigOutput }>
+	= keyof ConfigShapeMap[GetOutputType<TConfig>];
+
+// Gets the set of keys that are required in the final, merged configuration.
+type GetObjectGeneratorRequiredShape<TFinalConfig extends { output?: ConfigOutput }> =
+	TFinalConfig extends { output: 'enum' } ? { enum: unknown; model: unknown } :
+	TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
+	// Default case for 'object', 'array', or undefined output.
+	{ schema: unknown; model: unknown };
+
+export type ValidateObjectGeneratorConfigShape<
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & MoreConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig,
+	TFinalConfig extends AllSpecializedProperties,
+	OBJECT,
+	ELEMENT,
+	ENUM extends string,
+	PARENT_OBJECT,
+	PARENT_ELEMENT,
+	PARENT_ENUM extends string,
+	MoreConfig = object
+> =
+	// GATEKEEPER: Is the config a valid shape? We use StrictUnionSubtype to prevent extra properties.
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & MoreConfig
+	? (
+		TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig
+		? (
+			// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
+			(keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+				// 2. If no excess, check for properties missing from the FINAL merged config.
+				? (
+					keyof Omit<
+						GetObjectGeneratorRequiredShape<TFinalConfig>,
+						keyof TFinalConfig
+					> extends never
+					? TConfig //All checks passed.
+					: `Config Error: Missing required properties for output mode '${GetOutputType<TFinalConfig>}' - '${keyof
+					TFinalConfig &
+					string}'`
+				)
+				: `Config Error: Unknown properties for output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
+			)
+		) : (
+			//Parent Shape is invalid - for parent TypeScript will produce its standard error.
+			TConfig
+			//@todo check TConfig for excess properties
+		)
+	) : TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
+
+
+// Validator for the `parent` config's GENERIC type
+export type ValidateObjectGeneratorParentConfig<
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig,
+	TFinalConfig extends AllSpecializedProperties,
+	PARENT_OBJECT,
+	PARENT_ELEMENT,
+	PARENT_ENUM extends string,
+	MoreConfig = object
+> =
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig
+	? (
+		// Check for excess properties in the parent, validated against the FINAL config's shape.
+		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+		// The check has passed, return the original config type.
+		? TParentConfig
+		// On excess property failure, return a descriptive string.
+		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}'`
+	) : TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
+
+export function withText<
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
 	config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
 	>
-): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, OBJECT, ELEMENT, ENUM>;
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
-// Overload 2: With optional parent parameter
-export function mainObjectGenerator<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+// Overload 2: With parent parameter
+export function withText<
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 	PARENT_OBJECT = any,
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
-	TFinalConfig = utils.Override<TParentConfig, TConfig>
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	//config must have any required properties missing from parent
-	config: utils.StrictUnionSubtype<TFinalConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>,
-	//the parent must conform to the shape of TFinalConfig
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-			& configs.CascadaConfig //processed prompt
-		>
-	>
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>
+
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
-export function mainObjectGenerator<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>,
+export function withText<
+	TConfig extends GenerateObjectConfig<any, any, string>,
+	TParentConfig extends GenerateObjectConfig<any, any, string>,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
 	return _createObjectGenerator(config, 'async-template', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
 }
-// The alias for the default factory
-const withTemplate = mainObjectGenerator;
 
-export function loadsTemplate<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
+export function loadsText<
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
 	config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>,
-): GenerateObjectReturn<TConfig & { promptType: 'async-template-name' }, OBJECT, ELEMENT, ENUM>;
+	>
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
-// Overload 2: With optional parent parameter
-export function loadsTemplate<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+// Overload 2: With parent parameter
+export function loadsText<
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 	PARENT_OBJECT = any,
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>
+
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
+
+
+// Implementation signature that handles both cases
+export function loadsText<
+	TConfig extends GenerateObjectConfig<any, any, string>,
+	TParentConfig extends GenerateObjectConfig<any, any, string>,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
+	return _createObjectGenerator(config, 'text-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
+}
+
+export function withTemplate<
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	ENUM extends string = string,
 >(
 	config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT, ENUM>
 		& configs.CascadaConfig //processed prompt
-	>,
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-			& configs.CascadaConfig //processed prompt
-		>
 	>
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
+
+// Overload 2: With parent parameter
+export function withTemplate<
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+	PARENT_ENUM extends string = string,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>>
+
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
+
+// Implementation signature that handles both cases
+export function withTemplate<
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): GenerateObjectReturn<TConfig & { promptType: 'async-template' }, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
+	return _createObjectGenerator(config, 'async-template', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
+}
+
+export function loadsTemplate<
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	ENUM extends string = string,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT, ENUM>
+		& configs.CascadaConfig //processed prompt
+	>
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
+
+// Overload 2: With parent parameter
+export function loadsTemplate<
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	ENUM extends string = string,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+	PARENT_ENUM extends string = string,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>>
+
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 export function loadsTemplate<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>,
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -193,7 +358,7 @@ export function loadsTemplate<
 }
 
 export function withScript<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -201,36 +366,35 @@ export function withScript<
 	config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT, ENUM>
 		& configs.CascadaConfig //processed prompt
-	>,
-): GenerateObjectReturn<TConfig & { promptType: 'async-script' }, OBJECT, ELEMENT, ENUM>;
+	>
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
-// Overload 2: With optional parent parameter
+// Overload 2: With parent parameter
 export function withScript<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 	PARENT_OBJECT = any,
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>,
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-			& configs.CascadaConfig //processed prompt
-		>
-	>
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>>
+
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 export function withScript<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -239,7 +403,7 @@ export function withScript<
 }
 
 export function loadsScript<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -247,36 +411,35 @@ export function loadsScript<
 	config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT, ENUM>
 		& configs.CascadaConfig //processed prompt
-	>,
-): GenerateObjectReturn<TConfig & { promptType: 'async-script-name' }, OBJECT, ELEMENT, ENUM>;
+	>
+): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
-// Overload 2: With optional parent parameter
+// Overload 2: With parent parameter
 export function loadsScript<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 	PARENT_OBJECT = any,
 	PARENT_ELEMENT = any,
 	PARENT_ENUM extends string = string,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>,
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-			& configs.CascadaConfig //processed prompt
-		>
-	>
+	config: ValidateObjectGeneratorConfigShape<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.CascadaConfig>>
+
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 export function loadsScript<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -284,115 +447,23 @@ export function loadsScript<
 	return _createObjectGenerator(config, 'async-script-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
 }
 
-export function withText<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	OBJECT = any,
-	ELEMENT = any,
-	ENUM extends string = string,
->(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>
-): GenerateObjectReturn<TConfig & { promptType: 'text' }, OBJECT, ELEMENT, ENUM>;
-
-// Overload 2: With optional parent parameter
-export function withText<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
-	OBJECT = any,
-	ELEMENT = any,
-	ENUM extends string = string,
-	PARENT_OBJECT = any,
-	PARENT_ELEMENT = any,
-	PARENT_ENUM extends string = string,
->(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>,
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-		>
-	>
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
-
-// Implementation signature that handles both cases
-export function withText<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>,
->(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig & { promptType: 'text' }, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
-	return _createObjectGenerator(config, 'text', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
-}
-
-export function loadsText<
-	const TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	OBJECT = any,
-	ELEMENT = any,
-	ENUM extends string = string,
->(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>,
-): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, OBJECT, ELEMENT, ENUM>;
-
-// Overload 2: With optional parent parameter
-export function loadsText<
-	TConfig extends ProcessedPromptObjectConfig<OBJECT, ELEMENT, ENUM>,
-	TParentConfig extends ProcessedPromptObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
-	OBJECT = any,
-	ELEMENT = any,
-	ENUM extends string = string,
-	PARENT_OBJECT = any,
-	PARENT_ELEMENT = any,
-	PARENT_ENUM extends string = string,
->(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>,
-	parent?: ConfigProvider<
-		utils.StrictUnionSubtype<TParentConfig,
-			ConfigShape<OBJECT, ELEMENT, ENUM>
-		>
-	>
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
-
-// Implementation signature that handles both cases
-export function loadsText<
-	TConfig extends ProcessedPromptObjectConfig<any, any, string>,
-	TParentConfig extends ProcessedPromptObjectConfig<any, any, string>,
->(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig & { promptType: 'text-name' }, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
-	return _createObjectGenerator(config, 'text-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
-}
-
 //common function for the specialized from/loads Template/Script/Text
 function _createObjectGenerator<
-	TConfig extends configs.OptionalTemplateConfig & GenerateObjectConfig<OBJECT, ENUM>,
-	TParentConfig extends configs.OptionalTemplateConfig & GenerateObjectConfig<PARENT_OBJECT, PARENT_ENUM>,
+	TConfig extends GenerateObjectConfig<any, any, any> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, any> & configs.CascadaConfig,
 	PType extends RequiredPromptType,
-
-	OBJECT = any,
-	ELEMENT = any,
-	ENUM extends string = string,
-	PARENT_OBJECT = any,
-	PARENT_ENUM extends string = string,
 >(
 	config: TConfig,
 	promptType: PType,
 	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig & { promptType: PType }, OBJECT, ELEMENT, ENUM> {
+): GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	// Set default output value to make the config explicit.
 	// This simplifies downstream logic (e.g., in `create.Tool`).
-	if ((merged as configs.GenerateObjectObjectConfig<OBJECT | PARENT_OBJECT>).output === undefined) {
-		(merged as configs.GenerateObjectObjectConfig<OBJECT | PARENT_OBJECT>).output = 'object';
+	if ((merged as configs.GenerateObjectObjectConfig<any>).output === undefined) {
+		(merged as configs.GenerateObjectObjectConfig<any>).output = 'object';
 	}
 
 	validateBaseConfig(merged);
@@ -403,10 +474,10 @@ function _createObjectGenerator<
 		console.log('[DEBUG] _ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(merged as configs.OptionalTemplateConfig, generateObject) as GenerateObjectReturn<TConfig & { promptType: PType }, OBJECT, ELEMENT, ENUM>;
+	return createLLMRenderer(merged as configs.OptionalTemplateConfig, generateObject) as GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any>;
 }
 
-export const ObjectGenerator = Object.assign(mainObjectGenerator, {
+export const ObjectGenerator = Object.assign(withText, { // default is withText
 	withTemplate,
 	withScript,
 	withText,
