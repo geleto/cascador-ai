@@ -120,11 +120,11 @@ export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 }
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type StreamObjectBaseConfig = Partial<Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'>> & BaseConfig;
+export type StreamObjectBaseConfig = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'> & BaseConfig;
 
 export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	output?: 'object' | undefined;
-	schema?: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -132,8 +132,8 @@ export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 }
 
 export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
-	output?: 'array';
-	schema?: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+	output: 'array';
+	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -142,7 +142,7 @@ export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
 }
 
 export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
-	output?: 'no-schema';
+	output: 'no-schema';
 	mode?: 'json';
 	onFinish?: (event: { object: JSONValue | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void;
 }

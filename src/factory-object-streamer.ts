@@ -1,297 +1,409 @@
-import { streamObject, LanguageModel } from 'ai';
-import { ConfigProvider, mergeConfigs } from './ConfigData';
-import { createLLMRenderer, LLMCallSignature } from './llm';
-import { validateBaseConfig, validateObjectConfig } from './validate';
+import { streamObject, LanguageModel } from "ai";
+
+import * as results from './types-result'
 import * as configs from './types-config';
-import * as results from './types-result';
 import * as utils from './type-utils';
-import { SchemaType, TemplatePromptType } from './types';
-import { StreamObjectObjectConfig, TemplateConfig, CascadaConfig } from './types-config';
+import { RequiredPromptType, SchemaType } from "./types";
 
-// You want to use the overload generic parameters only to help guide to the correct overload and not to do any type validation
-// so that the correct overload is selected (todo - later when we change config to be assignable to an error type)
-// The actual validation should be done in the argument type so that the error will at least pinpoint the correct overload
+import { LLMCallSignature, createLLMRenderer } from "./llm";
+import { ConfigProvider, mergeConfigs } from "./ConfigData";
+import { validateBaseConfig, validateObjectConfig } from "./validate";
 
-// Any generic parameter extends part that only has partials
-// and that does not define generic types like ELEMENT, ENUM, OBJECT
-// and does not specialize some type (e.g. promptType?: 'template-name' | 'template-id' | 'text')
-// - then that part is not needed.
-// But if the generic parameter extends a type that has only partials,
-// then add a Record<string, any> & {optional props} so that the extends works (it requires at least 1 matching property)
-
-// Helper Types for Error Generation
-
-// A mapping from the 'output' literal to its full, correct config type.
-interface ConfigShapeMap {
-	array: configs.StreamObjectArrayConfig<any> & configs.OptionalTemplateConfig;
-	'no-schema': configs.StreamObjectNoSchemaConfig & configs.OptionalTemplateConfig;
-	object: configs.StreamObjectObjectConfig<any> & configs.OptionalTemplateConfig;
-}
-//type ConfigOutput = keyof ConfigShapeMap | undefined;
-type ConfigOutput = 'array' | 'no-schema' | 'object' | undefined;
-// A helper to safely extract the output type from a config, defaulting to 'object'.
-type GetOutputType<TConfig> = TConfig extends { output: any }
-	? TConfig['output'] extends keyof ConfigShapeMap
-	? TConfig['output']
-	: 'object'
-	: 'object';
-
-type GetConfigShape<TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>> =
-	TConfig extends { promptType: 'text' } ? ConfigShapeMap[GetOutputType<TConfig>] & { promptType: 'text' } :
-	ConfigShapeMap[GetOutputType<TConfig>] & TemplateConfig;
-
-// Gets the set of allowed keys by looking up the correct config shape in the map.
-type GetAllowedKeysForConfig<TConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>>
-	= keyof GetConfigShape<TConfig>;
-
-// Gets the set of keys that are required in the final, merged configuration.
-type GetObjectStreamerRequiredShape<TFinalConfig extends { output?: ConfigOutput } & configs.OptionalTemplateConfig & Record<string, any>> =
-	TFinalConfig extends { output: 'no-schema' } ? { model: unknown } :
-	// Default case for 'object', 'array', or undefined output.
-	{ schema: unknown; model: unknown };
-
-// Returns a specific error message string if template properties are used incorrectly.
-type GetTemplateError<TFinalConfig extends configs.OptionalTemplateConfig & Record<string, any>> =
-	TFinalConfig extends { promptType: 'text' } ? (
-		keyof TFinalConfig & ('loader' | 'filters' | 'options' | 'context') extends infer InvalidProps
-		? InvalidProps extends never
-		? never
-		: `Template properties ('${InvalidProps & string}') are not allowed when 'promptType' is 'text'.`
-		: never
-	) :
-	TFinalConfig extends { promptType: 'template-name' | 'async-template-name' } ? (
-		'loader' extends keyof TFinalConfig
-		? never
-		: `Loader is required when promptType is '${TFinalConfig['promptType']}'.`
-	) : never;
-
-/*
-// The reason I had to disable the ObjectStreamerPermissiveConstraint for some parameters
-// to avoid what I think is a TS bug where function properties prevent us from getting config type keys
-// (e.g. onFinish in ObjectStreamer)
-export type BadValidator<TConfig> = `'${keyof TConfig & string}'`;
-
-export function TestConfig<
-	const TConfig extends Record<string, any>
->(
-	config: TConfig extends Record<string, any> ? BadValidator<TConfig> : TConfig
-): void
-
-TestConfig({
-	aaa: "hello",
-	xxx: 123
-});
-
-TestConfig({
-	aaa: "hello",
-	xxx: function () { return 123 } as const
-});
-
-TestConfig({
-	aaa: "hello",
-	xxx: function () { return 123 }
-});
-
-export function TestConfig2<
-	const TConfig// extends Record<string, any>
->(
-	config: TConfig extends Record<string, any> ? BadValidator<TConfig> : TConfig
-): void
-
-TestConfig2({
-	aaa: "hello",
-	xxx: function () { return 123 }
-});
-*/
-
-type ObjectStreamerPermissiveConstraint<OBJECT> =
-	{ output?: ConfigOutput }
-	& configs.OptionalTemplateConfig
-	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
-	& Record<string, any>;
-
-type FinalObjectStreamerPermissiveConstraint<OBJECT> =
-	{ output?: ConfigOutput }
-	//& TemplateConfig & { promptType?: TemplatePromptType | 'text' }
-	& CascadaConfig & { prompt?: string, promptType?: TemplatePromptType | 'text' }///possibly the impossible combination of promptType: 'text' and TemplateConfig
-	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
-	& Record<string, any>;
-
-// Validator for the child `config` object
-export type ValidateObjectStreamerConfigShape<
-	TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>,
-	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
-	TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>,
-	OBJECT,
-	PARENT_OBJECT
-> =
-	// GATEKEEPER: Is the config a valid shape? We use StrictUnionSubtype to prevent extra properties.
-	TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
-	? (
-		TParentConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT>
-		? (
-			// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
-			keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
-			// 2. If no excess, check for properties missing from the FINAL merged config.
-			? keyof Omit<
-				GetObjectStreamerRequiredShape<TFinalConfig>,
-				keyof TFinalConfig
-			> extends never
-			// 3. If no missing properties, check for template rule violations in the FINAL config.
-			? GetTemplateError<TFinalConfig> extends never
-			// 4. All checks passed.
-			? TConfig
-			: `Config Error: ${GetTemplateError<TFinalConfig> & string}`
-			: `Config Error: Missing required properties - '${keyof Omit<
-				GetObjectStreamerRequiredShape<TFinalConfig>,
-				keyof TFinalConfig
-			> &
-			string}'`
-			: `Config Error: Unknown properties for output mode '${GetOutputType<TConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
-		) : (
-			//Parent Shape is invalid
-			`Config Error: Invalid Parent Shape`
-			//@todo maybe check TConfig for excess properties?
-		)
-	) : //TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
-	`Config Error: Invalid Shape`;
-
-// Validator for the `parent` config's GENERIC type
-export type ValidateObjectStreamerParentConfig<
-	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
-	TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>,
-	OBJECT,
-	PARENT_OBJECT,
-> =
-	TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>
-	? (
-		// Check for excess properties in the parent, validated against the FINAL config's shape.
-		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
-		// The check has passed, return the original config type.
-		? TParentConfig
-		// On excess property failure, return a descriptive string.
-		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}'`
-	) : `Invalid Parent Shape`
-// TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
-
-export type ObjectStreamerConfig<OBJECT, ELEMENT> = (
+export type LLMConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>
 	| configs.StreamObjectArrayConfig<ELEMENT>
 	| configs.StreamObjectNoSchemaConfig
 ) & configs.OptionalTemplateConfig;
 
-
 export type ObjectStreamerInstance<
 	OBJECT, ELEMENT,
-	CONFIG extends ObjectStreamerConfig<OBJECT, ELEMENT>
+	CONFIG extends LLMConfig<OBJECT, ELEMENT>
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
 
-/*
-{ output?: ConfigOutput }
-	& configs.OptionalTemplateConfig
-	& { output?: ConfigOutput; schema?: SchemaType<OBJECT>; }
-	& Record<string, any>;
-*/
+type StreamObjectConfig<OBJECT, ELEMENT> =
+	configs.StreamObjectObjectConfig<OBJECT> |
+	configs.StreamObjectArrayConfig<ELEMENT> |
+	configs.StreamObjectNoSchemaConfig;
 
-export function ObjectStreamer<
-	const TConfig, // extends ObjectStreamerPermissiveConstraint<OBJECT>,
-	OBJECT = any
->(
-	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
-		? ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT>
-		: Record<string, any> & { output?: ConfigOutput }// `Invalid Config Shape` //TConfig
-):
-	TConfig extends { output: 'array', schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
-
-	: TConfig extends { output: 'no-schema' }
-	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectNoSchemaResult>>
-
-	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
-
-	//no schema, no enum
+type StreamObjectReturn<
+	TConfig extends configs.OptionalTemplateConfig,
+	OBJECT,
+	ELEMENT,
+> =
+	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> }
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
 	: TConfig extends { output: 'array' }
-	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<any>>>
+	? `Config Error: Array output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<any>>>//array with no schema, maybe return Error String
+	: TConfig extends { output: 'no-schema' }
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>>
+	//no schema, no enum, no array - it's 'object' or no output which defaults to 'object'
+	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
+	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>;// object with no schema, maybe return Error String
 
-	: TConfig extends { output: 'object' }
-	? LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<any>>>
-
-	: LLMCallSignature<TConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<any>>>
-
-// Overload for the "with-parent" case
-export function ObjectStreamer<
-	const TConfig, // extends ObjectStreamerPermissiveConstraint<OBJECT>,
-
-	const TParentConfig, // extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>,
-
-	const TFinalConfig extends FinalObjectStreamerPermissiveConstraint<OBJECT | PARENT_OBJECT>
-	= utils.Override<TParentConfig, TConfig>,
-
-	OBJECT = any,
-	PARENT_OBJECT = any,
->(
-	config: TConfig extends ObjectStreamerPermissiveConstraint<OBJECT>
-		? TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT>
-		? ValidateObjectStreamerConfigShape<TConfig, TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT>
-		: ValidateObjectStreamerConfigShape<TConfig, TConfig, TConfig, OBJECT, OBJECT> //Validate just the config individually
-		: `Invalid Config Shape`, //TConfig
-	parent: ConfigProvider<TParentConfig extends ObjectStreamerPermissiveConstraint<PARENT_OBJECT> ? ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, OBJECT, PARENT_OBJECT> : `Invalid Parent Shape`>// TParentConfig
-):
-	// Final output is 'array' with a schema. We infer the element type directly from the final schema.
-	TFinalConfig extends { output: 'array', schema: SchemaType<any> }
-	? LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TFinalConfig['schema']>>>>
-
-	// Final output is 'no-schema'.
-	: TFinalConfig extends { output: 'no-schema' }
-	? LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectNoSchemaResult>>
-
-	// Final output is 'object' (or defaulted to 'object') with a schema. We infer the object type directly from the final schema.
-	: TFinalConfig extends { output?: 'object' | undefined, schema: SchemaType<any> }
-	? LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TFinalConfig['schema']>>>>
-
-	// Fallback case: Final output is 'array' but no schema is provided anywhere.
-	: TFinalConfig extends { output: 'array' }
-	? LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectArrayResult<any>>>
-
-	// Fallback case: Final output is 'object' (or defaulted) but no schema is provided anywhere.
-	: LLMCallSignature<TFinalConfig & configs.OptionalTemplateConfig, Promise<results.StreamObjectObjectResult<any>>>
-
-// Implementation
-export function ObjectStreamer<
+type StreamObjectWithParentReturn<
 	TConfig extends configs.OptionalTemplateConfig,
 	TParentConfig extends configs.OptionalTemplateConfig,
-	OBJECT = any, ELEMENT = any
+	OBJECT,
+	ELEMENT,
+	PARENT_OBJECT,
+	PARENT_ELEMENT,
+	TFinalConfig extends configs.OptionalTemplateConfig = utils.Override<TParentConfig, TConfig>,
+> =
+	StreamObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT>
+
+type ConfigShape<OBJECT, ELEMENT> =
+	// 1. ALL common/optional properties are defined ONCE at the top level.
+	configs.StreamObjectBaseConfig & // Allows temperature, maxTokens, tools, etc.
+
+	// 2. The union contains ONLY the properties that are mutually exclusive
+	//    and define the specific "mode" of operation.
+	//    DO NOT re-include the `StreamObject...Config` types here.
+	(
+		// Case 1: Standard object generation
+		{
+			output?: 'object'; // 'object' or undefined
+			schema: SchemaType<OBJECT>;
+			model: LanguageModel;
+		}
+		// Case 2: Array generation
+		| {
+			output: 'array';
+			schema: SchemaType<ELEMENT>;
+			model: LanguageModel;
+		}
+		// Case 3: No schema generation
+		| {
+			output: 'no-schema';
+			model: LanguageModel;
+			// NOTE: `schema` is NOT allowed here.
+		}
+	);
+
+// A mapping from the 'output' literal to its full, correct config type.
+interface ConfigShapeMap {
+	array: configs.StreamObjectArrayConfig<any> & configs.CascadaConfig;
+	'no-schema': configs.StreamObjectNoSchemaConfig & configs.CascadaConfig;
+	object: configs.StreamObjectObjectConfig<any> & configs.CascadaConfig;
+}
+
+interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<any>, model?: LanguageModel, enum?: readonly string[] }
+
+type ConfigOutput = keyof ConfigShapeMap | undefined;
+//type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
+
+import { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./factory-object-generator";
+
+type ValidateObjectStreamerConfig<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & MoreConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig,
+	TFinalConfig extends AllSpecializedProperties,
+	OBJECT,
+	ELEMENT,
+	PARENT_OBJECT,
+	PARENT_ELEMENT,
+	MoreConfig = object
+> = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
+	Partial<StreamObjectConfig<OBJECT, ELEMENT>> & MoreConfig, //TConfig Shape
+	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig, //TParentConfig Shape
+	AllSpecializedProperties, //TFinalConfig Shape
+	OBJECT, ELEMENT, never, PARENT_OBJECT, PARENT_ELEMENT, never,
+	MoreConfig>
+
+// Validator for the `parent` config's GENERIC type
+type ValidateObjectStreamerParentConfig<
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig,
+	TFinalConfig extends AllSpecializedProperties,
+	PARENT_OBJECT,
+	PARENT_ELEMENT,
+	MoreConfig = object
+> = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
+	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig, //TParentConfig Shape
+	AllSpecializedProperties, //TFinalConfig Shape
+	{ output?: ConfigOutput; }, //
+	PARENT_OBJECT, PARENT_ELEMENT, never,
+	MoreConfig>
+
+export function withText<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
+
+// Overload 2: With parent parameter
+export function withText<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>>,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+// Implementation signature that handles both cases
+export function withText<
+	TConfig extends StreamObjectConfig<any, any>,
+	TParentConfig extends StreamObjectConfig<any, any>,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-):
-	LLMCallSignature<TConfig, results.StreamObjectResultAll<OBJECT, ELEMENT>> |
-	LLMCallSignature<utils.Override<TParentConfig, TConfig>, results.StreamObjectResultAll<OBJECT, ELEMENT>> {
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'async-template', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
 
-	type CombinedType = typeof parent extends ConfigProvider<TParentConfig>
-		? utils.Override<TParentConfig, TConfig>
-		: TConfig;
+export function loadsText<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
-	const merged = parent ? mergeConfigs(parent.config, config) : config;
+// Overload 2: With parent parameter
+export function loadsText<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>>,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+
+// Implementation signature that handles both cases
+export function loadsText<
+	TConfig extends StreamObjectConfig<any, any>,
+	TParentConfig extends StreamObjectConfig<any, any>,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'text-name', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
+
+export function withTemplate<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+		& configs.CascadaConfig //processed prompt
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
+
+// Overload 2: With parent parameter
+export function withTemplate<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+// Implementation signature that handles both cases
+export function withTemplate<
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'async-template', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
+
+export function loadsTemplate<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+		& configs.CascadaConfig //processed prompt
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
+
+// Overload 2: With parent parameter
+export function loadsTemplate<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+// Implementation signature that handles both cases
+export function loadsTemplate<
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'async-template-name', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
+
+export function withScript<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+		& configs.CascadaConfig //processed prompt
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
+
+// Overload 2: With parent parameter
+export function withScript<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+// Implementation signature that handles both cases
+export function withScript<
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'async-script', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
+
+export function loadsScript<
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+>(
+	config: utils.StrictUnionSubtype<TConfig,
+		ConfigShape<OBJECT, ELEMENT>
+		& configs.CascadaConfig //processed prompt
+	>
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
+
+// Overload 2: With parent parameter
+export function loadsScript<
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	OBJECT = any,
+	ELEMENT = any,
+	PARENT_OBJECT = any,
+	PARENT_ELEMENT = any,
+
+	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
+>(
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+		PARENT_OBJECT, PARENT_ELEMENT,
+		configs.CascadaConfig>>
+
+): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
+
+// Implementation signature that handles both cases
+export function loadsScript<
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
+>(
+	config: TConfig,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
+	return _createObjectStreamer(config, 'async-script-name', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+}
+
+//common function for the specialized from/loads Template/Script/Text
+function _createObjectStreamer<
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	PType extends RequiredPromptType,
+>(
+	config: TConfig,
+	promptType: PType,
+	parent?: ConfigProvider<TParentConfig>
+): StreamObjectReturn<TConfig & { promptType: PType }, any, any> {
+
+	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	// Set default output value to make the config explicit.
-	if ((merged as StreamObjectObjectConfig<OBJECT>).output === undefined) {
-		(merged as StreamObjectObjectConfig<OBJECT>).output = 'object';
+	// This simplifies downstream logic (e.g., in `create.Tool`).
+	if ((merged as configs.StreamObjectObjectConfig<any>).output === undefined) {
+		(merged as configs.StreamObjectObjectConfig<any>).output = 'object';
 	}
 
 	validateBaseConfig(merged);
-	// The key change: call validation with isStream = true
-	validateObjectConfig(merged, true);
+	validateObjectConfig(merged, false);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] _ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer<
-		CombinedType,
-		configs.StreamObjectObjectConfig<OBJECT> & { model: LanguageModel, schema: SchemaType<OBJECT> },
-		results.StreamObjectObjectResult<OBJECT>
-	>(merged, streamObject);
+	return createLLMRenderer(merged as configs.OptionalTemplateConfig, streamObject) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
 }
+
+export const ObjectStreamer = Object.assign(withText, { // default is withText
+	withTemplate,
+	withScript,
+	withText,
+	loadsTemplate,
+	loadsScript,
+	loadsText,
+});
