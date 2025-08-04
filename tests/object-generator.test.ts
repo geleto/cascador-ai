@@ -3,6 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
+
 import { model, temperature, StringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
@@ -108,7 +109,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should inherit model, context, and filters from a parent create.Config', async () => {
-			const generator = create.ObjectGenerator(
+			const generator = create.ObjectGenerator.withTemplate(
 				{
 					schema: simpleSchema,
 					prompt: 'Generate an object with name set to "{{ entity | upper }}" and value set to {{ defaultId }}.',
@@ -160,21 +161,7 @@ describe('create.ObjectGenerator', function () {
 			expect(resultColor).to.equal('Red');
 		});
 
-		/*it('should inherit `output: no-schema` from a parent object generator', async () => {
-			const parentGenerator = create.ObjectGenerator({
-				model, temperature,
-				output: 'no-schema',
-			});
-
-			const childGenerator = create.ObjectGenerator({
-				prompt: 'Generate a raw JSON object with a "success" key set to true.'
-			}, parentGenerator);
-
-			const { object } = await childGenerator();
-			expect(object).to.deep.equal({ success: true });
-		});*/
-
-		it('should inherit `output: no-schema` from a parent config', async () => {
+		it('should inherit `output: array` from a parent config', async () => {
 			const parentConfig = create.Config({
 				model, temperature,
 				output: 'array',
@@ -201,7 +188,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should override parent properties (context, temperature)', async () => {
-			const generator = create.ObjectGenerator({
+			const generator = create.ObjectGenerator.withTemplate({
 				temperature: 0.8,
 				schema: simpleSchema,
 				context: { entity: 'product' }, // Override entity
@@ -237,8 +224,7 @@ describe('create.ObjectGenerator', function () {
 			loader2.addTemplate('object2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
 
 			const parent = create.Config({ loader: [loader1] });
-			const generator = create.ObjectGenerator({
-				promptType: 'template-name',
+			const generator = create.ObjectGenerator.loadsTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				loader: [loader2]
@@ -258,7 +244,7 @@ describe('create.ObjectGenerator', function () {
 
 	describe('Template Engine Features', () => {
 		it('should resolve an asynchronous function from context', async () => {
-			const generator = create.ObjectGenerator({
+			const generator = create.ObjectGenerator.withTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				context: {
@@ -272,7 +258,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should apply an asynchronous filter with arguments', async () => {
-			const generator = create.ObjectGenerator({
+			const generator = create.ObjectGenerator.withTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				filters: {
@@ -289,7 +275,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should merge config and runtime context correctly', async () => {
-			const generator = create.ObjectGenerator({
+			const generator = create.ObjectGenerator.withTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				context: { name: 'Config', value: 1 },
@@ -305,12 +291,11 @@ describe('create.ObjectGenerator', function () {
 		const stringLoader = new StringLoader();
 		stringLoader.addTemplate('object.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
 
-		it('should load a template using promptType: "async-template-name"', async () => {
-			const generator = create.ObjectGenerator({
+		it('should load a template using .loadsTemplate modifier', async () => {
+			const generator = create.ObjectGenerator.loadsTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				loader: stringLoader,
-				promptType: 'async-template-name',
 				prompt: 'object.njk',
 			});
 
@@ -320,7 +305,7 @@ describe('create.ObjectGenerator', function () {
 	});
 
 	describe('Callable Interface Overloads', () => {
-		const generatorWithPrompt = create.ObjectGenerator({
+		const generatorWithPrompt = create.ObjectGenerator.withTemplate({
 			model, temperature,
 			schema: simpleSchema,
 			prompt: 'Generate an object with name "{{ name }}" and value {{ value }}.',
@@ -407,7 +392,7 @@ describe('create.ObjectGenerator', function () {
 		});
 
 		it('should propagate errors from async context functions', async () => {
-			const generator = create.ObjectGenerator({
+			const generator = create.ObjectGenerator.withTemplate({
 				model, temperature,
 				schema: simpleSchema,
 				context: {
