@@ -8,8 +8,9 @@ import { RequiredPromptType, SchemaType } from "./types";
 import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "./validate";
+import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./factory-object-generator";
 
-export type LLMConfig<OBJECT, ELEMENT> = (
+export type LLMStreamerConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>
 	| configs.StreamObjectArrayConfig<ELEMENT>
 	| configs.StreamObjectNoSchemaConfig
@@ -17,7 +18,7 @@ export type LLMConfig<OBJECT, ELEMENT> = (
 
 export type ObjectStreamerInstance<
 	OBJECT, ELEMENT,
-	CONFIG extends LLMConfig<OBJECT, ELEMENT>
+	CONFIG extends LLMStreamerConfig<OBJECT, ELEMENT>
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
 
 type StreamObjectConfig<OBJECT, ELEMENT> =
@@ -91,8 +92,6 @@ interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<
 
 type ConfigOutput = keyof ConfigShapeMap | undefined;
 //type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
-
-import { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./factory-object-generator";
 
 type ValidateObjectStreamerConfig<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & MoreConfig,

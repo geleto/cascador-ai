@@ -9,7 +9,7 @@ import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "./validate";
 
-export type LLMConfig<OBJECT, ELEMENT, ENUM extends string> = (
+export type LLMGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 	| configs.GenerateObjectObjectConfig<OBJECT>
 	| configs.GenerateObjectArrayConfig<ELEMENT>
 	| configs.GenerateObjectEnumConfig<ENUM>
@@ -18,7 +18,7 @@ export type LLMConfig<OBJECT, ELEMENT, ENUM extends string> = (
 
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
-	CONFIG extends LLMConfig<OBJECT, ELEMENT, ENUM>
+	CONFIG extends LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>
 > = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
 
 type GenerateObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
