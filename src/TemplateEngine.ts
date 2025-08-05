@@ -1,8 +1,10 @@
-import cascada from 'cascada-engine';
+import * as cascada from 'cascada-engine';
 import { Context } from './types';
 import { TemplateConfig } from './types-config';
 
 class TemplateError extends Error {
+	cause?: Error;
+	name: string;
 	constructor(message: string, cause?: Error) {
 		super(message);
 		this.name = 'TemplateError';

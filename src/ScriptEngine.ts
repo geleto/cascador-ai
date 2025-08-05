@@ -1,4 +1,4 @@
-import cascada from 'cascada-engine';
+import * as cascada from 'cascada-engine';
 import { z } from 'zod';
 import { Context, SchemaType } from './types';
 import { ScriptConfig } from './types-config';
@@ -6,6 +6,8 @@ import * as results from './types-result';
 import { JSONValue } from 'ai';
 
 class ScriptError extends Error {
+	cause?: Error;
+	name: string;
 	constructor(message: string, cause?: Error) {
 		super(message);
 		this.name = 'ScriptError';

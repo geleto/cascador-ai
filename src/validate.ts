@@ -3,10 +3,14 @@ import type * as TypesConfig from "./types-config";
 import { Context } from "./types";
 
 export class ConfigError extends Error {
+	cause?: Error;
+	name: string;
 	constructor(message: string, cause?: Error) {
 		super(message);
 		this.name = 'ConfigError';
-		this.cause = cause;
+		if (cause) {
+			this.cause = cause;
+		}
 	}
 }
 
