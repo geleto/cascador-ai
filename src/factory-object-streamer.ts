@@ -53,34 +53,6 @@ type StreamObjectWithParentReturn<
 > =
 	StreamObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT>
 
-type ConfigShape<OBJECT, ELEMENT> =
-	// 1. ALL common/optional properties are defined ONCE at the top level.
-	configs.StreamObjectBaseConfig & // Allows temperature, maxTokens, tools, etc.
-
-	// 2. The union contains ONLY the properties that are mutually exclusive
-	//    and define the specific "mode" of operation.
-	//    DO NOT re-include the `StreamObject...Config` types here.
-	(
-		// Case 1: Standard object generation
-		{
-			output?: 'object'; // 'object' or undefined
-			schema: SchemaType<OBJECT>;
-			model: LanguageModel;
-		}
-		// Case 2: Array generation
-		| {
-			output: 'array';
-			schema: SchemaType<ELEMENT>;
-			model: LanguageModel;
-		}
-		// Case 3: No schema generation
-		| {
-			output: 'no-schema';
-			model: LanguageModel;
-			// NOTE: `schema` is NOT allowed here.
-		}
-	);
-
 // A mapping from the 'output' literal to its full, correct config type.
 interface ConfigShapeMap {
 	array: configs.StreamObjectArrayConfig<any> & configs.CascadaConfig;
@@ -128,9 +100,11 @@ export function withText<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
+	/*config: utils.StrictUnionSubtype<TConfig,
 		ConfigShape<OBJECT, ELEMENT>
-	>
+	>*/
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -167,9 +141,8 @@ export function loadsText<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-	>
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -205,10 +178,9 @@ export function withTemplate<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -247,10 +219,9 @@ export function loadsTemplate<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -289,10 +260,9 @@ export function withScript<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -331,10 +301,9 @@ export function loadsScript<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter

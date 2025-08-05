@@ -61,40 +61,6 @@ type GenerateObjectWithParentReturn<
 > =
 	GenerateObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT, ENUM extends never ? PARENT_ENUM : ENUM>
 
-type ConfigShape<OBJECT, ELEMENT, ENUM extends string> =
-	// 1. ALL common/optional properties are defined ONCE at the top level.
-	configs.GenerateObjectBaseConfig & // Allows temperature, maxTokens, tools, etc.
-
-	// 2. The union contains ONLY the properties that are mutually exclusive
-	//    and define the specific "mode" of operation.
-	//    DO NOT re-include the `GenerateObject...Config` types here.
-	(
-		// Case 1: Standard object generation
-		{
-			output?: 'object'; // 'object' or undefined
-			schema: SchemaType<OBJECT>;
-			model: LanguageModel;
-		}
-		// Case 2: Array generation
-		| {
-			output: 'array';
-			schema: SchemaType<ELEMENT>;
-			model: LanguageModel;
-		}
-		// Case 3: Enum generation
-		| {
-			output: 'enum';
-			enum: readonly ENUM[];
-			model: LanguageModel;
-		}
-		// Case 4: No schema generation
-		| {
-			output: 'no-schema';
-			model: LanguageModel;
-			// NOTE: `schema` is NOT allowed here.
-		}
-	);
-
 // A mapping from the 'output' literal to its full, correct config type.
 interface ConfigShapeMap {
 	array: configs.GenerateObjectArrayConfig<any> & configs.CascadaConfig;
@@ -188,7 +154,7 @@ export type ValidateObjectParentConfigBase<
 		// The check has passed, return the original config type.
 		? TParentConfig
 		// On excess property failure, return a descriptive string.
-		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}'`
+		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - ${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}`
 	) : TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
 
 type ValidateObjectGeneratorConfig<
@@ -230,9 +196,11 @@ export function withText<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>
+	//config: utils.StrictUnionSubtype<TConfig,
+	//	ConfigShape<OBJECT, ELEMENT, ENUM>
+	//>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
@@ -272,9 +240,8 @@ export function loadsText<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-	>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
@@ -313,10 +280,9 @@ export function withTemplate<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
+		configs.CascadaConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
@@ -358,10 +324,9 @@ export function loadsTemplate<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
+		configs.CascadaConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
@@ -403,10 +368,9 @@ export function withScript<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
+		configs.CascadaConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
@@ -448,10 +412,9 @@ export function loadsScript<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT, ENUM>
-		& configs.CascadaConfig //processed prompt
-	>
+	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
+		configs.CascadaConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
