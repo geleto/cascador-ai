@@ -3,7 +3,7 @@ import { ConfigError } from './validate';
 import * as configs from './types-config';
 import * as results from './types-result';
 
-import { TextGeneratorInstance } from './factory-text';
+import { TextGeneratorInstance } from './factory-text-generator';
 import { LLMGeneratorConfig, ObjectGeneratorInstance } from './factory-object-generator';
 import { TemplateRendererInstance } from './factory-template';
 import { ScriptRunnerInstance } from './factory-script';
