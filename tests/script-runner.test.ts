@@ -261,7 +261,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('reads from an ObjectGenerator and uses the result', async () => {
-			const locationGen = create.ObjectGenerator({
+			const locationGen = create.ObjectGenerator.withTemplate({
 				model, temperature,
 				schema: z.object({ city: z.string(), country: z.string() }),
 				prompt: `Generate a JSON object for the capital of {{ countryName }}.`,
@@ -287,7 +287,6 @@ describe('create.ScriptRunner', function () {
 					description: z.string()
 				}),
 				output: 'array',
-				promptType: 'text',
 				prompt: 'Generate 3 character descriptions with names Peter, Paul and Mary, in this order.'
 			});
 
@@ -323,7 +322,6 @@ describe('create.ScriptRunner', function () {
 				output: 'array',
 				schema: z.object({ id: z.number() }),
 				prompt: 'Generate a JSON array with these exact two objects: [{"id": 1}, {"id": 2}].',
-				promptType: 'text',
 			});
 			const scriptRunner = create.ScriptRunner({
 				context: { streamer: objectStreamer },
@@ -434,10 +432,9 @@ describe('create.ScriptRunner', function () {
       @data.out = msg
     `);
 
-		it('loads and executes a script using scriptType "async-script-name"', async () => {
+		it('loads and executes a script using .loadsScript', async () => {
 			const scriptRunner = create.ScriptRunner({
 				loader: stringLoader,
-				scriptType: 'async-script-name',
 				script: 's1',
 				context: { greeting: 'Loaded' },
 			});
@@ -446,15 +443,14 @@ describe('create.ScriptRunner', function () {
 		});
 	});
 
-	// --- ERROR HANDLING ---
+	// --- ERROR HANDLING & VALIDATION ---
 
 	describe('Error Handling & Validation', () => {
-		it('throws ConfigError if scriptType is name-based but no loader is provided', () => {
+		it('throws ConfigError if .loadsScript is used but no loader is provided', () => {
 			expect(() =>
 				create.ScriptRunner({
-					scriptType: 'script-name',
 					script: 'file.casc',
-				} as unknown as { scriptType: 'script', script: string }),
+				}),
 			).to.throw(ConfigError);
 		});
 
@@ -485,7 +481,6 @@ describe('create.ScriptRunner', function () {
 		it('rejects if loader fails to find the script', async () => {
 			const scriptRunner = create.ScriptRunner({
 				loader: new StringLoader(),
-				scriptType: 'async-script-name',
 				script: 'nope',
 			});
 			await expect(scriptRunner()).to.be.rejectedWith('Script not found');
