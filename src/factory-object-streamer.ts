@@ -137,18 +137,19 @@ export function withText<
 }
 
 export function loadsText<
-	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 >(
 	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		OBJECT, ELEMENT, OBJECT, ELEMENT>,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
 export function loadsText<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>>,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.LoaderConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	PARENT_OBJECT = any,
@@ -156,16 +157,18 @@ export function loadsText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT>>
+	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.LoaderConfig>,
+	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT,
+		configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
 
 
 // Implementation signature that handles both cases
 export function loadsText<
-	TConfig extends StreamObjectConfig<any, any>,
-	TParentConfig extends StreamObjectConfig<any, any>,
+	TConfig extends StreamObjectConfig<any, any> & configs.LoaderConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.LoaderConfig,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -215,19 +218,19 @@ export function withTemplate<
 }
 
 export function loadsTemplate<
-	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 >(
 	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
 export function loadsTemplate<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	PARENT_OBJECT = any,
@@ -237,17 +240,17 @@ export function loadsTemplate<
 >(
 	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
 
 // Implementation signature that handles both cases
 export function loadsTemplate<
-	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
-	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -297,19 +300,19 @@ export function withScript<
 }
 
 export function loadsScript<
-	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
+	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 >(
 	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
 export function loadsScript<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	PARENT_OBJECT = any,
@@ -319,17 +322,17 @@ export function loadsScript<
 >(
 	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
 
 // Implementation signature that handles both cases
 export function loadsScript<
-	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
-	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
+	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>

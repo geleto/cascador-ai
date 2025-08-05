@@ -235,19 +235,20 @@ export function withText<
 }
 
 export function loadsText<
-	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM>,
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
 	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
-		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM>,
+		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
+		configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
 export function loadsText<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.LoaderConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -257,16 +258,18 @@ export function loadsText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
-	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>
+	config: ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.LoaderConfig>,
+	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
+		configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 
 // Implementation signature that handles both cases
 export function loadsText<
-	TConfig extends GenerateObjectConfig<any, any, string>,
-	TParentConfig extends GenerateObjectConfig<any, any, string>,
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.LoaderConfig,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -319,20 +322,20 @@ export function withTemplate<
 }
 
 export function loadsTemplate<
-	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
 	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
 export function loadsTemplate<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -344,17 +347,17 @@ export function loadsTemplate<
 >(
 	config: ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
-		configs.CascadaConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 export function loadsTemplate<
-	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
-	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -407,20 +410,20 @@ export function withScript<
 }
 
 export function loadsScript<
-	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
+	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
 	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
 // Overload 2: With parent parameter
 export function loadsScript<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -432,17 +435,17 @@ export function loadsScript<
 >(
 	config: ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
-		configs.CascadaConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 export function loadsScript<
-	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
-	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig
+	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>

@@ -35,6 +35,10 @@ export interface CascadaConfig extends BaseConfig {
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
 
+export interface LoaderConfig extends BaseConfig {
+	loader: ILoaderAny | ILoaderAny[];
+}
+
 // Config for the template engine with type safety for loader requirement
 export interface TemplateConfig extends CascadaConfig {
 	prompt?: string;
