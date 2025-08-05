@@ -9,5 +9,6 @@
 	"eslint.format.enable": true,
 	"files.eol": "\n",
 	"typescript.updateImportsOnFileMove.enabled": "always",
-	"typescript.preferences.importModuleSpecifier": "relative"
+	"typescript.preferences.importModuleSpecifier": "relative",
+	"typescript.tsdk": "node_modules\\typescript\\lib"
 }
