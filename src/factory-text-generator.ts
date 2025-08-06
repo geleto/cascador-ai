@@ -58,7 +58,7 @@ type ValidateTextConfig<
 				? TConfig // All checks passed.
 				: `Config Error: Missing required property 'model' in the final configuration.`
 			)
-			: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof configs.GenerateTextConfig<TOOLS, OUTPUT>> & string}'`
+			: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof (configs.GenerateTextConfig<TOOLS, OUTPUT> & MoreConfig)> & string}'`
 		) : (
 			// Parent Shape is invalid - let TypeScript produce its standard error.
 			// @todo - check for excess properties in TConfig
@@ -84,14 +84,12 @@ type ValidateTextParentConfig<
 		: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof (configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & MoreConfig)> & string}'`
 	) : TParentConfig; // Shape is invalid.
 
-// --- END VALIDATION TYPES ---
-
 export function withText<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function withText<
@@ -100,8 +98,8 @@ export function withText<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function withText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
@@ -113,7 +111,7 @@ export function loadsText<
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.LoaderConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.LoaderConfig>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function loadsText<
@@ -122,8 +120,8 @@ export function loadsText<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function loadsText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
@@ -135,7 +133,7 @@ export function withTemplate<
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function withTemplate<
@@ -144,8 +142,8 @@ export function withTemplate<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function withTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
@@ -157,7 +155,7 @@ export function loadsTemplate<
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function loadsTemplate<
@@ -166,8 +164,8 @@ export function loadsTemplate<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function loadsTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
@@ -179,7 +177,7 @@ export function withScript<
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function withScript<
@@ -188,8 +186,8 @@ export function withScript<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function withScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
@@ -201,7 +199,7 @@ export function loadsScript<
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
 >(
-	config: ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
 ): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
 
 export function loadsScript<
@@ -210,8 +208,8 @@ export function loadsScript<
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
 
 export function loadsScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
