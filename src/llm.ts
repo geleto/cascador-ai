@@ -3,6 +3,7 @@ import * as configs from './types-config';
 import { validateCall } from './validate';
 import * as utils from './type-utils';
 import { TemplateRenderer } from './factory-template';
+import { LanguageModel } from 'ai';
 
 export type LLMCallSignature<
 	TConfig extends configs.OptionalTemplateConfig,
@@ -38,8 +39,9 @@ export type LLMCallSignature<
 	);
 
 export function createLLMRenderer<
-	TConfig extends configs.OptionalTemplateConfig & Partial<TFunctionConfig>, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-	TFunctionConfig extends Record<string, any>,
+	TConfig extends configs.OptionalTemplateConfig & Partial<TFunctionConfig>
+	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	TFunctionConfig extends { model: LanguageModel },
 	TFunctionResult,
 >(
 	config: TConfig,
@@ -65,7 +67,7 @@ export function createLLMRenderer<
 				renderedPrompt = await renderer(promptOrContext, maybeContext);
 			} else {
 				//no prompt provided, use the config prompt
-				renderedPrompt = await renderer(config.prompt!, promptOrContext);
+				renderedPrompt = await renderer(config.prompt, promptOrContext);
 			}
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
@@ -84,7 +86,7 @@ export function createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - text path called with prompt:', prompt);
 			}
 			validateCall(config, prompt);
-			prompt = prompt || config.prompt!;
+			prompt = prompt || config.prompt;
 			const result = vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 			if (config.debug) {
 				if (result instanceof Promise) {

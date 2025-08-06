@@ -84,14 +84,14 @@ export type GenerateTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig>;
+> = Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig;
 
 // The first argument of streamText
 export type StreamTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
 	PARTIAL_OUTPUT = never
-> = Partial<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig>;
+> = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig;
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type GenerateObjectBaseConfig = Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'> & BaseConfig;
@@ -126,13 +126,22 @@ export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type StreamObjectBaseConfig = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'> & BaseConfig;
 
+
+export interface OnFinishResultType<OBJECT = any> {
+	object: OBJECT | undefined;
+	usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+}
+
+// Generic OnFinish type that can be parameterized with the object type
+export type OnFinishType<OBJECT = any> = (event: OnFinishResultType<OBJECT>) => void;
+
 export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	output?: 'object' | undefined;
 	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: (event: { object: OBJECT | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void;
+	onFinish?: OnFinishType<OBJECT>;
 }
 
 export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
@@ -141,14 +150,14 @@ export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: (event: { object: ELEMENT[] | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void;
+	onFinish?: OnFinishType<ELEMENT>;
 	elementStream?: AsyncIterable<ELEMENT> & ReadableStream<ELEMENT>;
 }
 
 export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
 	output: 'no-schema';
 	mode?: 'json';
-	onFinish?: (event: { object: JSONValue | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void;
+	onFinish?: OnFinishType<JSONValue>;
 }
 
 export type AnyNoTemplateConfig<
