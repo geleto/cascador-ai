@@ -6,6 +6,7 @@ import { model, temperature, StringLoader, timeout, modelName, createProvider } 
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { DeepPartial } from 'ai';
+import { OnFinishResultType } from '../src/types-config';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
@@ -31,7 +32,7 @@ async function collectElements<T>(stream: AsyncIterable<T>): Promise<T[]> {
 }
 
 
-describe.only('create.ObjectStreamer', function () {
+describe('create.ObjectStreamer', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	// --- Schemas for testing ---
@@ -226,19 +227,20 @@ describe.only('create.ObjectStreamer', function () {
 	});
 
 	describe('Callbacks and Event Handlers', () => {
-		it.skip('should call onFinish callback with final object and usage when stream completes', async () => {
+		it('should call onFinish callback with final object and usage when stream completes', async () => {
 			// A TypeScript bug: https://github.com/microsoft/TypeScript/issues/62204
-			let resolveFinish: (data: { object: z.infer<typeof simpleSchema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void;
-			const finishPromise = new Promise<{ object: z.infer<typeof simpleSchema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }>((resolve) => {
+			//type FinishData = { object: z.infer<typeof simpleSchema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } };
+			let resolveFinish: (data: OnFinishResultType) => void;
+			const finishPromise = new Promise<OnFinishResultType>((resolve) => {
 				resolveFinish = resolve;
 			});
 
-			// @ts-expect-error A TypeScript bug
+			//@ts-expect-error A TypeScript bug
 			const streamer = create.ObjectStreamer({
 				model, temperature,
 				schema: simpleSchema,
 				prompt: 'Generate a JSON object for "FinishCallback" with value 123.',
-				onFinish(result: { object: z.infer<typeof simpleSchema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } }) {
+				onFinish(result: OnFinishResultType) {
 					resolveFinish(result);
 				}
 			});
@@ -296,9 +298,9 @@ describe.only('create.ObjectStreamer', function () {
 			expect(() =>
 				// but this does not work now because of function property TS bug workaround that removes the shape
 				// and I have not implemented alternative type checking yet
-				// @ts-expect-error - Intentionally invalid
 				create.ObjectStreamer({
 					model, temperature,
+					// @ts-expect-error - Intentionally invalid
 					output: 'enum',
 					enum: ['A', 'B']
 				}),
