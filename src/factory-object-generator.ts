@@ -63,10 +63,10 @@ type GenerateObjectWithParentReturn<
 
 // A mapping from the 'output' literal to its full, correct config type.
 interface ConfigShapeMap {
-	array: configs.GenerateObjectArrayConfig<any> & configs.CascadaConfig;
-	enum: configs.GenerateObjectEnumConfig<any> & configs.CascadaConfig;
-	'no-schema': configs.GenerateObjectNoSchemaConfig & configs.CascadaConfig;
-	object: configs.GenerateObjectObjectConfig<any> & configs.CascadaConfig;
+	array: configs.GenerateObjectArrayConfig<any>;
+	enum: configs.GenerateObjectEnumConfig<any>;
+	'no-schema': configs.GenerateObjectNoSchemaConfig;
+	object: configs.GenerateObjectObjectConfig<any>;
 }
 
 interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<any>, model?: LanguageModel, enum?: readonly string[] }
@@ -107,12 +107,13 @@ export type ValidateObjectConfigBase<
 	MoreConfig = object
 > =
 	// GATEKEEPER: Is the config a valid shape? We use StrictUnionSubtype to prevent extra properties.
+	// Reusable for object streamer
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & MoreConfig
 	? (
 		TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig
 		? (
 			// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
-			(keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+			(keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig> & MoreConfig> extends never
 				// 2. If no excess, check for properties missing from the FINAL merged config.
 				? (
 					keyof Omit<
@@ -124,12 +125,12 @@ export type ValidateObjectConfigBase<
 					TFinalConfig &
 					string}'`
 				)
-				: `Config Error: Unknown properties for output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig>> & string}'`
+				: `Config Error: Unknown properties for output mode '${GetOutputType<TFinalConfig>}' - '${keyof Omit<TConfig, GetAllowedKeysForConfig<TConfig> & MoreConfig> & string}'`
 			)
 		) : (
 			//Parent Shape is invalid - for parent TypeScript will produce its standard error.
-			TConfig
 			//@todo check TConfig for excess properties
+			TConfig
 		)
 	) : TConfig; //Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
 
@@ -150,16 +151,16 @@ export type ValidateObjectParentConfigBase<
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig
 	? (
 		// Check for excess properties in the parent, validated against the FINAL config's shape.
-		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> extends never
+		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig> & MoreConfig> extends never
 		// The check has passed, return the original config type.
 		? TParentConfig
 		// On excess property failure, return a descriptive string.
-		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - ${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig>> & string}`
+		: `Parent Config Error: Unknown properties for final output mode '${GetOutputType<TFinalConfig>}' - ${keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig> & MoreConfig> & string}`
 	) : TParentConfig; //Shape is invalid - Resolve to TParentConfig and let TypeScript produce its standard error.
 
 type ValidateObjectGeneratorConfig<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & MoreConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & MoreConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
 	OBJECT,
 	ELEMENT,
@@ -169,22 +170,22 @@ type ValidateObjectGeneratorConfig<
 	PARENT_ENUM extends string,
 	MoreConfig = object
 > = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
-	Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & MoreConfig, //TConfig Shape
-	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig, //TParentConfig Shape
+	Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & MoreConfig>, //TConfig Shape
+	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
 	MoreConfig>
 
 // Validator for the `parent` config's GENERIC type
 type ValidateObjectGeneratorParentConfig<
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
 	PARENT_OBJECT,
 	PARENT_ELEMENT,
 	PARENT_ENUM extends string,
 	MoreConfig = object
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
-	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & MoreConfig, //TParentConfig Shape
+	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	{ output?: ConfigOutput; }, //
 	PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
@@ -196,10 +197,7 @@ export function withText<
 	ELEMENT = any,
 	ENUM extends string = string,
 >(
-	//config: utils.StrictUnionSubtype<TConfig,
-	//	ConfigShape<OBJECT, ELEMENT, ENUM>
-	//>
-	config: ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, ENUM, OBJECT, ELEMENT, ENUM>,
 ): GenerateObjectReturn<TConfig, OBJECT, ELEMENT, ENUM>;
 
@@ -216,9 +214,9 @@ export function withText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>,
-	parent: ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
+	parent: TConfig & ConfigProvider<ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>;
@@ -334,8 +332,8 @@ export function loadsTemplate<
 
 // Overload 2: With parent parameter
 export function loadsTemplate<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -422,8 +420,8 @@ export function loadsScript<
 
 // Overload 2: With parent parameter
 export function loadsScript<
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig & configs.LoaderConfig,
+	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM & configs.CascadaConfig & configs.LoaderConfig>>,
 	OBJECT = any,
 	ELEMENT = any,
 	ENUM extends string = string,
@@ -455,14 +453,14 @@ export function loadsScript<
 
 //common function for the specialized from/loads Template/Script/Text
 function _createObjectGenerator<
-	TConfig extends GenerateObjectConfig<any, any, any> & configs.CascadaConfig,
-	TParentConfig extends GenerateObjectConfig<any, any, any> & configs.CascadaConfig,
+	TConfig extends GenerateObjectConfig<any, any, string>,
+	TParentConfig extends GenerateObjectConfig<any, any, string>,
 	PType extends RequiredPromptType,
 >(
 	config: TConfig,
 	promptType: PType,
 	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any> {
+): GenerateObjectReturn<TConfig & { promptType: PType }, any, any, string> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
@@ -480,7 +478,10 @@ function _createObjectGenerator<
 		console.log('[DEBUG] _ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(merged as configs.OptionalTemplateConfig, generateObject) as GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any>;
+	return createLLMRenderer(
+		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		generateObject
+	) as GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any>;
 }
 
 export const ObjectGenerator = Object.assign(withText, { // default is withText
