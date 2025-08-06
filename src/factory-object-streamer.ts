@@ -8,6 +8,7 @@ import { RequiredPromptType, SchemaType } from "./types";
 import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "./validate";
+
 import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./factory-object-generator";
 
 export type LLMStreamerConfig<OBJECT, ELEMENT> = (
@@ -37,7 +38,7 @@ type StreamObjectReturn<
 	? `Config Error: Array output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<any>>>//array with no schema, maybe return Error String
 	: TConfig extends { output: 'no-schema' }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>>
-	//no schema, no enum, no array - it's 'object' or no output which defaults to 'object'
+	//no schema, no array - it's 'object' or no output which defaults to 'object'
 	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
 	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>;// object with no schema, maybe return Error String
@@ -55,19 +56,19 @@ type StreamObjectWithParentReturn<
 
 // A mapping from the 'output' literal to its full, correct config type.
 interface ConfigShapeMap {
-	array: configs.StreamObjectArrayConfig<any> & configs.CascadaConfig;
-	'no-schema': configs.StreamObjectNoSchemaConfig & configs.CascadaConfig;
-	object: configs.StreamObjectObjectConfig<any> & configs.CascadaConfig;
+	array: configs.StreamObjectArrayConfig<any>;
+	'no-schema': configs.StreamObjectNoSchemaConfig;
+	object: configs.StreamObjectObjectConfig<any>;
 }
 
-interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<any>, model?: LanguageModel, enum?: readonly string[] }
+interface AllSpecializedProperties { output?: ConfigOutput, schema?: SchemaType<any>, model?: LanguageModel }
 
 type ConfigOutput = keyof ConfigShapeMap | undefined;
-//type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
+//type ConfigOutput = 'array' | 'no-schema' | 'object' | undefined;
 
 type ValidateObjectStreamerConfig<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & MoreConfig,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & MoreConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
 	OBJECT,
 	ELEMENT,
@@ -75,35 +76,30 @@ type ValidateObjectStreamerConfig<
 	PARENT_ELEMENT,
 	MoreConfig = object
 > = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<OBJECT, ELEMENT>> & MoreConfig, //TConfig Shape
-	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig, //TParentConfig Shape
+	Partial<StreamObjectConfig<OBJECT, ELEMENT> & MoreConfig>, //TConfig Shape
+	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
-	OBJECT, ELEMENT, never, PARENT_OBJECT, PARENT_ELEMENT, never,
 	MoreConfig>
 
 // Validator for the `parent` config's GENERIC type
 type ValidateObjectStreamerParentConfig<
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
 	PARENT_OBJECT,
 	PARENT_ELEMENT,
 	MoreConfig = object
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & MoreConfig, //TParentConfig Shape
+	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	{ output?: ConfigOutput; }, //
-	PARENT_OBJECT, PARENT_ELEMENT, never,
 	MoreConfig>
 
 export function withText<
-	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
+	TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	/*config: utils.StrictUnionSubtype<TConfig,
-		ConfigShape<OBJECT, ELEMENT>
-	>*/
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
@@ -118,9 +114,9 @@ export function withText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
@@ -141,7 +137,7 @@ export function loadsText<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
@@ -157,9 +153,9 @@ export function loadsText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>;
@@ -181,7 +177,7 @@ export function withTemplate<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
@@ -197,10 +193,10 @@ export function withTemplate<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>>
 
@@ -222,15 +218,15 @@ export function loadsTemplate<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
 export function loadsTemplate<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
 	ELEMENT = any,
 	PARENT_OBJECT = any,
@@ -238,10 +234,10 @@ export function loadsTemplate<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>>
 
@@ -263,7 +259,7 @@ export function withScript<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
@@ -279,10 +275,10 @@ export function withScript<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>>
 
@@ -304,15 +300,15 @@ export function loadsScript<
 	OBJECT = any,
 	ELEMENT = any,
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
 export function loadsScript<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig & configs.LoaderConfig,
+	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
 	ELEMENT = any,
 	PARENT_OBJECT = any,
@@ -320,10 +316,10 @@ export function loadsScript<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
+	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
+	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>>
 
@@ -342,8 +338,8 @@ export function loadsScript<
 
 //common function for the specialized from/loads Template/Script/Text
 function _createObjectStreamer<
-	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
-	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
+	TConfig extends StreamObjectConfig<any, any>,
+	TParentConfig extends StreamObjectConfig<any, any>,
 	PType extends RequiredPromptType,
 >(
 	config: TConfig,
@@ -367,7 +363,10 @@ function _createObjectStreamer<
 		console.log('[DEBUG] _ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(merged as configs.OptionalTemplateConfig, streamObject) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
+	return createLLMRenderer(
+		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		streamObject
+	) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
 }
 
 export const ObjectStreamer = Object.assign(withText, { // default is withText
