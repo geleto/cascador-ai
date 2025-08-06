@@ -64,13 +64,12 @@ describe('create.TextStreamer', function () {
 			expect(streamedText).to.equal(simpleExpected);
 		});
 
-		it('should handle promptType: "text" by not processing templates', async () => {
+		it('should treat the prompt as plain text by default, not processing templates', async () => {
 			const streamer = create.TextStreamer({
 				model, temperature,
-				promptType: 'text',
 				prompt: 'Write this exactly: {{ test }}',
 			});
-			const result = streamer();
+			const result = await streamer();
 			const streamedText = await streamToString(result.textStream);
 			expect(streamedText).to.equal('{{ test }}');
 		});
@@ -154,7 +153,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should inherit properties from a parent create.Config object', async () => {
-			const streamer = create.TextStreamer(
+			const streamer = create.TextStreamer.withTemplate(
 				{
 					prompt: 'Write only this and nothing else, including any parentheses: {{ item | parens }}.',
 				},
@@ -164,18 +163,18 @@ describe('create.TextStreamer', function () {
 			const streamedText = await streamToString(result.textStream);
 
 			expect(streamer.config.model).to.be.ok;
-			expect(streamer.config.temperature).to.equal(0.1);
+			expect(streamer.config.temperature).to.equal(temperature);
 			expect(streamedText).to.equal('(apples)');
 		});
 
 		it('should inherit from another TextStreamer instance', async () => {
-			const parentStreamer = create.TextStreamer({
+			const parentStreamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				context: { user: 'Alice' },
 				filters: { scream: (s: string) => s.toUpperCase() + '!!!' },
 			});
 
-			const childStreamer = create.TextStreamer({
+			const childStreamer = create.TextStreamer.withTemplate({
 				prompt: 'Write this and nothing else: {{ user | scream }}',
 			}, parentStreamer);
 
@@ -187,7 +186,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should override parent properties with child properties', async () => {
-			const streamer = create.TextStreamer(
+			const streamer = create.TextStreamer.withTemplate(
 				{
 					temperature: 0.9,
 					prompt: 'Write only this and nothing else: {{ item }}',
@@ -201,7 +200,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should merge "context" objects (child overrides parent keys)', async () => {
-			const streamer = create.TextStreamer(
+			const streamer = create.TextStreamer.withTemplate(
 				{
 					context: { item: 'oranges', source: 'child' },
 					prompt: 'Write this and nothing else: Item: {{ item }}, Source: {{ source }}',
@@ -214,7 +213,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should merge "filters" objects', async () => {
-			const streamer = create.TextStreamer(
+			const streamer = create.TextStreamer.withTemplate(
 				{
 					filters: { stars: (s: string) => `*${s}*` },
 					prompt: 'Write only this and nothing else, including any parentheses: {{ item | parens | stars }}.',
@@ -230,7 +229,7 @@ describe('create.TextStreamer', function () {
 			const loader1 = new StringLoader();
 			const loader2 = new StringLoader();
 			const parent = create.Config({ loader: loader1 });
-			const streamer = create.TextStreamer(
+			const streamer = create.TextStreamer.withTemplate(
 				{ model, temperature, loader: [loader1, loader2] },
 				parent,
 			);
@@ -238,12 +237,9 @@ describe('create.TextStreamer', function () {
 			expect(streamer.config.loader).to.deep.equal([loader1, loader2]);
 		});
 
-		// Inside 'Configuration & Inheritance' describe block
 		it('should correctly handle a three-level inheritance chain and call the LLM', async () => {
-			// 1. SETUP: Define the inheritance chain
 			const grandparent = create.Config({
 				context: {
-					// These will be rendered into a list
 					items: ['Apple'],
 					source: 'Grandparent'
 				},
@@ -254,7 +250,6 @@ describe('create.TextStreamer', function () {
 
 			const parent = create.Config({
 				context: {
-					// This will override the grandparent's value, but it's not used in the prompt
 					source: 'Parent'
 				},
 				filters: {
@@ -262,36 +257,26 @@ describe('create.TextStreamer', function () {
 				},
 			}, grandparent);
 
-			const childStreamer = create.TextStreamer({
+			const childStreamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				context: {
-					// Child context is not needed for this test, but we test it is merged correctly
 					source: 'Child'
 				},
-				// 2. TEMPLATE: This will be rendered by Cascador-AI
-				// The result will be: "Items: Apple, Banana, Cherry."
 				prompt: 'You are a summarizer. Your task is to summarize the following list of items into a single sentence starting with "The final list contains" followed immediately by the comma-separated list items wuth no "and" or quotes. Do not include the word "Items:". List: {{ items | f1 | f2 | join(", ") }}.',
 			}, parent);
 
 
-			// 3. ASSERTION (CONFIG): Verify Cascador-AI's internal config merging
 			expect(childStreamer.config.context).to.deep.equal({ items: ['Apple'], source: 'Child' });
 			expect(childStreamer.config.filters).to.have.keys('f1', 'f2');
 
 
-			// 4. EXECUTION: Call the streamer
 			const result = await childStreamer();
 			const streamedText = await streamToString(result.textStream);
 
 
-			// 5. ASSERTION (OUTPUT): Verify the LLM's transformed output
 			expect(streamedText).to.match(/^The final list contains/);
-
-			// Check that it contains the expected items after removing all spaces
 			const textWithoutSpaces = streamedText.replace(/\s/g, '');
 			expect(textWithoutSpaces).to.include('Apple,Banana,Cherry');
-
-			// This proves the LLM was not skipped, because this text is not in the original prompt.
 			expect(streamedText).to.not.include('You are a summarizer');
 			expect(streamedText).to.not.include('List:');
 		});
@@ -299,7 +284,7 @@ describe('create.TextStreamer', function () {
 
 	describe('Template Engine Features', () => {
 		it('should render a template using a static context value from config', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				prompt: 'Write only the word and nothing else. The word is {{ word }}.',
 				context: { word: 'test' },
@@ -310,7 +295,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should resolve an asynchronous function in the context', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				prompt: 'Write only the value and nothing else. The value is {{ value() }}.',
 				context: { value: async () => Promise.resolve('async') },
@@ -321,7 +306,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should apply an asynchronous filter', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				prompt: 'Write the following text exactly as shown, preserving the original case of each letter: {{ word | asyncUpper }}',
 				context: { word: 'test' },
@@ -338,11 +323,10 @@ describe('create.TextStreamer', function () {
 		stringLoader.addTemplate('simple.njk', 'Write only the number {{ number }} and nothing else.');
 		stringLoader.addTemplate('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
 
-		it('should load and render a template using promptType: "template-name"', async () => {
-			const streamer = create.TextStreamer({
+		it('should load and render a template from a loader', async () => {
+			const streamer = create.TextStreamer.loadsTemplate({
 				model, temperature,
 				loader: stringLoader,
-				promptType: 'template-name',
 				prompt: 'simple.njk',
 			});
 			const result = await streamer({ number: 5 });
@@ -351,10 +335,9 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should use context and filters with a loaded template', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.loadsTemplate({
 				model, temperature,
 				loader: stringLoader,
-				promptType: 'async-template-name',
 				prompt: 'filtered.njk',
 				filters: { shout: (s: string) => `${s.toUpperCase()}!` },
 			});
@@ -365,7 +348,7 @@ describe('create.TextStreamer', function () {
 	});
 
 	describe('Callable Interface Overloads', () => {
-		const streamerWithPrompt = create.TextStreamer({
+		const streamerWithPrompt = create.TextStreamer.withTemplate({
 			model, temperature,
 			prompt: 'Write only the value {{ val }} and nothing else.',
 			context: { val: 'A' },
@@ -397,12 +380,11 @@ describe('create.TextStreamer', function () {
 			);
 		});
 
-		it('should throw ConfigError if promptType is "template-name" but no loader is provided', () => {
+		it('should throw ConfigError if .loadsTemplate is used but no loader is provided', () => {
 			expect(() =>
 				// @ts-expect-error - no loader provided
-				create.TextStreamer({
+				create.TextStreamer.loadsTemplate({
 					model, temperature,
-					promptType: 'template-name',
 					prompt: 'file.njk',
 				}),
 			).to.throw(
@@ -422,7 +404,7 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should reject promises if a filter throws an error', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.withTemplate({
 				model, temperature,
 				prompt: '{{ "test" | badFilter }}',
 				filters: { badFilter: () => { throw new Error('Filter failed'); } },
@@ -432,10 +414,9 @@ describe('create.TextStreamer', function () {
 		});
 
 		it('should reject promises if a loader fails to find a template', async () => {
-			const streamer = create.TextStreamer({
+			const streamer = create.TextStreamer.loadsTemplate({
 				model, temperature,
 				loader: new StringLoader(),
-				promptType: 'template-name',
 				prompt: 'nonexistent.njk',
 			});
 			const result = streamer();
