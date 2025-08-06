@@ -9,6 +9,9 @@ import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, ConfigError } from "./validate";
 
+export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
+export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
+
 // The generic return type for a TextGenerator instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
 type GenerateTextReturn<
