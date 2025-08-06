@@ -100,19 +100,12 @@ export type ValidateObjectConfigBase<
 	TParentConfigShape extends { output?: string; },
 	TFinalConfigShape extends { output?: string; },
 
-	OBJECT,
-	ELEMENT,
-	ENUM extends string,
-	PARENT_OBJECT,
-	PARENT_ELEMENT,
-	PARENT_ENUM extends string,
-
 	MoreConfig = object
 > =
 	// Reusable for object streamer
-	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & MoreConfig>
+	TConfig extends TConfigShape
 	? (
-		TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>
+		TParentConfig extends TParentConfigShape
 		? (
 			// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
 			(keyof Omit<TConfig, GetAllowedKeysForConfig<TFinalConfig> | keyof MoreConfig> extends never
@@ -144,14 +137,10 @@ export type ValidateObjectParentConfigBase<
 	TFinalConfigShape extends OutputShape,
 	OutputShape extends { output?: string; },
 
-	PARENT_OBJECT,
-	PARENT_ELEMENT,
-	PARENT_ENUM extends string,
-
 	MoreConfig = object
 > =
 	// GATEKEEPER: Is the parent config a valid shape?
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>
+	TParentConfig extends TParentConfigShape
 	? (
 		// Check for excess properties in the parent, validated against the FINAL config's shape.
 		keyof Omit<TParentConfig, GetAllowedKeysForConfig<TFinalConfig> | keyof MoreConfig> extends never
@@ -176,7 +165,6 @@ type ValidateObjectGeneratorConfig<
 	Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & MoreConfig>, //TConfig Shape
 	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
-	OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
 	MoreConfig>
 
 // Validator for the `parent` config's GENERIC type
@@ -191,7 +179,6 @@ type ValidateObjectGeneratorParentConfig<
 	Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	{ output?: ConfigOutput; }, //
-	PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM,
 	MoreConfig>
 
 export function withText<
