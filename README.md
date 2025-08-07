@@ -491,6 +491,18 @@ The behavior of a one-off input depends on the creation method.
     ```typescript
     const loadedObjGenerator = create.ObjectGenerator.loadsTemplate({ loader, model: openai('gpt-4o'), schema: z.object({ ... }), prompt: 'extraction_prompt.njk' });
     ```
+
+**Output Strategies:**
+
+The `output` property in the configuration determines how the generated data is structured:
+
+- **`object`** (default): Generates a single object matching the provided `schema`.
+- **`array`**: Generates an array of objects, each matching the `schema`.
+- **`enum`**: Generates a value from a provided list of enums. Requires an `enum` array in the configuration.
+- **`no-schema`**: Generates data without a schema, useful for flexible outputs. Omit the `schema` property.
+
+Additionally, you can provide `schemaName` and `schemaDescription` for better model guidance with some providers.
+
 #### How to Call It
 *   **With pre-configured input**:
     ```typescript
@@ -527,6 +539,18 @@ The behavior of a one-off input depends on the creation method.
     ```typescript
     const loadedObjStreamer = create.ObjectStreamer.loadsTemplate({ loader, model: openai('gpt-4o'), schema: z.object({ ... }), prompt: 'character_generation.njk' });
     ```
+
+**Output Strategies:**
+
+The `output` property in the configuration determines the structure of the streamed data:
+
+- **`object`** (default): Streams a single object. Use `partialObjectStream` to access incremental updates of the object.
+- **`array`**: Streams an array of objects. Use `elementStream` to access each element as it’s generated.
+- **`no-schema`**: Streams text data. Use `textStream` to access the streamed text.
+
+The `enum` strategy is not supported for streaming.
+
+You can also specify `schemaName` and `schemaDescription` for additional guidance.
 
 #### How to Call It
 *   **With pre-configured input**:
