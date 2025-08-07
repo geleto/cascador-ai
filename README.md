@@ -281,33 +281,47 @@ const childRenderer = create.TextGenerator.withTemplate({
 *Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function. Creation is handled through an explicit, fluent factory system.
 
 ### TemplateRenderer
-**What it does**: Pure template processing for string generation, with no LLMs involved. Perfect for stitching together dynamic content into a final text output like HTML or Markdown.
+
+**What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. You can provide the template directly in the configuration or load it from an external source using the `.loadsTemplate` modifier. It is perfect for stitching together dynamic content into a final text output like HTML or Markdown.
+
+#### Providing the Template Directly
+When you provide the `template` property with a string, it is automatically processed as a Cascada template.
 
 ```typescript
 import { create } from 'cascador-ai';
 
-// TemplateRenderer always processes its prompt as a Cascada template.
-const templatedRenderer = create.TemplateRenderer({
-  prompt: 'Hi {{ name }}! Today is {{ currentDay }}.',
+const renderer = create.TemplateRenderer({
+  template: 'Hi {{ name }}! Today is {{ currentDay }}.',
   context: {
-    name: async () => (await sql.query('SELECT name FROM users LIMIT 1')).rows[0].name,
+    name: 'User',
     currentDay: new Date().toLocaleDateString()
   }
 });
+```
 
-(async () => {
-  const result = await templatedRenderer();
-  console.log('Output:', result);
-})();
+#### Loading a Template with `.loadsTemplate`
+To load a template from an external source (like the filesystem), use the `.loadsTemplate` modifier. This requires a `loader` and uses the `template` property to specify the name of the template to load. The use of a `.loads...` modifier is a consistent pattern across the library. For instance, `TextGenerator` also uses `.loadsTemplate` to load the contents for its `prompt` property from an external file.
+
+```typescript
+import { create, FileSystemLoader } from 'cascador-ai';
+
+const fileLoader = new FileSystemLoader('./templates');
+const renderer = create.TemplateRenderer.loadsTemplate({
+  loader: fileLoader,
+  template: 'welcome_email.njk', // This is the filename, not the template content
+});
 ```
 
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
 ### ScriptRunner
 
-**What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. `ScriptRunner` always treats its `script` property as a Cascada script.
-For added reliability, you can provide an **optional** Zod `schema` to validate the script's output, ensuring it is type-safe.
+**What it does**: Executes a Cascada script to produce a structured data object (JSON). You can provide the script directly in the configuration or load it from an external source using the `.loadsScript` modifier. It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. For added reliability, you can provide an **optional** Zod `schema` to validate the script's output.
 
+#### Providing the Script Directly
+When you provide the `script` property with a string, it is automatically executed as a Cascada script.
+
+```typescript
 ```typescript
 import { create } from 'cascador-ai';
 import { z } from 'zod';
@@ -335,18 +349,28 @@ const dealFinder = create.ScriptRunner({
     endfor
   `,
 });
-
-(async () => {
-  const report = await dealFinder();
-  console.log(JSON.stringify(report, null, 2));
-  /* Output:
-    {
-      "sku-a123": [ { "vendor": "VendorX", "price": 154 }, { "vendor": "VendorY", "price": 182 } ],
-      "sku-b456": [ { "vendor": "VendorX", "price": 110 }, { "vendor": "VendorY", "price": 195 } ]
-    }
-  */
-})();
 ```
+
+#### Loading a Script with `.loadsScript`
+To load a script from an external source, use the `.loadsScript` modifier. This requires a `loader` and uses the `script` property to specify the name of the script to load. This follows the library's consistent design pattern: provide content directly in the configuration, or use a `.loads...` modifier when fetching it from an external source.
+
+```typescript
+import { create, FileSystemLoader } from 'cascador-ai';
+
+const fileLoader = new FileSystemLoader('./scripts');
+const agentRunner = create.ScriptRunner.loadsScript({
+  loader: fileLoader,
+  script: 'content_agent.csc', // The filename of the script
+});
+```
+
+#### Key Properties
+
+*   **`script`**: A string containing the Cascada script to execute, or the name of the script when using `.loadsScript`.
+*   **`context`**: An object providing data and functions (both sync and async) to the script.
+*   **`schema`** (Optional): A Zod schema to validate the final output object.
+
+**Use it for**: Building type-safe data layers, orchestrating multi-step agentic workflows, and fetching and aggregating data from multiple APIs/databases. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 #### Key Properties
 
