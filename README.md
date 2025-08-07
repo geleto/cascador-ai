@@ -278,50 +278,61 @@ const childRenderer = create.TextGenerator.withTemplate({
 
 ### Your Toolkit for Every Task
 
-*Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function. Creation is handled through an explicit, fluent factory system.
+*Cascador-AI* offers a suite of renderers, each tailored to a specific job—whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function.
+
+A key feature is that **every renderer is a callable function**. This provides two powerful ways to use them:
+1.  **With Pre-configured Input**: Call the renderer with no arguments (`await renderer()`) or just a context object (`await renderer({ user: 'Admin' })`) to use its pre-compiled prompt, script, or template for optimal performance.
+2.  **With One-off Input**: Call the renderer with new arguments (`await renderer(newInput, newContext)`) for dynamic, on-the-fly execution. Both arguments are optional. The behavior of `newInput` depends on how the renderer was created.
+
+Let's explore each renderer in detail.
 
 ### TemplateRenderer
 
-**What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. You can provide the template directly in the configuration or load it from an external source using the `.loadsTemplate` modifier. It is perfect for stitching together dynamic content into a final text output like HTML or Markdown.
+**What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. Ideal for presentation-layer tasks like generating HTML or Markdown.
 
-#### Providing the Template Directly
-When you provide the `template` property with a string, it is automatically processed as a Cascada template.
+#### How to Create It
+*   **Providing the Template Directly**: This is the default behavior. The `template` property contains the template string.
+    ```typescript
+    import { create } from 'cascador-ai';
 
-```typescript
-import { create } from 'cascador-ai';
+    const renderer = create.TemplateRenderer({
+      template: 'Hi {{ name }}! Today is {{ currentDay }}.',
+      context: { name: 'User' }
+    });
+    ```
+*   **Loading from a resource with `.loadsTemplate`**: Use this modifier to load the template from an external source. This requires a `loader`, and the `template` property now specifies the *name* of the template to load (e.g., a filename).
+    ```typescript
+    import { create, FileSystemLoader } from 'cascador-ai';
 
-const renderer = create.TemplateRenderer({
-  template: 'Hi {{ name }}! Today is {{ currentDay }}.',
-  context: {
-    name: 'User',
-    currentDay: new Date().toLocaleDateString()
-  }
-});
-```
+    const fileRenderer = create.TemplateRenderer.loadsTemplate({
+      loader: new FileSystemLoader('./templates'),
+      template: 'welcome_email.njk', // This is the filename
+      context: { name: 'User' }
+    });
+    ```
 
-#### Loading a Template with `.loadsTemplate`
-To load a template from an external source (like the filesystem), use the `.loadsTemplate` modifier. This requires a `loader` and uses the `template` property to specify the name of the template to load. The use of a `.loads...` modifier is a consistent pattern across the library. For instance, `TextGenerator` also uses `.loadsTemplate` to load the contents for its `prompt` property from an external file.
-
-```typescript
-import { create, FileSystemLoader } from 'cascador-ai';
-
-const fileLoader = new FileSystemLoader('./templates');
-const renderer = create.TemplateRenderer.loadsTemplate({
-  loader: fileLoader,
-  template: 'welcome_email.njk', // This is the filename, not the template content
-});
-```
-
+#### How to Call It
+You can call any `TemplateRenderer` with a new template and context.
+*   **With pre-configured input**:
+    ```typescript
+    const result = await renderer({ currentDay: 'Monday' }); // "Hi User! Today is Monday."
+    ```
+*   **With a one-off template string**:
+    ```typescript
+    const oneOffResult = await renderer('A new template for {{ name }}', { name: 'Alice' }); // "A new template for Alice"
+    ```
+*   **With a one-off template file** (if created with `.loadsTemplate`):
+    ```typescript
+    const otherFileResult = await fileRenderer('goodbye_email.njk'); // Loads and renders a different file
+    ```
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
 ### ScriptRunner
 
-**What it does**: Executes a Cascada script to produce a structured data object (JSON). You can provide the script directly in the configuration or load it from an external source using the `.loadsScript` modifier. It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. For added reliability, you can provide an **optional** Zod `schema` to validate the script's output.
+**What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. An optional Zod `schema` can be provided to validate the script's output.
 
-#### Providing the Script Directly
-When you provide the `script` property with a string, it is automatically executed as a Cascada script.
-
-```typescript
+#### How to Create It
+*   **Providing the Script Directly**: This is the default behavior. The `script` property contains the script string.
 ```typescript
 import { create } from 'cascador-ai';
 import { z } from 'zod';
@@ -350,27 +361,37 @@ const dealFinder = create.ScriptRunner({
   `,
 });
 ```
+*   **Loading from a resource with `.loadsScript`**: Use this modifier to load the script from an external source. This requires a `loader`, and the `script` property now specifies the *name* of the script to load.
+    ```typescript
+    const agentRunner = create.ScriptRunner.loadsScript({
+      loader: new FileSystemLoader('./scripts'),
+      script: 'content_agent.csc', // The filename of the script
+    });
+    ```
 
-#### Loading a Script with `.loadsScript`
-To load a script from an external source, use the `.loadsScript` modifier. This requires a `loader` and uses the `script` property to specify the name of the script to load. This follows the library's consistent design pattern: provide content directly in the configuration, or use a `.loads...` modifier when fetching it from an external source.
-
-```typescript
-import { create, FileSystemLoader } from 'cascador-ai';
-
-const fileLoader = new FileSystemLoader('./scripts');
-const agentRunner = create.ScriptRunner.loadsScript({
-  loader: fileLoader,
-  script: 'content_agent.csc', // The filename of the script
-});
-```
+#### How to Call It
+You can execute a new script dynamically by passing it as an argument.
+*   **With pre-configured input**:
+    ```typescript
+    const result = await runner(); // { status: "complete" }
+    ```
+*   **With a one-off script string**:
+    ```typescript
+    const oneOffResult = await runner(`
+      :data
+      @data.id = "new-id"
+    `); // { id: "new-id" }
+    ```
+*   **With a one-off script file** (if created with `.loadsScript`):
+    ```typescript
+    const otherAgentResult = await agentRunner('cleanup_agent.csc'); // Loads and runs a different script
+    ```
 
 #### Key Properties
 
 *   **`script`**: A string containing the Cascada script to execute, or the name of the script when using `.loadsScript`.
 *   **`context`**: An object providing data and functions (both sync and async) to the script.
 *   **`schema`** (Optional): A Zod schema to validate the final output object.
-
-**Use it for**: Building type-safe data layers, orchestrating multi-step agentic workflows, and fetching and aggregating data from multiple APIs/databases. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 #### Key Properties
 
@@ -381,189 +402,141 @@ const agentRunner = create.ScriptRunner.loadsScript({
 **Use it for**: Building type-safe data layers, orchestrating multi-step agentic workflows, and fetching and aggregating data from multiple APIs/databases. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
 ### TextGenerator
-**What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text).
+**What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). The `prompt` for the LLM can be provided as static text, or generated dynamically via a template or a script.
 
-#### Default (Plain Text Prompt)
-By default, the `TextGenerator` treats the `prompt` as static text.
+#### How to Create It
+*   **Default (Plain Text)**: The `prompt` is a static string.
+    ```typescript
+    const staticGenerator = create.TextGenerator({ model: openai('gpt-4o'), prompt: '...' });
+    ```
+*   **With a Template (`.withTemplate`)**: The `prompt` is a template string.
+    ```typescript
+    const templateGenerator = create.TextGenerator.withTemplate({ model: openai('gpt-4o'), prompt: 'Describe {{topic}}' });
+    ```
+*   **With a Script (`.withScript`)**: The `prompt` is generated by a script's output.
+    ```typescript
+    const scriptGenerator = create.TextGenerator.withScript({ model: openai('gpt-4o'), script: ':data @data = "Summarize: " + article' });
+    ```
+*   **Loading from a resource (`.loads...`)**: Load a template or script from a file.
+    ```typescript
+    const loadedGenerator = create.TextGenerator.loadsTemplate({ loader, model: openai('gpt-4o'), prompt: 'summarize.txt' });
+    ```
 
-```typescript
-import { create } from 'cascador-ai';
-import { openai } from '@ai-sdk/openai';
-
-const staticGenerator = create.TextGenerator({
-  model: openai('gpt-4o'),
-  prompt: 'Write a poem about the sea.'
-});
-```
-
-#### Templated Prompts (`.withTemplate`)
-Use `.withTemplate` to dynamically construct prompts using data from the `context`.
-
-```typescript
-const dynamicGenerator = create.TextGenerator.withTemplate({
-  model: openai('gpt-4o'),
-  prompt: 'Describe "{{ topic }}" in 3 sentences.',
-  context: {
-    topic: async () => {
-      // Async data fetch example
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '/');
-      const url = `https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`;
-      return (await (await fetch(url)).json()).tfa.normalizedtitle;
-    }
-  }
-});
-```
-
+#### How to Call It
+The behavior of a one-off input depends on the creation method.
+*   **With pre-configured input**:
+    ```typescript
+    const { text } = await templateGenerator({ topic: 'The Sun' });
+    ```
+*   **With a one-off input string**:
+    *   The input is a **plain text prompt**. `await staticGenerator('New prompt')`
+    *   The input is a **template string**. `await templateGenerator('New template: {{topic}}', { topic: 'Mars' })`
+    *   The input is a **script string**. `await scriptGenerator(':data @data = "New " + old')`
+    *   The input is a **resource name**. `await loadedGenerator('critique.txt', { ... })`
 **Use it for**: Article generation, quick answers, or API-driven content.  [See Vercel docs on text generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext) for return details.
 
 ### TextStreamer
-**What it does**: Streams LLM text in real time with Vercel’s [`streamText` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-text).
+**What it does**: Streams LLM text in real time with Vercel’s [`streamText` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-text). It follows the same creation and calling patterns as `TextGenerator`.
 
+#### How to Create It
+You can generate the prompt from a plain text, template, or script, either inline or loaded from a file.
 ```typescript
-import { create } from 'cascador-ai';
-import { openai } from '@ai-sdk/openai';
-
-// Default (Plain Text Prompt)
-const streamer = create.TextStreamer({
+const streamer = create.TextStreamer.withTemplate({
   model: openai('gpt-4o'),
-  prompt: 'Write a poem about the sea.'
+  prompt: 'Write a short story about a robot named {{ name }}.'
 });
-
-(async () => {
-  const { textStream } = await streamer();
-  for await (const chunk of textStream) {
-    process.stdout.write(chunk);
-  }
-})();
 ```
 
+#### How to Call It
+*   **With pre-configured input**:
+    ```typescript
+    const { textStream } = await streamer({ name: 'Zorp' });
+    ```
+*   **With a one-off template**: Since it was created with `.withTemplate`, the new input is also a template.
+    ```typescript
+    const { textStream: stream2 } = await streamer('Write a poem about {{ subject }}', { subject: 'the stars' });
+    ```
 **Use it for**: Progressive rendering, chatbots, or interactive UIs. [See Vercel docs on text streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-text#streamtext) for streaming specifics.
 
 ### ObjectGenerator
-**What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), complete with schema validation.
+**What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), validated by a Zod schema. It follows the same creation and calling patterns as `TextGenerator`.
 
+#### How to Create It
+Generate the prompt from a plain text, template, or script.
 ```typescript
-import { create } from 'cascador-ai';
-import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-// Default (Plain Text Prompt)
-const profileGenerator = create.ObjectGenerator({
+const profileGenerator = create.ObjectGenerator.withTemplate({
   model: openai('gpt-4o'),
-  schema: z.object({
-    name: z.string(),
-    age: z.number(),
-    hobbies: z.array(z.string())
-  }),
-  prompt: 'Generate a random person profile in JSON format.'
+  schema: z.object({ name: z.string(), role: z.string() }),
+  prompt: 'Generate a character profile for a {{ role }}.'
 });
-
-(async () => {
-  const { object: person } = await profileGenerator();
-  console.log('Person:', person);
-})();
 ```
 
-You can specify how the data should be structured by setting `output` to:
-- `object` (default) - Returns a single object matching the schema
-- `array` - Returns an array of objects matching the schema
-- `enum` - For classification tasks with a discrete set of possible values
-- `no-schema` - No schema validation, returns raw JSON
-
+#### How to Call It
+*   **With pre-configured input**:
+    ```typescript
+    const { object: profile } = await profileGenerator({ role: 'wizard' });
+    ```
+*   **With a one-off template**: The new input is processed as a template.
+    ```typescript
+    const { object: profile2 } = await profileGenerator('Create a profile for a {{ role }} named {{ name }}', { role: 'knight', name: 'Galahad' });
+    ```
 **Use it for**: Data extraction, structured responses, or enum-based classification. [See Vercel docs on object generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) for return details.
 
 ### ObjectStreamer
-**What it does**: Streams structured data incrementally via Vercel’s [`streamObject` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-object).
+**What it does**: Streams structured data incrementally via Vercel’s [`streamObject` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-object). It follows the same creation and calling patterns as `TextGenerator`.
 
+#### How to Create It
+Generate the prompt from a plain text, template, or script.
 ```typescript
-import { create } from 'cascador-ai';
-import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-
-const characterStreamer = create.ObjectStreamer({
+const characterStreamer = create.ObjectStreamer.withTemplate({
   model: openai('gpt-4o'),
-  schema: z.object({
-    name: z.string(),
-    description: z.string()
-  }),
+  schema: z.object({ name: z.string(), description: z.string() }),
   output: 'array',
-  prompt: 'Generate 3 character descriptions with names Peter, Paul and Mary, in this order.'
+  prompt: 'Generate 3 characters from the {{ genre }} genre.'
 });
-
-const { elementStream } = await characterStreamer();
-for await (const character of elementStream) {
-  console.log('Character:', character);
-}
 ```
 
-You can specify how the data should be structured by setting `output` to:
-- `object` (default) - Streams partial updates to a single object
-- `array` - Streams complete elements from an array
-- `no-schema` - No schema validation, streams raw JSON
-
+#### How to Call It
+*   **With pre-configured input**:
+    ```typescript
+    const { elementStream } = await characterStreamer({ genre: 'fantasy' });
+    ```
+*   **With a one-off template**: The new input is processed as a template.
+    ```typescript
+    const { elementStream: stream2 } = await characterStreamer('Generate 2 characters from {{ genre }}', { genre: 'sci-fi' });
+    ```
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
-
 ### Tool
-**What it does**: Wraps an existing `TextGenerator`, `ObjectGenerator`, `TemplateRenderer` or `ScriptRunner` into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
+**What it does**: Wraps another renderer or a standard JavaScript function into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
 
 ```typescript
-import { create } from 'cascador-ai';
-import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
-
 // 1. Define a renderer to perform a specific task
 const summarizer = create.TextGenerator.withTemplate({
   model: openai('gpt-4o-mini'),
-  prompt: 'Provide a concise, one-sentence summary of the following text: {{ text }}',
+  prompt: 'Provide a concise, one-sentence summary of: {{ text }}',
 });
 
-// 2. Wrap it in a Tool to create a Vercel AI SDK-compatible tool object
+// 2. Wrap it in a Tool to create a Vercel AI SDK-compatible tool object, callable by an LLM
 const summarizeTool = create.Tool({
   description: 'Summarizes a given piece of text into a single sentence.',
   parameters: z.object({ text: z.string() }),
-}, summarizer);
+}, summarizer); // The summarizer renderer is now the tool's implementation
 
-const chatAgent = create.TextGenerator({
+// 3. Provide the tool to an LLM
+const summarizeAgent = create.TextGenerator({
   model: openai('gpt-4o'),
-  tools: { summarize: summarizeTool }, // Provide the tool to the LLM
+  tools: { summarize: summarizeTool },
   prompt: "Please summarize this for me: 'Cascador-AI is an AI orchestration library...'",
 });
-const chatResult = await chatAgent(); // LLM sees the prompt and calls the tool
+
+// The LLM will decide to call the tool to fulfill the request
+const chatResult = await summarizeAgent();
 console.log('Model-Driven Result:', chatResult.toolCalls);
 ```
 
-**Use it for**: Creating modular, reusable, and type-safe functions that can be used flexibly across your application, when you want to empower an autonomous agent with the decision which tools to use.
-
-## Callable Render Objects
-
-Every renderer in *Cascador-AI* doubles as a callable object, giving you two ways to wield it: stick with its preconfigured setup or throw in a fresh prompt or context on the fly. Plus, renderers can serve as parent configurations for others, making them reusable building blocks.
-
-Here’s how you can call them:
-
-1. **Using the Predefined Input**: Rely on the prompt and context set when the renderer is created - pre-compiled template or script for speed:
-   ```typescript
-   import { create } from 'cascador-ai';
-
-   const renderer = create.TextGenerator.withTemplate({
-     prompt: 'Hello {{ name }}',
-     context: { name: 'World' }
-   }, baseConfig);
-
-   (async () => {
-     const result = await renderer();
-     console.log(result.text); // "Hello World"
-   })();
-   ```
-
-2. **With a One-Off Input**: Pass a new prompt and optional context directly. The input is processed according to how the renderer was created (e.g., as a template).
-   ```typescript
-   (async () => {
-     const result = await renderer('Hi {{ user }}', { user: 'Alice' });
-     console.log(result.text); // "Hi Alice"
-   })();
-   ```
-
-Inputs defined at creation are optimized for performance, while one-off inputs offer quick adaptability - perfect for testing or dynamic scenarios.
+**Use it for**: Creating modular, reusable, and type-safe functions that empower an autonomous agent to decide which actions to take.
 
 ## Template and Script Properties
 
