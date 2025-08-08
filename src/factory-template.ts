@@ -59,6 +59,7 @@ export function TemplateRenderer<
 		console.log('[DEBUG] TemplateRenderer created with config:', JSON.stringify(merged, null, 2));
 	}
 
+	// @todo - .loadsTemplate()
 	if ((merged.promptType === 'template-name' || merged.promptType === 'async-template-name') && !('loader' in merged)) {
 		throw new ConfigError('Template name types require a loader');
 	}

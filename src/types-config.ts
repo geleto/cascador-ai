@@ -3,7 +3,7 @@ import {
 	Schema, //do not confuze the 'ai' Schema type with the 'zod' Schema type
 	JSONValue,
 	ToolSet,
-	ToolExecutionOptions
+	ToolCallOptions
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -71,7 +71,7 @@ export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  */
 export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = ToolConfig<PARAMETERS> & {
-	execute: (args: InferParameters<PARAMETERS>, options: ToolExecutionOptions) => PromiseLike<RESULT>;
+	execute: (args: InferParameters<PARAMETERS>, options: ToolCallOptions) => PromiseLike<RESULT>;
 }
 
 
@@ -83,20 +83,23 @@ export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> 
 export type GenerateTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
-	PARTIAL_OUTPUT = never
-> = Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig;
+	PARTIAL_OUTPUT = never,
+	PROMPT = string
+> = Omit<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'> & BaseConfig & { prompt?: PROMPT };
 
 // The first argument of streamText
 export type StreamTextConfig<
 	TOOLS extends ToolSet = Record<string, never>,
 	OUTPUT = never,
-	PARTIAL_OUTPUT = never
-> = Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0] & BaseConfig;
+	PARTIAL_OUTPUT = never,
+	PROMPT = string
+> = Omit<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'> & BaseConfig & { prompt?: PROMPT };
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type GenerateObjectBaseConfig = Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode'> & BaseConfig;
+export type GenerateObjectBaseConfig<PROMPT = string> =
+	Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode' | 'prompt'> & BaseConfig & { prompt?: PROMPT };
 
-export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
+export type GenerateObjectObjectConfig<OBJECT, PROMPT = string> = GenerateObjectBaseConfig<PROMPT> & {
 	output?: 'object' | undefined;
 	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
@@ -104,7 +107,7 @@ export type GenerateObjectObjectConfig<OBJECT> = GenerateObjectBaseConfig & {
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
+export type GenerateObjectArrayConfig<ELEMENT, PROMPT = string> = GenerateObjectBaseConfig<PROMPT> & {
 	output: 'array';
 	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
@@ -112,19 +115,19 @@ export type GenerateObjectArrayConfig<ELEMENT> = GenerateObjectBaseConfig & {
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectEnumConfig<ENUM extends string> = GenerateObjectBaseConfig & {
+export type GenerateObjectEnumConfig<ENUM extends string, PROMPT = string> = GenerateObjectBaseConfig<PROMPT> & {
 	output: 'enum';
 	enum: readonly ENUM[];
 	mode?: 'auto' | 'json' | 'tool';
 }
 
-export type GenerateObjectNoSchemaConfig = GenerateObjectBaseConfig & {
+export type GenerateObjectNoSchemaConfig<PROMPT = string> = GenerateObjectBaseConfig<PROMPT> & {
 	output: 'no-schema';
 	mode?: 'json';
 }
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type StreamObjectBaseConfig = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode'> & BaseConfig;
+export type StreamObjectBaseConfig<PROMPT = string> = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt'> & BaseConfig & { prompt?: PROMPT };
 
 
 export interface OnFinishResultType<OBJECT = any> {
@@ -135,7 +138,7 @@ export interface OnFinishResultType<OBJECT = any> {
 // Generic OnFinish type that can be parameterized with the object type
 export type OnFinishType<OBJECT = any> = (event: OnFinishResultType<OBJECT>) => void;
 
-export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
+export type StreamObjectObjectConfig<OBJECT, PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
 	output?: 'object' | undefined;
 	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
@@ -144,7 +147,7 @@ export type StreamObjectObjectConfig<OBJECT> = StreamObjectBaseConfig & {
 	onFinish?: OnFinishType<OBJECT>;
 }
 
-export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
+export type StreamObjectArrayConfig<ELEMENT, PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
 	output: 'array';
 	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
@@ -154,7 +157,7 @@ export type StreamObjectArrayConfig<ELEMENT> = StreamObjectBaseConfig & {
 	elementStream?: AsyncIterable<ELEMENT> & ReadableStream<ELEMENT>;
 }
 
-export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
+export type StreamObjectNoSchemaConfig<PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
 	output: 'no-schema';
 	mode?: 'json';
 	onFinish?: OnFinishType<JSONValue>;
@@ -162,19 +165,21 @@ export type StreamObjectNoSchemaConfig = StreamObjectBaseConfig & {
 
 export type AnyNoTemplateConfig<
 	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	PROMPT = string
 > =
-	| GenerateTextConfig<TOOLS, OUTPUT>
-	| StreamTextConfig<TOOLS, OUTPUT>
-	| GenerateObjectObjectConfig<OBJECT>
-	| GenerateObjectArrayConfig<ELEMENT>
-	| GenerateObjectEnumConfig<ENUM>
-	| GenerateObjectNoSchemaConfig
-	| StreamObjectObjectConfig<OBJECT>
-	| StreamObjectArrayConfig<ELEMENT>
-	| StreamObjectNoSchemaConfig;
+	| GenerateTextConfig<TOOLS, OUTPUT, PROMPT>
+	| StreamTextConfig<TOOLS, OUTPUT, PROMPT>
+	| GenerateObjectObjectConfig<OBJECT, PROMPT>
+	| GenerateObjectArrayConfig<ELEMENT, PROMPT>
+	| GenerateObjectEnumConfig<ENUM, PROMPT>
+	| GenerateObjectNoSchemaConfig<PROMPT>
+	| StreamObjectObjectConfig<OBJECT, PROMPT>
+	| StreamObjectArrayConfig<ELEMENT, PROMPT>
+	| StreamObjectNoSchemaConfig<PROMPT>;
 
 export type AnyConfig<
 	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
+	PROMPT = string
 > =
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & { promptType: 'text' }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM> & TemplateConfig); // template modes including undefined
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM, PROMPT> & { promptType: 'text' }) // text mode - no template props
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM, PROMPT> & TemplateConfig); // template modes including undefined

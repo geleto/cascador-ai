@@ -1,4 +1,4 @@
-import { JSONValue, ToolExecutionOptions, ToolSet } from 'ai';
+import { JSONValue, ToolCallOptions, ToolSet } from 'ai';
 import { ConfigError } from './validate';
 import * as configs from './types-config';
 import * as results from './types-result';
@@ -77,7 +77,7 @@ export function Tool<
 	}
 
 	// This signature MUST match the Vercel SDK's execute type
-	let execute: (args: utils.InferParameters<PARAMETERS>, options: ToolExecutionOptions) => Promise<any>;
+	let execute: (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions) => Promise<any>;
 
 	const parentConfig = parent.config;
 
@@ -86,7 +86,7 @@ export function Tool<
 
 	// Case 1: ScriptRunner is the only type with `script` or `scriptType`.
 	if ('script' in parentConfig || 'scriptType' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
 			const result = await (parent as ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>)(args);
 			return result ?? '';
 		};
@@ -95,7 +95,7 @@ export function Tool<
 	// The ObjectGenerator factory ensures this property is always present on the config,
 	// making it a reliable discriminator.
 	else if ('output' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<JSONValue> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
 			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
 			if ('object' in result) { return result.object; }
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
@@ -103,7 +103,7 @@ export function Tool<
 	}
 	// Case 3: TextGenerator has a `model` but is not an ObjectGenerator (which was checked above).
 	else if ('model' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
 			const result = await (parent as TextGeneratorInstance<any, any>)(args);
 			if ('text' in result) { return result.text; }
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
@@ -111,7 +111,7 @@ export function Tool<
 	}
 	// Case 4: TemplateRenderer has `prompt` or `promptType` but no `model`.
 	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolExecutionOptions*/): Promise<string> => {
+		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
 			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
 		};
 	}

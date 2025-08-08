@@ -364,7 +364,7 @@ function _createObjectStreamer<
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		streamObject
 	) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
 }

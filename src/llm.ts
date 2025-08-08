@@ -41,7 +41,7 @@ export type LLMCallSignature<
 export function createLLMRenderer<
 	TConfig extends configs.OptionalTemplateConfig & Partial<TFunctionConfig>
 	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
-	TFunctionConfig extends { model: LanguageModel },
+	TFunctionConfig extends TConfig & { model: LanguageModel },
 	TFunctionResult,
 >(
 	config: TConfig,

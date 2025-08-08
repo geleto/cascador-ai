@@ -14,6 +14,7 @@ export class ConfigError extends Error {
 	}
 }
 
+//@todo - this needs some work
 export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | ScriptConfig<any>> & Record<string, any>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');

@@ -469,7 +469,7 @@ function _createObjectGenerator<
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		generateObject
 	) as GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any>;
 }
