@@ -269,8 +269,8 @@ describe('create.ObjectStreamer', function () {
 
 			const finishData = await finishPromise;
 			expect(finishData.object).to.deep.equal({ name: 'FinishCallback', value: 123 });
-			expect(finishData.usage.promptTokens).to.be.a('number').and.be.greaterThan(0);
-			expect(finishData.usage.completionTokens).to.be.a('number').and.be.greaterThan(0);
+			expect(finishData.usage.inputTokens).to.be.a('number').and.be.greaterThan(0);
+			expect(finishData.usage.outputTokens).to.be.a('number').and.be.greaterThan(0);
 		});
 
 		it('should throw and reject promises for API errors', async () => {
