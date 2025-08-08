@@ -1,4 +1,4 @@
-import { streamObject, LanguageModel } from "ai";
+import { streamObject, LanguageModel, StreamObjectOnFinishCallback } from "ai";
 
 import * as results from './types-result'
 import * as configs from './types-config';
@@ -21,6 +21,12 @@ export type ObjectStreamerInstance<
 	OBJECT, ELEMENT,
 	CONFIG extends LLMStreamerConfig<OBJECT, ELEMENT>
 > = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>>;
+
+// Allow additional callback properties in config
+interface StreamCallbacks {
+	onFinish?: StreamObjectOnFinishCallback<any>;
+	onError?: (event: { error: unknown }) => Promise<void> | void;
+}
 
 type StreamObjectConfig<OBJECT, ELEMENT> =
 	configs.StreamObjectObjectConfig<OBJECT> |
@@ -100,7 +106,8 @@ export function withText<
 	ELEMENT = any,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		OBJECT, ELEMENT, OBJECT, ELEMENT>,
+		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -115,7 +122,8 @@ export function withText<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT>,
+		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT>>
 
@@ -139,7 +147,7 @@ export function loadsText<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.LoaderConfig>,
+		configs.LoaderConfig & StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -154,7 +162,7 @@ export function loadsText<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.LoaderConfig>,
+		configs.LoaderConfig & StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, PARENT_OBJECT, PARENT_ELEMENT,
 		configs.LoaderConfig>>
 
@@ -179,7 +187,7 @@ export function withTemplate<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -195,7 +203,7 @@ export function withTemplate<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>>
@@ -220,7 +228,7 @@ export function loadsTemplate<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -236,7 +244,7 @@ export function loadsTemplate<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>>
@@ -261,7 +269,7 @@ export function withScript<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -277,7 +285,7 @@ export function withScript<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig>,
+		configs.CascadaConfig & StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig>>
@@ -302,7 +310,7 @@ export function loadsScript<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
 ): StreamObjectReturn<TConfig, OBJECT, ELEMENT>;
 
 // Overload 2: With parent parameter
@@ -318,7 +326,7 @@ export function loadsScript<
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
 		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
 		PARENT_OBJECT, PARENT_ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig>>

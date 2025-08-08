@@ -2,11 +2,11 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
+import type { StreamObjectOnFinishEvent } from '../src/index';
 import { model, temperature, StringLoader, timeout, modelName, createProvider } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { DeepPartial } from 'ai';
-import { OnFinishResultType } from '../src/types-config';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
@@ -245,19 +245,18 @@ describe('create.ObjectStreamer', function () {
 
 	describe('Callbacks and Event Handlers', () => {
 		it('should call onFinish callback with final object and usage when stream completes', async () => {
-			// A TypeScript bug: https://github.com/microsoft/TypeScript/issues/62204
-			//type FinishData = { object: z.infer<typeof simpleSchema> | undefined; usage: { promptTokens: number; completionTokens: number; totalTokens: number } };
-			let resolveFinish: (data: OnFinishResultType) => void;
-			const finishPromise = new Promise<OnFinishResultType>((resolve) => {
+			let resolveFinish: (data: StreamObjectOnFinishEvent<typeof simpleSchema>) => void;
+			const finishPromise = new Promise<StreamObjectOnFinishEvent<typeof simpleSchema>>((resolve) => {
 				resolveFinish = resolve;
 			});
 
-			//@ts-expect-error A TypeScript bug
+
 			const streamer = create.ObjectStreamer({
 				model, temperature,
+				//@ts-expect-error A TypeScript bug: https://github.com/microsoft/TypeScript/issues/62204
 				schema: simpleSchema,
 				prompt: 'Generate a JSON object for "FinishCallback" with value 123.',
-				onFinish(result: OnFinishResultType) {
+				onFinish(result: StreamObjectOnFinishEvent<typeof simpleSchema>) {
 					resolveFinish(result);
 				}
 			});

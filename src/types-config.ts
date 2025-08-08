@@ -3,7 +3,8 @@ import {
 	Schema, //do not confuze the 'ai' Schema type with the 'zod' Schema type
 	JSONValue,
 	ToolSet,
-	ToolCallOptions
+	ToolCallOptions,
+	StreamObjectOnFinishCallback
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -74,6 +75,8 @@ export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> 
 	execute: (args: InferParameters<PARAMETERS>, options: ToolCallOptions) => PromiseLike<RESULT>;
 }
 
+// Utility types
+
 
 // Config types
 // All of them are partials because they can be requested in pieces,
@@ -127,40 +130,30 @@ export type GenerateObjectNoSchemaConfig<PROMPT = string> = GenerateObjectBaseCo
 }
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
-export type StreamObjectBaseConfig<PROMPT = string> = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt'> & BaseConfig & { prompt?: PROMPT };
+export type StreamObjectBaseConfig<RESULT, PROMPT = string> =
+	Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt' | 'onFinish'>
+	& BaseConfig
+	& { prompt?: PROMPT; onFinish?: StreamObjectOnFinishCallback<RESULT>; };
 
-
-export interface OnFinishResultType<OBJECT = any> {
-	object: OBJECT | undefined;
-	usage: { promptTokens: number; completionTokens: number; totalTokens: number }
-}
-
-// Generic OnFinish type that can be parameterized with the object type
-export type OnFinishType<OBJECT = any> = (event: OnFinishResultType<OBJECT>) => void;
-
-export type StreamObjectObjectConfig<OBJECT, PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
+export type StreamObjectObjectConfig<OBJECT, PROMPT = string> = StreamObjectBaseConfig<OBJECT, PROMPT> & {
 	output?: 'object' | undefined;
 	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: OnFinishType<OBJECT>;
 }
 
-export type StreamObjectArrayConfig<ELEMENT, PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
+export type StreamObjectArrayConfig<ELEMENT, PROMPT = string> = StreamObjectBaseConfig<ELEMENT[], PROMPT> & {
 	output: 'array';
 	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
-	onFinish?: OnFinishType<ELEMENT>;
-	elementStream?: AsyncIterable<ELEMENT> & ReadableStream<ELEMENT>;
 }
 
-export type StreamObjectNoSchemaConfig<PROMPT = string> = StreamObjectBaseConfig<PROMPT> & {
+export type StreamObjectNoSchemaConfig<PROMPT = string> = StreamObjectBaseConfig<JSONValue, PROMPT> & {
 	output: 'no-schema';
 	mode?: 'json';
-	onFinish?: OnFinishType<JSONValue>;
 }
 
 export type AnyNoTemplateConfig<
