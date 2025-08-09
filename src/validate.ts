@@ -122,7 +122,7 @@ export function validateObjectConfig(config?: Record<string, any>, isStream = fa
 	const outputType = config.output ?? 'object';
 
 	if (!('model' in config)) {
-		throw new ConfigError('Object config requires model');
+		throw new ConfigError('Object config requires a \'model\' property');
 	}
 
 	switch (outputType) {
