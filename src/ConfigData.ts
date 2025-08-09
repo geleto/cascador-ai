@@ -46,21 +46,22 @@ export function mergeConfigs<
 		};
 	}
 
-	// Fixed loader handling with proper deduplication
-	const parentLoaders = parentConfig.loader
-		? Array.isArray(parentConfig.loader)
-			? parentConfig.loader
-			: [parentConfig.loader]
-		: [];
-	const childLoaders = childConfig.loader
-		? Array.isArray(childConfig.loader)
-			? childConfig.loader
-			: [childConfig.loader]
-		: [];
+	if ('loader' in parentConfig || 'loader' in childConfig) {
+		const parentLoaders = parentConfig.loader
+			? Array.isArray(parentConfig.loader)
+				? parentConfig.loader
+				: [parentConfig.loader]
+			: [];
+		const childLoaders = childConfig.loader
+			? Array.isArray(childConfig.loader)
+				? childConfig.loader
+				: [childConfig.loader]
+			: [];
 
-	merged.loader = Array.from(
-		new Set([...parentLoaders, ...childLoaders].filter(Boolean))
-	);
+		merged.loader = Array.from(
+			new Set([...parentLoaders, ...childLoaders].filter(Boolean))
+		);
+	}
 
 	// Debug output for merged result if debug is enabled
 	/*if (('debug' in parentConfig && parentConfig.debug) || ('debug' in childConfig && childConfig.debug)) {
