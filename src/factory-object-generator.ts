@@ -219,7 +219,7 @@ export function withText<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): GenerateObjectReturn<TConfig, any, any, string> | GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string> {
-	return _createObjectGenerator(config, 'async-template', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
+	return _createObjectGenerator(config, 'text', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string>;
 }
 
 export function loadsText<

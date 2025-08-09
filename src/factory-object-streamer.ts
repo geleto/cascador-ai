@@ -137,7 +137,7 @@ export function withText<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, any, any> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any> {
-	return _createObjectStreamer(config, 'async-template', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
+	return _createObjectStreamer(config, 'text', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any>;
 }
 
 export function loadsText<
@@ -364,7 +364,11 @@ function _createObjectStreamer<
 	}
 
 	validateBaseConfig(merged);
-	validateObjectConfig(merged, false);
+	// Ensure correct defaults and validation for streaming
+	/*if ((merged as { output?: string }).output === 'no-schema' && !(merged as { mode?: string }).mode) {
+		(merged as { mode?: 'json' }).mode = 'json';
+	}*/
+	validateObjectConfig(merged, true);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
