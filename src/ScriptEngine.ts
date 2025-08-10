@@ -38,10 +38,10 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 				this.config.promptType === 'async-script-name') &&
 			!('loader' in this.config) && !this.config.loader
 		) {
-			throw new ScriptError('A loader is required when scriptType is "script-name" or "async-script-name".');
+			throw new ScriptError('A loader is required when promptType is "script-name" or "async-script-name".');
 		}
 
-		// Initialize appropriate environment based on scriptType
+		// Initialize appropriate environment based on promptType
 		try {
 			if (this.config.promptType === 'script' || this.config.promptType === 'script-name') {
 				this.env = new cascada.Environment(
@@ -70,7 +70,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 					this.script = cascada.compileScript(this.config.script, this.env as cascada.Environment);
 				} else if (this.config.promptType === 'script-name') {
 					if (!this.config.script) {
-						throw new ScriptError('Script is required when scriptType is "script-name"');
+						throw new ScriptError('Script is required when promptType is "script-name"');
 					}
 					// the sync script API uses callback, promisify
 					this.scriptPromise = new Promise((resolve, reject) => {

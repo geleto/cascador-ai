@@ -21,9 +21,9 @@ export function validateBaseConfig(config?: Record<string, any>) {
 
 	// A configuration's type (template vs. script) is determined by its INTENT.
 	// This intent can be signaled either by providing the content ('prompt' or 'script')
-	// or by specifying how content will be handled ('promptType' or 'scriptType').
-	const hasTemplateKeys = 'prompt' in config || 'promptType' in config;
-	const hasScriptKeys = 'script' in config || 'scriptType' in config;
+	// or by specifying how content will be handled ('promptType').
+	const hasTemplateKeys = 'template' in config;
+	const hasScriptKeys = 'script' in config;
 
 	// A single configuration cannot be for both templating and scripting.
 	if (hasTemplateKeys && hasScriptKeys) {
@@ -55,11 +55,11 @@ export function validateBaseConfig(config?: Record<string, any>) {
 		const scriptConfig = config as Partial<TypesConfig.ScriptConfig<any>>;
 		if (scriptConfig.promptType) {
 			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.promptType)) {
-				throw new ConfigError(`Invalid scriptType: '${scriptConfig.promptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
+				throw new ConfigError(`Invalid promptType: '${scriptConfig.promptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
 			}
 			// If the user intends to load a script by name, a loader must be provided.
 			if ((scriptConfig.promptType === 'script-name' || scriptConfig.promptType === 'async-script-name') && !scriptConfig.loader) {
-				throw new ConfigError(`The scriptType '${scriptConfig.promptType}' requires a 'loader' to be configured to load the script by name.`);
+				throw new ConfigError(`The promptType '${scriptConfig.promptType}' requires a 'loader' to be configured to load the script by name.`);
 			}
 		}
 	}
