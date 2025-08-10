@@ -3,7 +3,7 @@ import { ConfigProvider, mergeConfigs } from './ConfigData';
 import { validateBaseConfig, ConfigError } from './validate';
 import * as configs from './types-config';
 import * as utils from './type-utils';
-import { Context } from './types';
+import { Context, TemplatePromptType } from './types';
 
 //@todo Simplify, may not need extends
 export type TemplateRendererInstance<CONFIG extends configs.OptionalTemplateConfig> = TemplateCallSignature<CONFIG>;
@@ -22,36 +22,20 @@ type TemplateCallSignature<TConfig extends configs.OptionalTemplateConfig> =
 		config: TConfig;
 	};
 
-// Single config overload
-export function TemplateRenderer<TConfig extends configs.TemplateConfig>(
-	config: utils.StrictType<TConfig, configs.TemplateConfig> & utils.RequireTemplateLoaderIfNeeded<TConfig>
-): TemplateCallSignature<TConfig>;
-
-// Config with parent overload - now properly returns only required properties in immediate config
-export function TemplateRenderer<
-	TConfig extends configs.TemplateConfig,
-	TParentConfig extends configs.TemplateConfig
->(
-	config: utils.StrictType<TConfig, configs.TemplateConfig> & utils.RequireTemplateLoaderIfNeeded<utils.Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplateConfig>>
-): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
-
-// Implementation
-export function TemplateRenderer<
-	TConfig extends configs.TemplateConfig,
-	TParentConfig extends configs.TemplateConfig
->(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
-): [typeof parent] extends [undefined]
-	? TemplateCallSignature<TConfig>
-	: TemplateCallSignature<utils.Override<TParentConfig, TConfig>> {
-
-	//validateBaseConfig(config);
+// Internal common creator for template renderer
+function _createTemplateRenderer(
+	config: configs.TemplateConfig,
+	promptType: Exclude<TemplatePromptType, undefined>,
+	parent?: ConfigProvider<configs.TemplateConfig>
+): TemplateCallSignature<any> {
 	// Merge configs if parent exists, otherwise use provided config
 	const merged = parent
 		? mergeConfigs(parent.config, config)
 		: config;
+
+	// Force intended promptType based on entry point
+	merged.promptType = promptType;
+
 	validateBaseConfig(merged);
 
 	// Debug output if config.debug is true
@@ -100,9 +84,53 @@ export function TemplateRenderer<
 
 	const callSignature = Object.assign(call, { config: merged });
 
-	type ReturnType = [typeof parent] extends [undefined]
-		? TemplateCallSignature<TConfig>
-		: TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
-
-	return callSignature as ReturnType;
+	return callSignature as TemplateCallSignature<any>;
 }
+
+// Default behavior: inline/embedded template
+export function baseTemplateRenderer<
+	const TConfig extends configs.TemplateConfig
+>(
+	config: utils.StrictType<TConfig, configs.TemplateConfig>
+): TemplateCallSignature<TConfig>;
+
+export function baseTemplateRenderer<
+	TConfig extends configs.TemplateConfig,
+	TParentConfig extends configs.TemplateConfig
+>(
+	config: utils.StrictType<TConfig, configs.TemplateConfig>,
+	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplateConfig>>
+): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
+
+export function baseTemplateRenderer(
+	config: configs.TemplateConfig,
+	parent?: ConfigProvider<configs.TemplateConfig>
+): any {
+	return _createTemplateRenderer(config, 'async-template', parent);
+}
+
+// loadsTemplate: load by name via provided loader
+export function loadsTemplate<
+	const TConfig extends configs.TemplateConfig & configs.LoaderConfig
+>(
+	config: TConfig
+): TemplateCallSignature<TConfig>;
+
+export function loadsTemplate<
+	TConfig extends configs.TemplateConfig & configs.LoaderConfig,
+	TParentConfig extends configs.TemplateConfig & configs.LoaderConfig
+>(
+	config: TConfig,
+	parent: ConfigProvider<TParentConfig>
+): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
+
+export function loadsTemplate(
+	config: configs.TemplateConfig & configs.LoaderConfig,
+	parent?: ConfigProvider<configs.TemplateConfig & configs.LoaderConfig>
+): any {
+	return _createTemplateRenderer(config, 'async-template-name', parent);
+}
+
+export const TemplateRenderer = Object.assign(baseTemplateRenderer, {
+	loadsTemplate,
+});
