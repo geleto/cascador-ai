@@ -306,7 +306,7 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}.',
+				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the orther of the two object should be as listed.',
 			});
 			const { elementStream } = await objectStreamer();
 			const result: { id: number }[] = [];
@@ -480,7 +480,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('rejects if loader fails to find the script', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.ScriptRunner.loadsScript({
 				loader: new StringLoader(),
 				script: 'nope',
 			});

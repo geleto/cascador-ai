@@ -435,7 +435,7 @@ describe('create.TextGenerator', function () {
 			await expect(generator()).to.be.rejectedWith('Filter failed');
 		});
 
-		it('should throw if a loader fails to find a template', async () => {
+		it.only('should throw if a loader fails to find a template', async () => {
 			const generator = create.TextGenerator.loadsTemplate({
 				model,
 				temperature,

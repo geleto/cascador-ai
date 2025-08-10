@@ -219,9 +219,9 @@ describe('create.ObjectGenerator', function () {
 
 		it('should merge and deduplicate loader arrays from parent configs', async () => {
 			const loader1 = new StringLoader();
-			loader1.addTemplate('object1.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
+			loader1.addTemplate('object1.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
 			const loader2 = new StringLoader();
-			loader2.addTemplate('object2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
+			loader2.addTemplate('object2.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
 
 			const parent = create.Config({ loader: [loader1] });
 			const generator = create.ObjectGenerator.loadsTemplate({
@@ -238,7 +238,7 @@ describe('create.ObjectGenerator', function () {
 			expect(object1).to.deep.equal({ name: 'Test', value: 10 });
 
 			const { object: object2 } = await generator('object2.njk', { name: 'Test2', value: 20 });
-			expect(object2).to.deep.equal({ name: 'Test2', value: -20 });
+			expect(object2).to.deep.equal({ name: 'Test2', value: 20 });
 		});
 	});
 

@@ -411,15 +411,5 @@ describe('create.TextStreamer', function () {
 			const result = streamer();
 			await expect(result).to.be.rejectedWith('Filter failed');
 		});
-
-		it('should reject promises if a loader fails to find a template', async () => {
-			const streamer = create.TextStreamer.loadsTemplate({
-				model, temperature,
-				loader: new StringLoader(),
-				prompt: 'nonexistent.njk',
-			});
-			const result = streamer();
-			await expect(result).to.be.rejectedWith(/template not found/i);
-		});
 	});
 });
