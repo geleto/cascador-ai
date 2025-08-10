@@ -21,7 +21,7 @@ export function Tool<
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TemplateRendererInstance<configs.OptionalTemplateConfig> | TextGeneratorInstance<any, any>
+	parent: TemplateRendererInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any>
 ): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ObjectGenerator
@@ -54,7 +54,7 @@ export function Tool<
 	CONFIG extends configs.ToolConfig<PARAMETERS>,
 	PARENT_TYPE extends TextGeneratorInstance<TOOLS, OUTPUT>
 	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>>
-	| TemplateRendererInstance<configs.OptionalTemplateConfig>
+	| TemplateRendererInstance<configs.OptionalTemplatePromptConfig>
 	| ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>,
 	TOOLS extends ToolSet,
 	OUTPUT = never,
@@ -84,8 +84,8 @@ export function Tool<
 	// The order of these checks is important and designed to be mutually exclusive.
 	// We check for the most specific properties first to correctly identify the parent type.
 
-	// Case 1: ScriptRunner is the only type with `script` or `scriptType`.
-	if ('script' in parentConfig || 'scriptType' in parentConfig) {
+	// Case 1: ScriptRunner is the only type with `script`
+	if ('script' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
 			const result = await (parent as ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>)(args);
 			return result ?? '';
@@ -112,7 +112,7 @@ export function Tool<
 	// Case 4: TemplateRenderer has `prompt` or `promptType` but no `model`.
 	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
-			return await (parent as TemplateRendererInstance<configs.OptionalTemplateConfig>)(args);
+			return await (parent as TemplateRendererInstance<configs.OptionalTemplatePromptConfig>)(args);
 		};
 	}
 	// Error case: The parent type could not be determined.

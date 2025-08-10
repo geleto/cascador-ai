@@ -12,20 +12,20 @@ import { validateBaseConfig, ConfigError } from "./validate";
 // The generic return type for a TextStreamer instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
 type StreamTextReturn<
-	TConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT
 > = LLMCallSignature<TConfig, Promise<results.StreamTextResult<TOOLS, OUTPUT>>>;
 
 // Version of the return type for when a parent config is present.
 type StreamTextWithParentReturn<
-	TConfig extends configs.OptionalTemplateConfig,
-	TParentConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
+	TParentConfig extends configs.OptionalTemplatePromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_OUTPUT,
-	TFinalConfig extends configs.OptionalTemplateConfig = utils.Override<TParentConfig, TConfig>
+	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>
 > = StreamTextReturn<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT>;
 
 // The full shape of a final, merged config object, including required properties.
@@ -220,7 +220,7 @@ function _createTextStreamer(
 	config: Partial<configs.StreamTextConfig>,
 	promptType: RequiredPromptType,
 	parent?: ConfigProvider<Partial<configs.StreamTextConfig>>
-): StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplateConfig, any, any> {
+): StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplatePromptConfig, any, any> {
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	validateBaseConfig(merged);
@@ -234,9 +234,9 @@ function _createTextStreamer(
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		merged as configs.OptionalTemplatePromptConfig & { model: LanguageModel, prompt: string },
 		streamText
-	) as StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplateConfig, any, any>;
+	) as StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplatePromptConfig, any, any>;
 }
 
 export const TextStreamer = Object.assign(withText, { // default is withText

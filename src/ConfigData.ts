@@ -1,5 +1,5 @@
 import { Override } from './type-utils';
-import { TemplateConfig } from './types-config';
+import { TemplatePromptConfig } from './types-config';
 
 export interface ConfigProvider<T> {
 	readonly config: T;
@@ -14,8 +14,8 @@ export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
  * The return type is exactly the union of P & C (with child overriding parent).
  */
 export function mergeConfigs<
-	TChild extends Record<string, any> & Omit<TemplateConfig, 'promptType'>,
-	TParent extends Record<string, any> & Omit<TemplateConfig, 'promptType'>
+	TChild extends Record<string, any> & Omit<TemplatePromptConfig, 'promptType'>,
+	TParent extends Record<string, any> & Omit<TemplatePromptConfig, 'promptType'>
 >(
 	parentConfig: TParent,
 	childConfig: TChild

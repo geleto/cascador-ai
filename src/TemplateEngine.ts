@@ -1,6 +1,6 @@
 import * as cascada from 'cascada-engine';
 import { Context } from './types';
-import { TemplateConfig } from './types-config';
+import { TemplatePromptConfig } from './types-config';
 
 class TemplateError extends Error {
 	cause?: Error;
@@ -12,7 +12,7 @@ class TemplateError extends Error {
 	}
 }
 
-export class TemplateEngine<TConfig extends Partial<TemplateConfig>> {
+export class TemplateEngine<TConfig extends Partial<TemplatePromptConfig>> {
 	protected env: cascada.Environment | cascada.AsyncEnvironment;
 	protected templatePromise?: Promise<cascada.Template | cascada.AsyncTemplate>;
 	protected template?: cascada.Template | cascada.AsyncTemplate;

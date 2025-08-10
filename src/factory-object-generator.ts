@@ -14,7 +14,7 @@ export type LLMGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 	| configs.GenerateObjectArrayConfig<ELEMENT>
 	| configs.GenerateObjectEnumConfig<ENUM>
 	| configs.GenerateObjectNoSchemaConfig
-) & configs.OptionalTemplateConfig;
+) & configs.OptionalTemplatePromptConfig;
 
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
@@ -28,7 +28,7 @@ type GenerateObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
 	configs.GenerateObjectNoSchemaConfig;
 
 type GenerateObjectReturn<
-	TConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
 	OBJECT,
 	ELEMENT,
 	ENUM extends string,
@@ -49,15 +49,15 @@ type GenerateObjectReturn<
 	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<any>>>;// object with no schema, maybe return Error String
 
 type GenerateObjectWithParentReturn<
-	TConfig extends configs.OptionalTemplateConfig,
-	TParentConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
+	TParentConfig extends configs.OptionalTemplatePromptConfig,
 	OBJECT,
 	ELEMENT,
 	ENUM extends string,
 	PARENT_OBJECT,
 	PARENT_ELEMENT,
 	PARENT_ENUM extends string,
-	TFinalConfig extends configs.OptionalTemplateConfig = utils.Override<TParentConfig, TConfig>,
+	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>,
 > =
 	GenerateObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT, ENUM extends never ? PARENT_ENUM : ENUM>
 
@@ -469,7 +469,7 @@ function _createObjectGenerator<
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
+		merged as configs.OptionalTemplatePromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		generateObject
 	) as GenerateObjectReturn<TConfig & { promptType: PType }, any, any, any>;
 }

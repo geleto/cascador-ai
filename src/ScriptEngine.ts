@@ -24,7 +24,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 	constructor(config: TConfig) {
 		this.config = {
 			...config,
-			scriptType: config.scriptType ?? 'async-script'
+			promptType: config.promptType ?? 'async-script'
 		} as TConfig;
 
 		// Debug output if config.debug is true
@@ -34,8 +34,8 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 
 		// Runtime validation of loader requirement
 		if (
-			(this.config.scriptType === 'script-name' ||
-				this.config.scriptType === 'async-script-name') &&
+			(this.config.promptType === 'script-name' ||
+				this.config.promptType === 'async-script-name') &&
 			!('loader' in this.config) && !this.config.loader
 		) {
 			throw new ScriptError('A loader is required when scriptType is "script-name" or "async-script-name".');
@@ -43,7 +43,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 
 		// Initialize appropriate environment based on scriptType
 		try {
-			if (this.config.scriptType === 'script' || this.config.scriptType === 'script-name') {
+			if (this.config.promptType === 'script' || this.config.promptType === 'script-name') {
 				this.env = new cascada.Environment(
 					('loader' in this.config ? this.config.loader : null) ?? null,
 					('options' in this.config ? this.config.options : undefined)
@@ -66,9 +66,9 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 
 			// Initialize script if script provided
 			if ('script' in this.config && this.config.script) {
-				if (this.config.scriptType === 'script') {
+				if (this.config.promptType === 'script') {
 					this.script = cascada.compileScript(this.config.script, this.env as cascada.Environment);
-				} else if (this.config.scriptType === 'script-name') {
+				} else if (this.config.promptType === 'script-name') {
 					if (!this.config.script) {
 						throw new ScriptError('Script is required when scriptType is "script-name"');
 					}
@@ -84,9 +84,9 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 							}
 						});
 					});
-				} else if (this.config.scriptType === 'async-script') {
+				} else if (this.config.promptType === 'async-script') {
 					this.script = cascada.compileScriptAsync(this.config.script, this.env as cascada.AsyncEnvironment);
-				} else if (this.config.scriptType === 'async-script-name') {
+				} else if (this.config.promptType === 'async-script-name') {
 					this.scriptPromise = (this.env as cascada.AsyncEnvironment).getScript(this.config.script);
 				}
 			}

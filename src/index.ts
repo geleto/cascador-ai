@@ -10,7 +10,7 @@ export { Config } from './factory-config';
 export { ConfigProvider, ConfigData } from './ConfigData';
 
 export {
-	TemplateConfig, ScriptConfig,
+	TemplatePromptConfig as TemplateConfig, ScriptConfig,
 	GenerateTextConfig, StreamTextConfig,
 	GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
 	StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,

@@ -1,4 +1,3 @@
-import { OptionalTemplateConfig, ScriptConfig } from "./types-config";
 import type * as TypesConfig from "./types-config";
 import { Context } from "./types";
 
@@ -15,7 +14,7 @@ export class ConfigError extends Error {
 }
 
 //@todo - this needs some work
-export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | ScriptConfig<any>> & Record<string, any>) {
+export function validateBaseConfig(config?: Record<string, any>) {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');
 	}
@@ -33,7 +32,7 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Scr
 
 	// --- Template-specific validation ---
 	if (hasTemplateKeys) {
-		const templateConfig = config as Partial<TypesConfig.TemplateConfig>;
+		const templateConfig = config as Partial<TypesConfig.TemplatePromptConfig>;
 		if (templateConfig.promptType as string === 'text') {
 			// 'text' prompt type is for direct LLM calls and should not be mixed with cascada template engine features.
 			if (templateConfig.loader || templateConfig.filters || templateConfig.options) {
@@ -53,14 +52,14 @@ export function validateBaseConfig(config?: Partial<OptionalTemplateConfig | Scr
 
 	// --- Script-specific validation ---
 	if (hasScriptKeys) {
-		const scriptConfig = config as Partial<ScriptConfig<any>>;
-		if (scriptConfig.scriptType) {
-			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.scriptType)) {
-				throw new ConfigError(`Invalid scriptType: '${scriptConfig.scriptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
+		const scriptConfig = config as Partial<TypesConfig.ScriptConfig<any>>;
+		if (scriptConfig.promptType) {
+			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.promptType)) {
+				throw new ConfigError(`Invalid scriptType: '${scriptConfig.promptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
 			}
 			// If the user intends to load a script by name, a loader must be provided.
-			if ((scriptConfig.scriptType === 'script-name' || scriptConfig.scriptType === 'async-script-name') && !scriptConfig.loader) {
-				throw new ConfigError(`The scriptType '${scriptConfig.scriptType}' requires a 'loader' to be configured to load the script by name.`);
+			if ((scriptConfig.promptType === 'script-name' || scriptConfig.promptType === 'async-script-name') && !scriptConfig.loader) {
+				throw new ConfigError(`The scriptType '${scriptConfig.promptType}' requires a 'loader' to be configured to load the script by name.`);
 			}
 		}
 	}

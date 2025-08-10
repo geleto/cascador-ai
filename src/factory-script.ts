@@ -38,7 +38,7 @@ function _createScriptRunner(
 		: config;
 
 	// Force intended scriptType based on entry point
-	merged.scriptType = scriptType;
+	merged.promptType = scriptType;
 
 	validateBaseConfig(merged);
 
@@ -47,12 +47,12 @@ function _createScriptRunner(
 		console.log('[DEBUG] ScriptRunner created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	if ((merged.scriptType === 'script-name' || merged.scriptType === 'async-script-name') && !('loader' in merged)) {
+	if ((merged.promptType === 'script-name' || merged.promptType === 'async-script-name') && !('loader' in merged)) {
 		throw new ConfigError('Script name types require a loader');
 	}
 
-	if ((merged.scriptType === 'script-name' ||
-		merged.scriptType === 'async-script-name') &&
+	if ((merged.promptType === 'script-name' ||
+		merged.promptType === 'async-script-name') &&
 		!merged.loader
 	) {
 		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');

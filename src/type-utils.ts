@@ -1,7 +1,5 @@
 import { z } from 'zod';
 import { SchemaType } from './types';
-import * as configs from './types-config';
-import { ILoaderAny } from 'cascada-engine';
 
 export type Override<A, B> = Omit<A, keyof B> & B;
 
@@ -29,25 +27,6 @@ export type StrictType<T, Shape> = T extends Shape
 // Helper to get keys as a string array for the error message
 export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F & string, ...KeysToStringArray<R>] : [];
 
-// Makes sure the override of T and ParentT is a strict subtype of Shape, returns T if it is
-type StrictOverrideType<T, ParentT, Shape> = Override<ParentT, T> extends Shape
-	? keyof Override<ParentT, T> extends keyof Shape ? T : never
-	: never;
-
-// Ensures T strictly matches Shape while enforcing template property rules.
-// Disallows template properties (e.g., loader, filters) for `promptType: 'text'`, but requires `loader` for named template modes.
-// For standalone configs (no parent).
-export type StrictTypeWithTemplateAndLoader<T extends configs.OptionalTemplateConfig, Shape> = T extends { promptType: 'text' }
-	? StrictType<T, Shape & { promptType: 'text' }>
-	: StrictType<T, Shape & configs.TemplateConfig & RequireTemplateLoaderIfNeeded<T>>;
-
-// Ensures the merged Parent/Child config strictly matches Shape while enforcing template property rules.
-// Disallows template properties for `promptType: 'text'` on the merged object, but requires `loader` for named template modes.
-// For configs with a parent.
-export type StrictOverrideTypeWithTemplateAndLoader<Config extends configs.OptionalTemplateConfig, ParentConfig extends configs.OptionalTemplateConfig, Shape> = Override<Config, ParentConfig> extends { promptType: 'text' }
-	? StrictOverrideType<Config, ParentConfig, Shape & { promptType: 'text' }>
-	: StrictOverrideType<Config, ParentConfig, Shape & configs.TemplateConfig & RequireTemplateLoaderIfNeeded<Config>>;
-
 // Helper to infer parameters from the schema
 export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 	? z.infer<T>
@@ -58,7 +37,7 @@ export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 export type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
 
 // Regular omit flattens the type, this one retains the original union structure. The example below will not work with regular Omit
-// type DebugTConfig2 = DistributiveOmit<configs.OptionalTemplateConfig & configs.StreamObjectObjectConfig<typeof schema>, 'schema'>;
+// type DebugTConfig2 = DistributiveOmit<configs.OptionalTemplatePromptConfig & configs.StreamObjectObjectConfig<typeof schema>, 'schema'>;
 // type DebugTLoader2 = (DebugTConfig2 & { promptType: 'template' })['loader'];
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
@@ -95,16 +74,3 @@ export type RequireMissingWithSchema<
 		: TConfig) &
 	// Add missing required properties
 	Pick<TRequired, GetMissingProperties<TRequired, TRefConfig>>;
-
-export type RequireTemplateLoaderIfNeeded<
-	TMergedConfig extends configs.OptionalTemplateConfig
-> = TMergedConfig['promptType'] extends 'template-name' | 'async-template-name'
-	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
-	: object;
-
-export type RequireScriptLoaderIfNeeded<
-	TMergedConfig extends configs.ScriptConfig<OBJECT>,
-	OBJECT = any
-> = TMergedConfig['scriptType'] extends 'script-name' | 'async-script-name'
-	? 'loader' extends keyof TMergedConfig ? object : { loader: ILoaderAny | ILoaderAny[] }
-	: object;

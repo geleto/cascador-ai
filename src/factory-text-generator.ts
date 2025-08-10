@@ -9,26 +9,26 @@ import { LLMCallSignature, createLLMRenderer } from "./llm";
 import { ConfigProvider, mergeConfigs } from "./ConfigData";
 import { validateBaseConfig, ConfigError } from "./validate";
 
-export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplateConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
+export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplatePromptConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
 export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
 // The generic return type for a TextGenerator instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
 type GenerateTextReturn<
-	TConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT
 > = LLMCallSignature<TConfig, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;
 
 // Version of the return type for when a parent config is present.
 type GenerateTextWithParentReturn<
-	TConfig extends configs.OptionalTemplateConfig,
-	TParentConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
+	TParentConfig extends configs.OptionalTemplatePromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_OUTPUT,
-	TFinalConfig extends configs.OptionalTemplateConfig = utils.Override<TParentConfig, TConfig>
+	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>
 > = GenerateTextReturn<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT>;
 
 // The full shape of a final, merged config object, including required properties.
@@ -223,7 +223,7 @@ function _createTextGenerator(
 	config: Partial<configs.GenerateTextConfig>,
 	promptType: RequiredPromptType,
 	parent?: ConfigProvider<Partial<configs.GenerateTextConfig>>
-): GenerateTextReturn<configs.GenerateTextConfig & configs.OptionalTemplateConfig, any, any> {
+): GenerateTextReturn<configs.GenerateTextConfig & configs.OptionalTemplatePromptConfig, any, any> {
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	validateBaseConfig(merged);
@@ -237,9 +237,9 @@ function _createTextGenerator(
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplateConfig & { model: LanguageModel, prompt: string },
+		merged as configs.OptionalTemplatePromptConfig & { model: LanguageModel, prompt: string },
 		generateText
-	) as GenerateTextReturn<configs.GenerateTextConfig & configs.OptionalTemplateConfig, any, any>;
+	) as GenerateTextReturn<configs.GenerateTextConfig & configs.OptionalTemplatePromptConfig, any, any>;
 }
 
 export const TextGenerator = Object.assign(withText, { // default is withText

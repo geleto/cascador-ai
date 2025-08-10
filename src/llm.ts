@@ -6,7 +6,7 @@ import { TemplateRenderer } from './factory-template';
 import { LanguageModel } from 'ai';
 
 export type LLMCallSignature<
-	TConfig extends configs.OptionalTemplateConfig,
+	TConfig extends configs.OptionalTemplatePromptConfig,
 	TResult
 > = TConfig extends { promptType: 'text' }
 	? (
@@ -39,8 +39,8 @@ export type LLMCallSignature<
 	);
 
 export function createLLMRenderer<
-	TConfig extends configs.OptionalTemplateConfig & Partial<TFunctionConfig>
-	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplateConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	TConfig extends configs.OptionalTemplatePromptConfig & Partial<TFunctionConfig>
+	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel },
 	TFunctionResult,
 >(
@@ -55,7 +55,7 @@ export function createLLMRenderer<
 	let call;
 	if (config.promptType !== 'text') {
 		// We have to run the prompt through a template first.
-		const renderer = TemplateRenderer(config as configs.TemplateConfig & { promptType: TemplatePromptType });
+		const renderer = TemplateRenderer(config as configs.TemplatePromptConfig & { promptType: TemplatePromptType });
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrContext, maybeContext });

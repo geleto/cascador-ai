@@ -41,17 +41,17 @@ export interface LoaderConfig extends BaseConfig {
 }
 
 // Config for the template engine with type safety for loader requirement
-export interface TemplateConfig extends CascadaConfig {
+export interface TemplatePromptConfig extends CascadaConfig {
 	prompt?: string;
 	promptType?: TemplatePromptType;
 }
 
-export type OptionalTemplateConfig = TemplateConfig | { promptType: 'text'/*, prompt?: string */ };
+export type OptionalTemplatePromptConfig = TemplatePromptConfig | { promptType: 'text'/*, prompt?: string */ };
 
 // Script types
 export interface ScriptConfig<OBJECT> extends CascadaConfig {
 	script?: string;
-	scriptType?: ScriptType;
+	promptType?: ScriptType;
 	schema?: SchemaType<OBJECT>;
 };
 
@@ -175,4 +175,4 @@ export type AnyConfig<
 	PROMPT = string
 > =
 	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM, PROMPT> & { promptType: 'text' }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM, PROMPT> & TemplateConfig); // template modes including undefined
+	| (AnyNoTemplateConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM, PROMPT> & TemplatePromptConfig); // template modes including undefined
