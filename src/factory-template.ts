@@ -23,7 +23,7 @@ type TemplateCallSignature<TConfig extends configs.OptionalTemplatePromptConfig>
 	};
 
 // Internal common creator for template renderer
-function _createTemplateRenderer(
+export function _createTemplateRenderer(
 	config: configs.TemplatePromptConfig,
 	promptType: Exclude<TemplatePromptType, undefined>,
 	parent?: ConfigProvider<configs.TemplatePromptConfig>

@@ -4,7 +4,7 @@ import { ScriptEngine } from './ScriptEngine';
 import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
-import { Context, SchemaType, ScriptType } from './types';
+import { Context, SchemaType, ScriptPromptType } from './types';
 
 export type ScriptRunnerInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
 
@@ -27,9 +27,9 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	};
 
 // Internal common creator
-function _createScriptRunner(
+export function _createScriptRunner(
 	config: configs.ScriptConfig<any>,
-	scriptType: Exclude<ScriptType, undefined>,
+	scriptType: Exclude<ScriptPromptType, undefined>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
 ): ScriptCallSignature<any> {
 	// Merge configs if parent exists, otherwise use provided config

@@ -18,7 +18,7 @@ export {
 } from './types-config';
 
 // Core types
-export { Context, SchemaType, TemplatePromptType, ScriptType/*, LLMPromptType */, StreamObjectOnFinishEvent, StreamTextOnFinishEvent } from './types';
+export { Context, SchemaType, TemplatePromptType, ScriptPromptType/*, LLMPromptType */, StreamObjectOnFinishEvent, StreamTextOnFinishEvent } from './types';
 
 // Result types
 export {

@@ -9,7 +9,7 @@ import {
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
 import {
-	TemplatePromptType, ScriptType, /*, LLMPromptType */
+	TemplatePromptType, ScriptPromptType, /*, LLMPromptType */
 	SchemaType
 } from './types';
 import { InferParameters } from './type-utils';
@@ -41,17 +41,26 @@ export interface LoaderConfig extends BaseConfig {
 }
 
 // Config for the template engine with type safety for loader requirement
-export interface TemplatePromptConfig extends CascadaConfig {
-	prompt?: string;
+export interface TemplatePromptConfig<PROMPT = string> extends CascadaConfig {
+	prompt?: PROMPT;
 	promptType?: TemplatePromptType;
 }
 
-export type OptionalTemplatePromptConfig = TemplatePromptConfig | { promptType: 'text'/*, prompt?: string */ };
+export type OptionalTemplatePromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
+
+export interface ScriptPromptConfig<PROMPT = string> extends ScriptConfig<PROMPT> {
+	prompt?: PROMPT;
+	promptType?: ScriptPromptType;
+}
+
+export type OptionalScriptPromptConfig<PROMPT = string> = ScriptPromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
+
+export type OptionalPromptConfig<PROMPT = string> = OptionalTemplatePromptConfig<PROMPT> | OptionalScriptPromptConfig<PROMPT>;
 
 // Script types
 export interface ScriptConfig<OBJECT> extends CascadaConfig {
 	script?: string;
-	promptType?: ScriptType;
+	promptType?: ScriptPromptType;
 	schema?: SchemaType<OBJECT>;
 };
 

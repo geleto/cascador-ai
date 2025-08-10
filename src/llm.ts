@@ -1,12 +1,14 @@
-import { Context, TemplatePromptType } from './types';
+import { Context, ScriptPromptType, TemplatePromptType } from './types';
 import * as configs from './types-config';
 import { validateCall } from './validate';
 import * as utils from './type-utils';
-import { TemplateRenderer } from './factory-template';
+import { _createTemplateRenderer } from './factory-template';
+import { _createScriptRunner } from './factory-script';
 import { LanguageModel } from 'ai';
+import { z } from 'zod';
 
 export type LLMCallSignature<
-	TConfig extends configs.OptionalTemplatePromptConfig,
+	TConfig extends configs.OptionalPromptConfig,
 	TResult
 > = TConfig extends { promptType: 'text' }
 	? (
@@ -39,7 +41,7 @@ export type LLMCallSignature<
 	);
 
 export function createLLMRenderer<
-	TConfig extends configs.OptionalTemplatePromptConfig & Partial<TFunctionConfig>
+	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig>
 	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel },
 	TFunctionResult,
@@ -53,21 +55,27 @@ export function createLLMRenderer<
 	}
 
 	let call;
-	if (config.promptType !== 'text') {
-		// We have to run the prompt through a template first.
-		const renderer = TemplateRenderer(config as configs.TemplatePromptConfig & { promptType: TemplatePromptType });
+	if (config.promptType !== 'text' && config.promptType !== undefined) {
+		// We have to run the prompt through a template or script first
+
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrContext, maybeContext });
 			}
 			validateCall(config, promptOrContext, maybeContext);
-			let renderedPrompt: string;
 
-			if (typeof promptOrContext === 'string') {
-				renderedPrompt = await renderer(promptOrContext, maybeContext);
+			const prompt = typeof promptOrContext === 'string' ? promptOrContext : config.prompt;
+			const context = typeof promptOrContext === 'string' ? maybeContext : promptOrContext;
+
+			let renderedPrompt: string;
+			//@todo - async option support
+			const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
+			if (isTemplatePrompt) {
+				renderedPrompt = await _createTemplateRenderer(config as configs.TemplatePromptConfig, config.promptType as Exclude<TemplatePromptType, undefined>)(prompt, context);
 			} else {
-				//no prompt provided, use the config prompt
-				renderedPrompt = await renderer(config.prompt, promptOrContext);
+				//the script must render a string (@todo - or Messages[])
+				const textScriptConfig: configs.ScriptConfig<string> = { ...(config as configs.ScriptPromptConfig), schema: z.string() };
+				renderedPrompt = await _createScriptRunner(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>)(prompt, context) as string;
 			}
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
@@ -79,7 +87,7 @@ export function createLLMRenderer<
 			return result;
 		};
 	} else {
-		// No need to run the prompt through a template.
+		// No need to run the prompt through a template/script.
 		// depending on the vercelFunc, the result may be a promise or not
 		call = (prompt: string): TFunctionResult => {
 			if (config.debug) {
