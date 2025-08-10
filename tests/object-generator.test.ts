@@ -335,7 +335,7 @@ describe('create.ObjectGenerator', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectGenerator({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'Object config requires model',
+				'Object config requires a \'model\' property',
 			);
 		});
 
@@ -372,7 +372,7 @@ describe('create.ObjectGenerator', function () {
 
 		it('should throw at runtime if no prompt is provided in config or call', async () => {
 			const generator = create.ObjectGenerator({ model, temperature, schema: simpleSchema });
-			await expect(generator(undefined as unknown as string)).to.be.rejectedWith(
+			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);

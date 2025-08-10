@@ -2,17 +2,17 @@ import 'dotenv/config';
 import { ILoader, LoaderSource } from 'cascada-engine';
 
 
-/*import { anthropic, createAnthropic, AnthropicProviderSettings } from '@ai-sdk/anthropic';
+import { anthropic, createAnthropic, AnthropicProviderSettings } from '@ai-sdk/anthropic';
 import { LanguageModel } from 'ai';
 export const modelName = 'claude-3-5-haiku-latest';
 export const model: LanguageModel = anthropic(modelName);
-export const createProvider = (options: AnthropicProviderSettings) => createAnthropic(options);
-*/
+export const createProvider = createAnthropic;
 
-import { openai, createOpenAI, OpenAIProviderSettings } from '@ai-sdk/openai';
-export const modelName = 'gpt-5-mini';
-export const createProvider = (options: OpenAIProviderSettings) => createOpenAI(options);
+/*import { openai, createOpenAI, OpenAIProviderSettings } from '@ai-sdk/openai';
+export const modelName = 'gpt-5-nano';
+export const createProvider = createOpenAI;
 export const model = openai(modelName);
+*/
 
 export const timeout = 10000;
 export const temperature = 0.1;

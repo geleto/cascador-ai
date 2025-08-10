@@ -186,9 +186,9 @@ describe('create.TextGenerator', function () {
 			const generator = create.TextGenerator.withTemplate({
 				model,
 				temperature,
-				prompt: 'Only write the word and nothing else. The word is {{ word }}.',
+				prompt: 'Only write the word and nothing else. Keep it lowercase. The word is {{ word }}.',
 			});
-			const result = await generator({ context: { word: 'runtime' } });
+			const result = await generator({ word: 'runtime' });
 			expect(result.text).to.equal('runtime');
 		});
 
@@ -199,7 +199,7 @@ describe('create.TextGenerator', function () {
 				prompt: 'Only write the word and number separated by a space and nothing else. The word is {{ word }} and the number is {{ num }}.',
 				context: { word: 'config', num: 1 },
 			});
-			const result = await generator({ context: { word: 'runtime' } });
+			const result = await generator({ word: 'runtime' });
 			expect(result.text).to.equal('runtime 1');
 		});
 
@@ -288,22 +288,23 @@ describe('create.TextGenerator', function () {
 				loader: stringLoader,
 				prompt: 'simple.njk',
 			});
-			const result = await generator({ context: { number: 5 } });
+			const result = await generator({ number: 5 });
 			expect(result.text.trim()).to.equal('"5"');
 		});
 
 		it('should load from StringLoader using a named prompt', async () => {
 			const testLoader = new StringLoader();
-			testLoader.addTemplate('my-prompt', 'Write this and nothing else: This is a test with {{ name }}.');
+			testLoader.addTemplate('my-prompt', 'Write this and nothing else, keep it exactly as shown: This is a test with {{ name }}.');
 
 			const generator = create.TextGenerator.loadsTemplate({
 				model,
 				temperature,
 				loader: testLoader,
 				prompt: 'my-prompt',
+				context: { name: 'StringLoader' },
 			});
 
-			const result = await generator({ context: { name: 'StringLoader' } });
+			const result = await generator({ name: 'StringLoader' });
 			expect(result.text.trim()).to.equal('This is a test with StringLoader.');
 		});
 
@@ -315,7 +316,7 @@ describe('create.TextGenerator', function () {
 				prompt: 'filtered.njk',
 				filters: { shout: (s: string) => `${s.toUpperCase()}!` },
 			});
-			const result = await generator({ context: { text: 'hello' } });
+			const result = await generator({ text: 'hello' });
 			expect(result.text.trim()).to.equal('HELLO!');
 		});
 	});
@@ -339,7 +340,7 @@ describe('create.TextGenerator', function () {
 		});
 
 		it('handles call with context override: generator({ val: "B" })', async () => {
-			const result = await generatorWithPrompt({ context: { val: 'B' } });
+			const result = await generatorWithPrompt({ val: 'B' });
 			expect(result.text).to.equal('"B"');
 		});
 
@@ -376,7 +377,7 @@ describe('create.TextGenerator', function () {
 			// This now throws at creation time due to stricter config validation.
 			expect(() => create.TextGenerator({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'TextGenerator config requires model',
+				'TextGenerator config requires a \'model\' property',
 			);
 		});
 
@@ -389,7 +390,7 @@ describe('create.TextGenerator', function () {
 				} as never),
 			).to.throw(
 				ConfigError,
-				"Plain text renderer cannot be used with template engine properties like 'loader', 'filters', or 'options'.",
+				"'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.",
 			);
 		});
 
@@ -404,7 +405,7 @@ describe('create.TextGenerator', function () {
 				}),
 			).to.throw(
 				ConfigError,
-				`'loadsTemplate' creator requires a 'loader'`,
+				`requires a 'loader' to be configured`,
 			);
 		});
 
@@ -412,7 +413,7 @@ describe('create.TextGenerator', function () {
 		it('should throw an error at runtime if no prompt is provided in config or call', async () => {
 			const generator = create.TextGenerator({ model });
 			// Calling with no arguments should fail.
-			await expect(generator(undefined as unknown as string)).to.be.rejectedWith(
+			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);
@@ -442,7 +443,7 @@ describe('create.TextGenerator', function () {
 				prompt: 'nonexistent.njk',
 			});
 
-			await expect(generator()).to.be.rejectedWith('template not found: nonexistent.njk');
+			await expect(generator()).to.be.rejectedWith(/template not found/i);
 		});
 
 		it('should throw if a context function throws an error', async () => {

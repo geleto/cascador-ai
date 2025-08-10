@@ -6,7 +6,7 @@ import type { StreamObjectOnFinishEvent } from '../src/index';
 import { model, temperature, StringLoader, timeout, modelName, createProvider } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
-import { DeepPartial } from 'ai';
+import type { DeepPartial } from 'ai';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
@@ -91,7 +91,8 @@ describe('create.ObjectStreamer', function () {
 			expect(() => arraySchema.parse(finalArray)).to.not.throw();
 		});
 
-		it('should stream a raw JSON object with output: "no-schema"', async () => {
+		// Anthropic models do not support no-schema output streaming
+		it.skip('should stream a raw JSON object with output: "no-schema"', async () => {
 			const streamer = create.ObjectStreamer({
 				model, temperature,
 				output: 'no-schema',
@@ -274,8 +275,8 @@ describe('create.ObjectStreamer', function () {
 		});
 
 		it('should throw and reject promises for API errors', async () => {
-			const anthropicProvider = createProvider({ apiKey: 'invalid-key' });
-			const badModel = anthropicProvider(modelName);
+			const provider = createProvider({ apiKey: 'invalid-key' });
+			const badModel = provider(modelName);
 
 			const streamer = create.ObjectStreamer({
 				model: badModel,
@@ -301,7 +302,7 @@ describe('create.ObjectStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectStreamer({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'Object config requires model',
+				'Object config requires a \'model\' property',
 			);
 		});
 
@@ -315,14 +316,14 @@ describe('create.ObjectStreamer', function () {
 		it('should throw ConfigError for invalid output type like "enum"', async () => {
 			// but this does not work now because of function property TS bug workaround that removes the shape
 			// and I have not implemented alternative type checking yet
-			const streamer = create.ObjectStreamer({
-				model, temperature,
-				// @ts-expect-error - Intentionally invalid
-				output: 'enum',
-				enum: ['A', 'B']
-			})
-
-			await expect(streamer('Some prompt')).to.be.rejectedWith(`Enum values are required for enum output`);
+			expect(() =>
+				create.ObjectStreamer({
+					model, temperature,
+					// @ts-expect-error - Intentionally invalid
+					output: 'enum',
+					enum: ['A', 'B'],
+				})
+			).to.throw(ConfigError, 'Stream does not support enum output');
 		});
 
 		it('should throw ConfigError if output is "no-schema" but a schema is provided', () => {
@@ -337,7 +338,7 @@ describe('create.ObjectStreamer', function () {
 
 		it('should reject promise at runtime if no prompt is provided in config or call', async () => {
 			const streamer = create.ObjectStreamer({ model, temperature, schema: simpleSchema });
-			await expect(streamer(undefined as unknown as string)).to.be.rejectedWith(
+			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);

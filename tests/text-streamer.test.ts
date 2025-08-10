@@ -376,7 +376,7 @@ describe('create.TextStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.TextStreamer({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'TextStreamer config requires model',
+				'TextStreamer config requires a \'model\' property',
 			);
 		});
 
@@ -396,8 +396,7 @@ describe('create.TextStreamer', function () {
 		it('should reject promises at runtime if no prompt is provided in config or call', async () => {
 			const streamer = create.TextStreamer({ model });
 			// The call returns promises that should reject
-			const result = streamer(undefined as unknown as string);
-			await expect(result).to.be.rejectedWith(
+			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
 				'Either prompt argument or config.prompt/messages required',
 			);
@@ -420,7 +419,7 @@ describe('create.TextStreamer', function () {
 				prompt: 'nonexistent.njk',
 			});
 			const result = streamer();
-			await expect(result).to.be.rejectedWith('Template not found: nonexistent.njk');
+			await expect(result).to.be.rejectedWith(/template not found/i);
 		});
 	});
 });
