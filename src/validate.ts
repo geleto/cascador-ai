@@ -29,38 +29,21 @@ export function validateBaseConfig(config?: Record<string, any>) {
 	if (hasTemplateKeys && hasScriptKeys) {
 		throw new ConfigError('Configuration cannot have both template/prompt and script properties. A config must be either for templating or for scripting, not both.');
 	}
-
-	// --- Template-specific validation ---
-	if (hasTemplateKeys) {
-		const templateConfig = config as Partial<TypesConfig.TemplatePromptConfig>;
-		if (templateConfig.promptType as string === 'text') {
-			// 'text' prompt type is for direct LLM calls and should not be mixed with cascada template engine features.
-			if (templateConfig.loader || templateConfig.filters || templateConfig.options) {
-				throw new ConfigError("'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.");
-			}
-		} else if (templateConfig.promptType) {
-			// For all other named template types (template, async-template, template-name, async-template-name).
-			if (!['template', 'async-template', 'template-name', 'async-template-name'].includes(templateConfig.promptType)) {
-				throw new ConfigError(`Invalid promptType: '${templateConfig.promptType}'. Valid options are 'template', 'async-template', 'template-name', 'async-template-name'.`);
-			}
-			// If the user intends to load a template by name, a loader must be provided.
-			if ((templateConfig.promptType === 'template-name' || templateConfig.promptType === 'async-template-name') && !templateConfig.loader) {
-				throw new ConfigError(`The promptType '${templateConfig.promptType}' requires a 'loader' to be configured to load the template by name.`);
-			}
+	if (config.promptType as string === 'text') {
+		// 'text' prompt type is for direct LLM calls and should not be mixed with cascada template engine features.
+		if (config.loader || config.filters || config.options) {
+			throw new ConfigError("'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.");
 		}
-	}
-
-	// --- Script-specific validation ---
-	if (hasScriptKeys) {
-		const scriptConfig = config as Partial<TypesConfig.ScriptConfig<any>>;
-		if (scriptConfig.promptType) {
-			if (!['script', 'async-script', 'script-name', 'async-script-name'].includes(scriptConfig.promptType)) {
-				throw new ConfigError(`Invalid promptType: '${scriptConfig.promptType}'. Valid options are 'script', 'async-script', 'script-name', 'async-script-name'.`);
-			}
-			// If the user intends to load a script by name, a loader must be provided.
-			if ((scriptConfig.promptType === 'script-name' || scriptConfig.promptType === 'async-script-name') && !scriptConfig.loader) {
-				throw new ConfigError(`The promptType '${scriptConfig.promptType}' requires a 'loader' to be configured to load the script by name.`);
-			}
+	} else if (config.promptType) {
+		// For all other named template types (template, async-template, template-name, async-template-name).
+		if (!['template', 'async-template', 'template-name', 'async-template-name',
+			'script', 'async-script', 'script-name', 'async-script-name'
+		].includes(config.promptType as string)) {
+			throw new ConfigError(`Invalid promptType: '${config.promptType as string}'. Valid options are 'template', 'async-template', 'template-name', 'async-template-name', 'script', 'async-script', 'script-name', 'async-script-name'.`);
+		}
+		// If the user intends to load a template by name, a loader must be provided.
+		if ((config.promptType === 'template-name' || config.promptType === 'async-template-name') && !config.loader) {
+			throw new ConfigError(`The promptType '${config.promptType as string}' requires a 'loader' to be configured to load the template by name.`);
 		}
 	}
 
