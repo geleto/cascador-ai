@@ -427,13 +427,13 @@ describe('create.ScriptRunner', function () {
 	describe('Script Loader', () => {
 		const stringLoader = new StringLoader();
 		stringLoader.addTemplate('s1', `
-      :data
-      var msg = greeting + " " + subject
-      @data.out = msg
-    `);
+			:data
+			var msg = greeting + " " + subject
+			@data.out = msg
+		`);
 
 		it('loads and executes a script using .loadsScript', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.ScriptRunner.loadsScript({
 				loader: stringLoader,
 				script: 's1',
 				context: { greeting: 'Loaded' },
@@ -448,8 +448,9 @@ describe('create.ScriptRunner', function () {
 	describe('Error Handling & Validation', () => {
 		it('throws ConfigError if .loadsScript is used but no loader is provided', () => {
 			expect(() =>
-				create.ScriptRunner({
-					script: 'file.casc',
+				//@ts-expect-error - loader is required in config when using .loadsScript
+				create.ScriptRunner.loadsScript({
+					script: 'file.casc'
 				}),
 			).to.throw(ConfigError);
 		});

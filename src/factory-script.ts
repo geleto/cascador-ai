@@ -4,7 +4,7 @@ import { ScriptEngine } from './ScriptEngine';
 import * as configs from './types-config';
 import * as results from './types-result';
 import * as utils from './type-utils';
-import { Context, SchemaType } from './types';
+import { Context, SchemaType, ScriptType } from './types';
 
 export type ScriptRunnerInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
 
@@ -26,38 +26,20 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 		config: TConfig;
 	};
 
-// Single config overload
-export function ScriptRunner<
-	const TConfig extends configs.ScriptConfig<any>
->(
-	config: utils.StrictType<TConfig, configs.ScriptConfig<any>> & utils.RequireScriptLoaderIfNeeded<TConfig>
-): ScriptCallSignature<TConfig>;
-
-// Config with parent overload
-export function ScriptRunner<
-	const TConfig extends configs.ScriptConfig<any>,
-	const TParentConfig extends configs.ScriptConfig<any>
->(
-	config: utils.StrictType<TConfig, configs.ScriptConfig<any>> & utils.RequireScriptLoaderIfNeeded<utils.Override<TParentConfig, TConfig>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<any>>>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
-
-// Implementation
-export function ScriptRunner<
-	TConfig extends configs.ScriptConfig<OBJECT>,
-	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT>,
-	OBJECT,
-	PARENT_OBJECT
->(
-	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+// Internal common creator
+function _createScriptRunner(
+	config: configs.ScriptConfig<any>,
+	scriptType: Exclude<ScriptType, undefined>,
+	parent?: ConfigProvider<configs.ScriptConfig<any>>
 ): ScriptCallSignature<any> {
-
-	//validateBaseConfig(config);
 	// Merge configs if parent exists, otherwise use provided config
 	const merged = parent
 		? mergeConfigs(parent.config, config)
 		: config;
+
+	// Force intended scriptType based on entry point
+	merged.scriptType = scriptType;
+
 	validateBaseConfig(merged);
 
 	// Debug output if config.debug is true
@@ -76,7 +58,7 @@ export function ScriptRunner<
 		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');
 	}
 
-	const runner = new ScriptEngine<typeof merged, OBJECT>(merged);
+	const runner = new ScriptEngine<typeof merged, any>(merged);
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {
@@ -103,9 +85,59 @@ export function ScriptRunner<
 
 	const callSignature = Object.assign(call, { config: merged });
 
-	type ReturnType = [typeof parent] extends [undefined]
-		? ScriptCallSignature<TConfig>
-		: ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
-
-	return callSignature as ReturnType;
+	return callSignature as ScriptCallSignature<any>;
 }
+
+// Default behavior: inline/embedded script
+export function baseScriptRunner<
+	const TConfig extends configs.ScriptConfig<OBJECT>,
+	OBJECT = any
+>(
+	config: utils.StrictType<TConfig, configs.ScriptConfig<OBJECT>>
+): ScriptCallSignature<TConfig>;
+
+export function baseScriptRunner<
+	TConfig extends configs.ScriptConfig<OBJECT>,
+	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT>,
+	OBJECT = any,
+	PARENT_OBJECT = any
+>(
+	config: utils.StrictType<TConfig, configs.ScriptConfig<OBJECT>>,
+	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_OBJECT>>>
+): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
+
+export function baseScriptRunner(
+	config: configs.ScriptConfig<any>,
+	parent?: ConfigProvider<configs.ScriptConfig<any>>
+): any {
+	return _createScriptRunner(config, 'async-script', parent);
+}
+
+// loadsScript: load by name via provided loader
+export function loadsScript<
+	const TConfig extends configs.ScriptConfig<OBJECT> & configs.LoaderConfig,
+	OBJECT = any
+>(
+	config: TConfig
+): ScriptCallSignature<TConfig>;
+
+export function loadsScript<
+	TConfig extends configs.ScriptConfig<OBJECT> & configs.LoaderConfig,
+	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT> & configs.LoaderConfig,
+	OBJECT = any,
+	PARENT_OBJECT = any
+>(
+	config: TConfig,
+	parent: ConfigProvider<TParentConfig>
+): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
+
+export function loadsScript(
+	config: configs.ScriptConfig<any> & configs.LoaderConfig,
+	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
+): any {
+	return _createScriptRunner(config, 'async-script-name', parent);
+}
+
+export const ScriptRunner = Object.assign(baseScriptRunner, {
+	loadsScript,
+});

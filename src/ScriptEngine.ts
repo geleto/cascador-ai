@@ -186,6 +186,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 					}
 					rawResult = result;
 				} else {
+					//async script
 					const result = await this.script.render(mergedContext);
 					if ('debug' in this.config && this.config.debug) {
 						console.log('[DEBUG] ScriptEngine.run - async script result:', result);
