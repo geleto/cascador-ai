@@ -435,15 +435,32 @@ describe('create.TextGenerator', function () {
 			await expect(generator()).to.be.rejectedWith('Filter failed');
 		});
 
-		it.only('should throw if a loader fails to find a template', async () => {
+		it('should throw if a loader fails to find a template specified at creation time', async () => {
 			const generator = create.TextGenerator.loadsTemplate({
-				model,
-				temperature,
+				model, temperature,
 				loader: new StringLoader(),
 				prompt: 'nonexistent.njk',
 			});
 
 			await expect(generator()).to.be.rejectedWith(/template not found/i);
+		});
+
+		it('should throw if a loader fails to find a template specified at runtime', async () => {
+			const generator = create.TextGenerator.loadsTemplate({
+				model, temperature,
+				loader: new StringLoader()
+			});
+			await expect(generator('nonexistent.njk')).to.be.rejectedWith(/template not found/i);
+		});
+
+		it('should throw if a template is named, but no loader is provided', () => {
+			//@ts-expect-error - no loader is provided
+			expect(() => create.TextGenerator.loadsTemplate({
+				model, temperature
+			})).to.throw(
+				ConfigError,
+				"The promptType 'async-template-name' requires a 'loader' to be configured to load the template by name."
+			);
 		});
 
 		it('should throw if a context function throws an error', async () => {
