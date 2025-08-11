@@ -8,12 +8,12 @@ import { Context, TemplatePromptType } from './types';
 //@todo Simplify, may not need extends
 export type TemplateRendererInstance<CONFIG extends configs.OptionalTemplatePromptConfig> = TemplateCallSignature<CONFIG>;
 
-type TemplateCallSignature<TConfig extends configs.OptionalTemplatePromptConfig> =
-	TConfig extends { prompt: string }
+export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePromptConfig> =
+	TConfig extends { prompt: string }//@todo - rename to template
 	? {
 		//TConfig has prompt, no prompt argument is needed
 		(promptOrContext?: Context | string): Promise<string>;//one optional argument, prompt or context
-		(prompt: string, context: Context): Promise<string>;//two arguments, prompt and context
+		(prompt?: string, context?: Context): Promise<string>;//two arguments, prompt and context
 		config: TConfig;
 	}
 	: {

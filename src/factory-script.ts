@@ -17,7 +17,7 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	? {
 		// TConfig has a script, so the script argument is optional.
 		(scriptOrContext?: Context | string): ScriptResultPromise<TConfig>;
-		(script: string, context: Context): ScriptResultPromise<TConfig>;
+		(script?: string, context?: Context): ScriptResultPromise<TConfig>;
 		config: TConfig;
 	}
 	: {
