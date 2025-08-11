@@ -58,7 +58,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// Test 1: Configuration with explicit prompt
 	const configWithPrompt = create.Config({ prompt: "Hello {name}" });
-	const templateWithPrompt = create.TemplateRenderer({}, configWithPrompt);
+	const templateWithPrompt = create.Template({}, configWithPrompt);
 	// Valid cases:
 	await templateWithPrompt(); // ✓ Uses config prompt
 	await templateWithPrompt({ name: "Bob" }); // ✓ Uses config prompt with context
@@ -72,7 +72,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// Test 2: Empty configuration
 	const emptyConfig = create.Config({});
-	const templateWithEmptyConfig = create.TemplateRenderer({}, emptyConfig);
+	const templateWithEmptyConfig = create.Template({}, emptyConfig);
 	// Invalid cases - no prompt provided:
 	// @ts-expect-error - Missing required prompt when no prompt is provided in config
 	await templateWithEmptyConfig(); // ✗ Missing required prompt
@@ -87,7 +87,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		promptType: 'template-name',
 		loader: templateLoader
 	});
-	const templateWithLoader = create.TemplateRenderer({}, loaderConfig);
+	const templateWithLoader = create.Template({}, loaderConfig);
 	// Invalid cases:
 	// @ts-expect-error - Missing template name when loader is configured
 	await templateWithLoader(); // ✗ Missing template name
@@ -101,7 +101,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		loader: templateLoader
 	});
 
-	const templateWithFullConfig = create.TemplateRenderer({}, fullConfig);
+	const templateWithFullConfig = create.Template({}, fullConfig);
 	// All valid cases:
 	await templateWithFullConfig(); // ✓ Uses config prompt
 	await templateWithFullConfig({ name: "Bob" }); // ✓ Uses config prompt with context
@@ -110,7 +110,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// Test 5: Child overriding parent config
 	const parentConfig = create.Config({ prompt: "Parent {name}" });
-	const childTemplate = create.TemplateRenderer({ prompt: "Child {name}" }, parentConfig);
+	const childTemplate = create.Template({ prompt: "Child {name}" }, parentConfig);
 	// All valid:
 	await childTemplate(); // ✓ Uses child prompt
 	await childTemplate({ name: "Bob" }); // ✓ Child prompt with context
@@ -121,7 +121,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		promptType: 'template-name',
 		loader: templateLoader
 	});
-	const childWithParentLoader = create.TemplateRenderer({ prompt: "Child {name}" }, parentWithLoaderConfig);
+	const childWithParentLoader = create.Template({ prompt: "Child {name}" }, parentWithLoaderConfig);
 	// All valid:
 	await childWithParentLoader(); // ✓ Uses child prompt with parent loader
 	await childWithParentLoader({ name: "Bob" }); // ✓ Child prompt with context
@@ -129,7 +129,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// Test 7: Invalid loader configurations
 	// Should fail at creation:
 	// @ts-expect-error - Missing required loader when promptType is template-name
-	const invalidLoaderTemplate = create.TemplateRenderer({
+	const invalidLoaderTemplate = create.Template({
 		promptType: 'template-name' // ✗ Missing required loader
 	});
 	// @ts-expect-error - Cannot call template renderer without loader when promptType is template-name
@@ -139,7 +139,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const baseConfig = create.Config({ prompt: "Parent {name}", promptType: 'template-name' });
 
 	const promptParentConfig = create.Config({ prompt: "Parent {name}" });
-	const mixedTemplate = create.TemplateRenderer({
+	const mixedTemplate = create.Template({
 		promptType: 'template-name',
 		loader: templateLoader
 	}, promptParentConfig);
@@ -149,7 +149,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await mixedTemplate("greetingTemplate", { x: 1 }); // ✓ Template with context
 
 	// Test 9: Type safety checks
-	const typeCheckedTemplate = create.TemplateRenderer({}, configWithPrompt);
+	const typeCheckedTemplate = create.Template({}, configWithPrompt);
 	const configType = typeCheckedTemplate.config; // ✓ Preserves exact type
 	// Invalid cases:
 	// @ts-expect-error - Prompt must be a string, not a boolean
@@ -160,7 +160,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	await typeCheckedTemplate({}, {}); // ✗ First arg must be string with context
 
 	// Test 10: Context structure validation
-	const nestedTemplate = create.TemplateRenderer({ prompt: "Hello {user.name}" }, emptyConfig);
+	const nestedTemplate = create.Template({ prompt: "Hello {user.name}" }, emptyConfig);
 	// Valid cases:
 	await nestedTemplate({ user: { name: "Bob" } }); // ✓ Valid nested context
 	await nestedTemplate("Hi {user.name}", { user: { name: "Bob" } }); // ✓ Override with valid context
@@ -174,33 +174,33 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const rootLoaderConfig = create.Config({ loader: templateLoader, promptType: 'template-name' });
 	const midLoaderConfig = create.Config({ prompt: 'my prompt text' }, rootLoaderConfig);
-	const leafTemplate = create.TemplateRenderer({}, midLoaderConfig);
+	const leafTemplate = create.Template({}, midLoaderConfig);
 
 	// Test 12: PromptType override in child
 	const templateParentConfig = create.Config({
 		promptType: 'template-name',
 		loader: templateLoader
 	});
-	const directTemplate = create.TemplateRenderer({
+	const directTemplate = create.Template({
 		promptType: 'template' // Changes to direct template
 	}, templateParentConfig);
 
 	// Test 13: Empty context validation
-	const simpleTemplate = create.TemplateRenderer({ prompt: "Hello" });
+	const simpleTemplate = create.Template({ prompt: "Hello" });
 	await simpleTemplate({}); // ✓ Empty context is valid
 	await simpleTemplate(); // ✓ Undefined context is valid
 
 	// Test strict TemplateConfig validation
 	// @ts-expect-error - Invalid property in template renderer configuration
-	const invalidTemplate = create.TemplateRenderer({ prompt: "Hello", invalid: 1 }); // ✗ Invalid property
+	const invalidTemplate = create.Template({ prompt: "Hello", invalid: 1 }); // ✗ Invalid property
 
 	const templateParent = create.Config({ prompt: "Hello" });
 	// @ts-expect-error - Invalid property in child template renderer configuration
-	const invalidChildTemplate = create.TemplateRenderer({ invalid: 1 }, templateParent);
+	const invalidChildTemplate = create.Template({ invalid: 1 }, templateParent);
 
 	const modelParent = create.Config({ prompt: "Hello", model: openAIModel });
 	// @ts-expect-error - Incompatible promptType with model parent configuration
-	const incompatibleTemplate = create.TemplateRenderer({ promptType: 'template' }, modelParent);
+	const incompatibleTemplate = create.Template({ promptType: 'template' }, modelParent);
 
 	// SECTION 2: Text Generation Tests
 
@@ -706,8 +706,8 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 		}),
 	}, textRenderer);
 
-	// Test converting a ScriptRunner to a Tool
-	const scriptRenderer = create.ScriptRunner({
+	// Test converting a Script to a Tool
+	const scriptRenderer = create.Script({
 		script: `:data
 			const result = await fetch('https://api.example.com/data?city={{ city }}');
 			const data = await result.json();
@@ -796,8 +796,8 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const userProfileResult: z.infer<typeof schema> = await userProfileTool.execute({ content: 'Cats and dogs' }, { toolCallId: 'test', messages: [] });
 	console.log(userProfileResult);
 
-	// 1c. Parent: ScriptRunner
-	const scriptRunnerParent = create.ScriptRunner({
+	// 1c. Parent: Script
+	const scriptRunnerParent = create.Script({
 		scriptType: 'async-script',
 		script: `
 			: vars
@@ -817,8 +817,8 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	console.log(locationResult);
 
 
-	// 1d. Parent: TemplateRenderer
-	const templateRendererParent = create.TemplateRenderer({
+	// 1d. Parent: Template
+	const templateRendererParent = create.Template({
 		prompt: 'The magic word for {{user}} is {{word | upper}}.',
 		promptType: 'template',
 		filters: { upper: (s: string) => s.toUpperCase() },
@@ -837,7 +837,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	const timestampTool = create.Tool({
 		description: 'Gets the current timestamp.',
 		parameters: z.object({}), // or z.any()
-	}, create.ScriptRunner({ script: '@data = new Date().toISOString()' }));
+	}, create.Script({ script: '@data = new Date().toISOString()' }));
 	const timestampResult: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Correctly takes empty object
 	const timestampResult2: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Or no arguments at all
 	console.log(timestampResult);

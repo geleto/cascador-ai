@@ -2,8 +2,8 @@ import { Context, ScriptPromptType, TemplatePromptType } from './types';
 import * as configs from './types-config';
 import { validateCall } from './validate';
 import * as utils from './type-utils';
-import { _createTemplateRenderer, TemplateCallSignature } from './factory-template';
-import { _createScriptRunner, ScriptCallSignature } from './factory-script';
+import { _createTemplate, TemplateCallSignature } from './factory-template';
+import { _createScript, ScriptCallSignature } from './factory-script';
 import { LanguageModel } from 'ai';
 import { z } from 'zod';
 
@@ -62,12 +62,12 @@ export function createLLMRenderer<
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		if (isTemplatePrompt) {
 			type PromptType = Exclude<TemplatePromptType, undefined>;
-			renderer = _createTemplateRenderer(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
+			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
 		} else {
 			//the script must render a string (@todo - or Messages[])>
 			//add a schema requiring a string to the config
 			const textScriptConfig: configs.ScriptConfig<string> = { ...(config as configs.ScriptPromptConfig), schema: z.string() };
-			renderer = _createScriptRunner(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
+			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
 		}
 		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
 			if (config.debug) {

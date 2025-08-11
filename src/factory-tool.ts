@@ -5,8 +5,8 @@ import * as results from './types-result';
 
 import { TextGeneratorInstance } from './factory-text-generator';
 import { LLMGeneratorConfig, ObjectGeneratorInstance } from './factory-object-generator';
-import { TemplateRendererInstance } from './factory-template';
-import { ScriptRunnerInstance } from './factory-script';
+import { TemplateInstance } from './factory-template';
+import { ScriptInstance } from './factory-script';
 import * as utils from './type-utils';
 
 //@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
@@ -15,13 +15,13 @@ import * as utils from './type-utils';
 // The result of the tool's `execute` function is the `.object` property of the generator's full result.
 type ToolResultFromObjectGenerator<T extends (...args: any) => any> = Awaited<ReturnType<T>>['object'];
 
-// Overload for TextGenerator and TemplateRenderer
+// Overload for TextGenerator and Template
 export function Tool<
 	TConfig extends configs.ToolConfig<PARAMETERS>,
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TemplateRendererInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any>
+	parent: TemplateInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any>
 ): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ObjectGenerator
@@ -36,14 +36,14 @@ export function Tool<
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, TResult>;
 
-// Overload for ScriptRunner
+// Overload for Script
 export function Tool<
 	TConfig extends configs.ToolConfig<PARAMETERS>,
 	PARAMETERS extends configs.ToolParameters,
 	OBJECT
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>
+	parent: ScriptInstance<configs.ScriptConfig<OBJECT>>
 ): configs.FunctionTool<PARAMETERS, results.ScriptResult>;
 
 
@@ -54,8 +54,8 @@ export function Tool<
 	CONFIG extends configs.ToolConfig<PARAMETERS>,
 	PARENT_TYPE extends TextGeneratorInstance<TOOLS, OUTPUT>
 	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>>
-	| TemplateRendererInstance<configs.OptionalTemplatePromptConfig>
-	| ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>,
+	| TemplateInstance<configs.OptionalTemplatePromptConfig>
+	| ScriptInstance<configs.ScriptConfig<OBJECT>>,
 	TOOLS extends ToolSet,
 	OUTPUT = never,
 	RESULT extends JSONValue = JSONValue
@@ -84,10 +84,10 @@ export function Tool<
 	// The order of these checks is important and designed to be mutually exclusive.
 	// We check for the most specific properties first to correctly identify the parent type.
 
-	// Case 1: ScriptRunner is the only type with `script`
+	// Case 1: Script is the only type with `script`
 	if ('script' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
-			const result = await (parent as ScriptRunnerInstance<configs.ScriptConfig<OBJECT>>)(args);
+			const result = await (parent as ScriptInstance<configs.ScriptConfig<OBJECT>>)(args);
 			return result ?? '';
 		};
 	}
@@ -109,15 +109,15 @@ export function Tool<
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
 		};
 	}
-	// Case 4: TemplateRenderer has `prompt` or `promptType` but no `model`.
+	// Case 4: Template has `prompt` or `promptType` but no `model`.
 	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
-			return await (parent as TemplateRendererInstance<configs.OptionalTemplatePromptConfig>)(args);
+			return await (parent as TemplateInstance<configs.OptionalTemplatePromptConfig>)(args);
 		};
 	}
 	// Error case: The parent type could not be determined.
 	else {
-		throw new ConfigError('Could not determine the type of the parent for the tool. The parent must be a configured instance from TextGenerator, ObjectGenerator, ScriptRunner, or TemplateRenderer.');
+		throw new ConfigError('Could not determine the type of the parent for the tool. The parent must be a configured instance from TextGenerator, ObjectGenerator, Script, or Template.');
 	}
 
 

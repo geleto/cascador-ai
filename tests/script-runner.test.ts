@@ -10,14 +10,14 @@ import { streamObject } from 'ai';
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe('create.ScriptRunner', function () {
+describe('create.Script', function () {
 	this.timeout(timeout);
 
 	// --- CORE FUNCTIONALITY ---
 
 	describe('Core Functionality', () => {
 		it('executes a minimal script and saves tokens via @data', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				script: `
           :data
           var message = "Hello Script"
@@ -29,7 +29,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('returns full output object if no :data directive (both @data and @text)', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				script: `
           var message = "Hello"
           @data.greeting = message
@@ -44,7 +44,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('uses initial context variables', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { user: 'Alice', greeting: 'Welcome' },
 				script: `
           :data
@@ -56,7 +56,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('merges and overrides context at runtime', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { user: 'Alice', role: 'admin' },
 				script: `:data
 				@data.message = "User: " + user + ", Role: " + role`
@@ -66,7 +66,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('accepts script string at runtime', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { val: 10 },
 			});
 			const result = await scriptRunner(
@@ -77,7 +77,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('handles parallel execution of async context functions', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: {
 					fetchUser: async () => {
 						await new Promise(resolve => setTimeout(resolve, 0));
@@ -150,7 +150,7 @@ describe('create.ScriptRunner', function () {
 				prompt: "Write only the word 'Hello'.",
 			});
 
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamReader: textStreamer },
 				script: `
           :data
@@ -170,7 +170,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads from TextStreamer with a dynamic prompt from context', async () => {
 			const textStreamer = create.TextStreamer({ model });
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamReader: textStreamer, word: 'World' },
 				script: `
           :data
@@ -190,7 +190,7 @@ describe('create.ScriptRunner', function () {
 
 		it('reads two streams in parallel and saves both results', async () => {
 			const textStreamer = create.TextStreamer({ model });
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamReader: textStreamer },
 				script: `
           :data
@@ -220,7 +220,7 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				prompt: "Write only the number 42.",
 			});
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamReader: textStreamer },
 				script: `
           :data
@@ -242,7 +242,7 @@ describe('create.ScriptRunner', function () {
 		it('stream error disables result, error test is only that result is empty', async () => {
 			// Streamer configured to fail (simulate with bad model/config or empty result)
 			const badStreamer = create.TextStreamer({ model, temperature, prompt: "INVALID" });
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				schema: z.object({ text: z.string() }),
 				context: { streamReader: badStreamer },
 				script: `
@@ -266,7 +266,7 @@ describe('create.ScriptRunner', function () {
 				schema: z.object({ city: z.string(), country: z.string() }),
 				prompt: `Generate a JSON object for the capital of {{ countryName }}.`,
 			});
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				schema: z.object({ result: z.string() }),
 				context: { getCapital: locationGen },
 				script: `
@@ -321,9 +321,9 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array with these exact two objects: [{"id": 1}, {"id": 2}].',
+				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, do not create an array with just one item in it',
 			});
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },
 				script: `
 				:data
@@ -345,7 +345,7 @@ describe('create.ScriptRunner', function () {
 				{"id": 1}, {"id": 2}.
 				`,
 			});
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },
 				script:
 					`:data
@@ -378,7 +378,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('inherits context and filters from parent Config', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				script: `
 				:data
 				@data.result = base | prefix("p:")
@@ -388,9 +388,9 @@ describe('create.ScriptRunner', function () {
 			expect(result).to.deep.equal({ result: 'p:parent' });
 		});
 
-		it('inherits from another ScriptRunner', async () => {
-			const parent = create.ScriptRunner({ context: { inherited: 'ok' } });
-			const child = create.ScriptRunner({
+		it('inherits from another Script', async () => {
+			const parent = create.Script({ context: { inherited: 'ok' } });
+			const child = create.Script({
 				script:
 					`:data
 					@data.x = inherited`
@@ -400,7 +400,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('overrides parent context and merges filters', async () => {
-			const child = create.ScriptRunner({
+			const child = create.Script({
 				context: { base: 'child' },
 				filters: { suffix: (s: string, x: string) => `${s}${x}` },
 				script: `:data
@@ -411,7 +411,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('merges context and child overrides parent keys', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { base: 'child', newVal: 'n' },
 				script:
 					`:data
@@ -433,7 +433,7 @@ describe('create.ScriptRunner', function () {
 		`);
 
 		it('loads and executes a script using .loadsScript', async () => {
-			const scriptRunner = create.ScriptRunner.loadsScript({
+			const scriptRunner = create.Script.loadsScript({
 				loader: stringLoader,
 				script: 's1',
 				context: { greeting: 'Loaded' },
@@ -449,19 +449,19 @@ describe('create.ScriptRunner', function () {
 		it('throws ConfigError if .loadsScript is used but no loader is provided', () => {
 			expect(() =>
 				//@ts-expect-error - loader is required in config when using .loadsScript
-				create.ScriptRunner.loadsScript({
+				create.Script.loadsScript({
 					script: 'file.casc'
 				}),
 			).to.throw(ConfigError);
 		});
 
 		it('rejects if script contains a syntax error', async () => {
-			const scriptRunner = create.ScriptRunner({ script: 'var x =' });
+			const scriptRunner = create.Script({ script: 'var x =' });
 			await expect(scriptRunner()).to.be.rejectedWith('Script render failed');
 		});
 
 		it('rejects if script throws a runtime error', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				script: `
           var obj = none
           @data.value = obj.prop
@@ -471,7 +471,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('rejects if an async function in context rejects', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				context: { badFetch: async () => Promise.reject(new Error('API Down')) },
 				script: `:data
 				@data.result = badFetch()`
@@ -480,7 +480,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('rejects if loader fails to find the script', async () => {
-			const scriptRunner = create.ScriptRunner.loadsScript({
+			const scriptRunner = create.Script.loadsScript({
 				loader: new StringLoader(),
 				script: 'nope',
 			});
@@ -493,7 +493,7 @@ describe('create.ScriptRunner', function () {
 	describe('Complex Workflows', () => {
 		it('runs a while loop using an async context function', async () => {
 			let i = 0;
-			const agent = create.ScriptRunner({
+			const agent = create.Script({
 				context: {
 					next: async () => {
 						await new Promise(resolve => setTimeout(resolve, 0));
@@ -514,7 +514,7 @@ describe('create.ScriptRunner', function () {
 		});
 
 		it('runs a for loop in parallel and collects results using @data', async () => {
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				schema: z.object({ out: z.array(z.number()) }),
 				context: {
 					times: [1, 2, 3],
@@ -534,7 +534,7 @@ describe('create.ScriptRunner', function () {
 
 		it('runs an each loop sequentially', async () => {
 			let sum = 0;
-			const scriptRunner = create.ScriptRunner({
+			const scriptRunner = create.Script({
 				schema: z.object({ results: z.array(z.number()) }),
 				context: {
 					vals: [1, 2, 3],

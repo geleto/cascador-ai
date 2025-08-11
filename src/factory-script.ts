@@ -6,7 +6,7 @@ import * as results from './types-result';
 import * as utils from './type-utils';
 import { Context, SchemaType, ScriptPromptType } from './types';
 
-export type ScriptRunnerInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
+export type ScriptInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
 
 type ScriptResultPromise<TConfig extends configs.ScriptConfig<any>> =
 	Promise<TConfig extends { schema: SchemaType<infer OBJECT> } ? OBJECT : results.ScriptResult>;
@@ -27,7 +27,7 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	};
 
 // Internal common creator
-export function _createScriptRunner(
+export function _createScript(
 	config: configs.ScriptConfig<any>,
 	scriptType: Exclude<ScriptPromptType, undefined>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
@@ -44,7 +44,7 @@ export function _createScriptRunner(
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] ScriptRunner created with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] Script created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	if ((merged.promptType === 'script-name' || merged.promptType === 'async-script-name') && !('loader' in merged)) {
@@ -63,12 +63,12 @@ export function _createScriptRunner(
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {
 		if ('debug' in merged && merged.debug) {
-			console.log('[DEBUG] ScriptRunner - call function called with:', { scriptOrContext, maybeContext });
+			console.log('[DEBUG] Script - call function called with:', { scriptOrContext, maybeContext });
 		}
 		if (typeof scriptOrContext === 'string') {
 			const result = await runner.run(scriptOrContext, maybeContext);
 			if ('debug' in merged && merged.debug) {
-				console.log('[DEBUG] ScriptRunner - run result:', result);
+				console.log('[DEBUG] Script - run result:', result);
 			}
 			return result;
 		} else {
@@ -77,7 +77,7 @@ export function _createScriptRunner(
 			}
 			const result = await runner.run(undefined, scriptOrContext);
 			if ('debug' in merged && merged.debug) {
-				console.log('[DEBUG] ScriptRunner - run result:', result);
+				console.log('[DEBUG] Script - run result:', result);
 			}
 			return result;
 		}
@@ -89,14 +89,14 @@ export function _createScriptRunner(
 }
 
 // Default behavior: inline/embedded script
-export function baseScriptRunner<
+export function baseScript<
 	const TConfig extends configs.ScriptConfig<OBJECT>,
 	OBJECT = any
 >(
 	config: utils.StrictType<TConfig, configs.ScriptConfig<OBJECT>>
 ): ScriptCallSignature<TConfig>;
 
-export function baseScriptRunner<
+export function baseScript<
 	TConfig extends configs.ScriptConfig<OBJECT>,
 	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT>,
 	OBJECT = any,
@@ -106,11 +106,11 @@ export function baseScriptRunner<
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_OBJECT>>>
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function baseScriptRunner(
+export function baseScript(
 	config: configs.ScriptConfig<any>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
 ): any {
-	return _createScriptRunner(config, 'async-script', parent);
+	return _createScript(config, 'async-script', parent);
 }
 
 // loadsScript: load by name via provided loader
@@ -135,9 +135,9 @@ export function loadsScript(
 	config: configs.ScriptConfig<any> & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
 ): any {
-	return _createScriptRunner(config, 'async-script-name', parent);
+	return _createScript(config, 'async-script-name', parent);
 }
 
-export const ScriptRunner = Object.assign(baseScriptRunner, {
+export const Script = Object.assign(baseScript, {
 	loadsScript,
 });

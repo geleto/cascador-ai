@@ -6,7 +6,7 @@ import * as utils from './type-utils';
 import { Context, TemplatePromptType } from './types';
 
 //@todo Simplify, may not need extends
-export type TemplateRendererInstance<CONFIG extends configs.OptionalTemplatePromptConfig> = TemplateCallSignature<CONFIG>;
+export type TemplateInstance<CONFIG extends configs.OptionalTemplatePromptConfig> = TemplateCallSignature<CONFIG>;
 
 export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePromptConfig> =
 	TConfig extends { prompt: string }//@todo - rename to template
@@ -23,7 +23,7 @@ export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePrompt
 	};
 
 // Internal common creator for template renderer
-export function _createTemplateRenderer(
+export function _createTemplate(
 	config: configs.TemplatePromptConfig,
 	promptType: Exclude<TemplatePromptType, undefined>,
 	parent?: ConfigProvider<configs.TemplatePromptConfig>
@@ -40,7 +40,7 @@ export function _createTemplateRenderer(
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
-		console.log('[DEBUG] TemplateRenderer created with config:', JSON.stringify(merged, null, 2));
+		console.log('[DEBUG] Template created with config:', JSON.stringify(merged, null, 2));
 	}
 
 	// @todo - .loadsTemplate()
@@ -60,14 +60,14 @@ export function _createTemplateRenderer(
 	// Define the call function that handles both cases
 	const call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<string> => {
 		if ('debug' in merged && merged.debug) {
-			console.log('[DEBUG] TemplateRenderer - call function called with:', { promptOrContext, maybeContext });
+			console.log('[DEBUG] Template - call function called with:', { promptOrContext, maybeContext });
 		}
 
 		//the contexts are merged in render
 		if (typeof promptOrContext === 'string') {
 			const result = await renderer.render(promptOrContext, maybeContext);
 			if ('debug' in merged && merged.debug) {
-				console.log('[DEBUG] TemplateRenderer - render result:', result);
+				console.log('[DEBUG] Template - render result:', result);
 			}
 			return result;
 		} else {
@@ -76,7 +76,7 @@ export function _createTemplateRenderer(
 			}
 			const result = await renderer.render(undefined, promptOrContext);
 			if ('debug' in merged && merged.debug) {
-				console.log('[DEBUG] TemplateRenderer - render result:', result);
+				console.log('[DEBUG] Template - render result:', result);
 			}
 			return result;
 		}
@@ -88,13 +88,13 @@ export function _createTemplateRenderer(
 }
 
 // Default behavior: inline/embedded template
-export function baseTemplateRenderer<
+export function baseTemplate<
 	const TConfig extends configs.TemplatePromptConfig
 >(
 	config: utils.StrictType<TConfig, configs.TemplatePromptConfig>
 ): TemplateCallSignature<TConfig>;
 
-export function baseTemplateRenderer<
+export function baseTemplate<
 	TConfig extends configs.TemplatePromptConfig,
 	TParentConfig extends configs.TemplatePromptConfig
 >(
@@ -102,11 +102,11 @@ export function baseTemplateRenderer<
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplatePromptConfig>>
 ): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function baseTemplateRenderer(
+export function baseTemplate(
 	config: configs.TemplatePromptConfig,
 	parent?: ConfigProvider<configs.TemplatePromptConfig>
 ): any {
-	return _createTemplateRenderer(config, 'async-template', parent);
+	return _createTemplate(config, 'async-template', parent);
 }
 
 // loadsTemplate: load by name via provided loader
@@ -128,9 +128,9 @@ export function loadsTemplate(
 	config: configs.TemplatePromptConfig & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.TemplatePromptConfig & configs.LoaderConfig>
 ): any {
-	return _createTemplateRenderer(config, 'async-template-name', parent);
+	return _createTemplate(config, 'async-template-name', parent);
 }
 
-export const TemplateRenderer = Object.assign(baseTemplateRenderer, {
+export const Template = Object.assign(baseTemplate, {
 	loadsTemplate,
 });

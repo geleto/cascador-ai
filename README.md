@@ -24,7 +24,7 @@ The library encourages a powerful separation between the *what* (the orchestrati
 
 ### 🧩 Composable & Reusable Components
 
-Cascador-AI treats every piece of your AI workflow—from a simple text generator to a complex multi-step agent—as a modular, reusable component. Because you define logic as code, you can encapsulate functionality into distinct `TextGenerator`, `ObjectGenerator`, or `ScriptRunner` instances.
+Cascador-AI treats every piece of your AI workflow—from a simple text generator to a complex multi-step agent—as a modular, reusable component. Because you define logic as code, you can encapsulate functionality into distinct `TextGenerator`, `ObjectGenerator`, or `Script` instances.
 
 These components are not just static definitions; they are callable functions that can be passed around, nested, and composed. You can call one component from within another's script or template by simply adding it to the `context`. This allows you to build sophisticated systems from smaller, testable, and self-contained parts, promoting clean architecture and avoiding monolithic, hard-to-maintain agent definitions. For even more powerful composition, Cascada templates and scripts can also `include` files, `import` macros, and `extend` parent templates and scripts.
 
@@ -118,7 +118,7 @@ const revisionGenerator = create.TextGenerator.withTemplate({
 }, baseConfig);
 
 // Define the orchestration script for the agent
-const contentAgent = create.ScriptRunner({
+const contentAgent = create.Script({
 	context: {
 		draftGenerator, critiqueGenerator, revisionGenerator,
 		topic: "the future of AI-powered development",
@@ -182,8 +182,8 @@ These modifiers create a renderer designed to load its prompt or script from an 
 
 Here's a quick overview of the primary renderers you'll use:
 *   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects.
-*   [**`create.ScriptRunner`**](#scriptrunner): **For data-layer orchestration.** Executes a Cascada script.
-*   [**`create.TemplateRenderer`**](#templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
+*   [**`create.Script`**](#scriptrunner): **For data-layer orchestration.** Executes a Cascada script.
+*   [**`create.Template`**](#templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
 *   [**`create.TextGenerator` / `create.TextStreamer`**](#textgenerator): **For LLM-based text generation.** Generates or streams unstructured text.
 *   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects.
 *   [**`create.Tool`**](#tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool.
@@ -287,7 +287,7 @@ A key feature is that **every renderer is a callable function**. This provides t
 
 Let's explore each renderer in detail.
 
-### TemplateRenderer
+### Template
 
 **What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. Ideal for presentation-layer tasks like generating HTML or Markdown.
 
@@ -296,7 +296,7 @@ Let's explore each renderer in detail.
     ```typescript
     import { create } from 'cascador-ai';
 
-    const renderer = create.TemplateRenderer({
+    const renderer = create.Template({
       template: 'Hi {{ name }}! Today is {{ currentDay }}.',
       context: { name: 'User' }
     });
@@ -305,7 +305,7 @@ Let's explore each renderer in detail.
     ```typescript
     import { create, FileSystemLoader } from 'cascador-ai';
 
-    const fileRenderer = create.TemplateRenderer.loadsTemplate({
+    const fileRenderer = create.Template.loadsTemplate({
       loader: new FileSystemLoader('./templates'),
       template: 'welcome_email.njk', // This is the filename
       context: { name: 'User' }
@@ -313,7 +313,7 @@ Let's explore each renderer in detail.
     ```
 
 #### How to Call It
-You can call any `TemplateRenderer` with a new template and context.
+You can call any `Template` with a new template and context.
 *   **With pre-configured input**:
     ```typescript
     const result = await renderer({ currentDay: 'Monday' }); // "Hi User! Today is Monday."
@@ -328,7 +328,7 @@ You can call any `TemplateRenderer` with a new template and context.
     ```
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
-### ScriptRunner
+### Script
 
 **What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. An optional Zod `schema` can be provided to validate the script's output.
 
@@ -338,7 +338,7 @@ You can call any `TemplateRenderer` with a new template and context.
 import { create } from 'cascador-ai';
 import { z } from 'zod';
 
-const dealFinder = create.ScriptRunner({
+const dealFinder = create.Script({
   schema: z.record(
     z.string(), // e.g., "sku-a123"
     z.array(z.object({ vendor: z.string(), price: z.number() }))
@@ -364,7 +364,7 @@ const dealFinder = create.ScriptRunner({
 ```
 *   **Loading from a resource with `.loadsScript`**: Use this modifier to load the script from an external source. This requires a `loader`, and the `script` property now specifies the *name* of the script to load.
     ```typescript
-    const agentRunner = create.ScriptRunner.loadsScript({
+    const agentRunner = create.Script.loadsScript({
       loader: new FileSystemLoader('./scripts'),
       script: 'content_agent.csc', // The filename of the script
     });
@@ -628,7 +628,7 @@ Transform data on the fly with custom functions, sync or async, using the `|` op
 import { create } from 'cascador-ai';
 import translate from 'translate';
 
-const renderer = create.TemplateRenderer({
+const renderer = create.Template({
   filters: {
     translate: async (text, lang) => await translate(text, lang)
   },
@@ -651,7 +651,7 @@ import { create, FileSystemLoader } from 'cascador-ai';
 
 const fileLoader = new FileSystemLoader('./templates');
 // Use the .loadsTemplate modifier to load from an external file
-const renderer = create.TemplateRenderer.loadsTemplate({
+const renderer = create.Template.loadsTemplate({
   loader: fileLoader,
   prompt: 'main.njk', // Just the filename
 });
@@ -660,7 +660,7 @@ const renderer = create.TemplateRenderer.loadsTemplate({
 ### options
 Fine-tune the Cascada engine with extras like `autoescape` or `trimBlocks`:
 ```typescript
-const renderer = create.TemplateRenderer({
+const renderer = create.Template({
   options: {
     autoescape: false,
     trimBlocks: true
@@ -758,15 +758,15 @@ const weatherAgent = create.TextGenerator({
 
 Renderers in *Cascador-AI* can be embedded within scripts or templates by adding them to the `context` object, enabling seamless task chaining and orchestration. This approach leverages the engine’s power to coordinate multiple renderers, execute them when their inputs are ready, and process their outputs dynamically.
 
-### Example with `ScriptRunner` for Data Orchestration
+### Example with `Script` for Data Orchestration
 
-Use `ScriptRunner` when your goal is to build a structured data object by orchestrating multiple steps.
+Use `Script` when your goal is to build a structured data object by orchestrating multiple steps.
 
 ```typescript
 // ... (characterGenerator, storyGenerator, critiqueGenerator setup from previous examples) ...
 
 // Orchestrating script
-const mainOrchestrator = create.ScriptRunner({
+const mainOrchestrator = create.Script({
   context: {
     characterGenerator,
     storyGenerator,
@@ -794,15 +794,15 @@ const mainOrchestrator = create.ScriptRunner({
 })();
 ```
 
-### Example with `TemplateRenderer` for Presentation
+### Example with `Template` for Presentation
 
-Use `TemplateRenderer` when your primary goal is to generate a final string output, like an HTML page or a formatted report.
+Use `Template` when your primary goal is to generate a final string output, like an HTML page or a formatted report.
 
 ```typescript
 // ... (characterGenerator, storyRenderer, critiqueStreamer setup from previous examples) ...
 
 // Orchestrating renderer for presentation
-const mainRenderer = create.TemplateRenderer({
+const mainRenderer = create.Template({
   context: {
     characterGenerator,
     storyRenderer,
@@ -837,8 +837,8 @@ const mainRenderer = create.TemplateRenderer({
 
 In *Cascador-AI*, you have several powerful mechanisms to build workflows. Choosing the right one depends on your goal and who is in control: are you building a structured data object, or are you rendering a final text document, as well as who should be in control: the developer or the AI model.
 
-### `ScriptRunner` & `TemplateRenderer`: For Data and Presentation Layers
--   **`ScriptRunner`**: Use when the primary output is a structured data object (JSON). Ideal for data-layer logic, multi-step agents, and orchestrating various data sources. It is the backbone of your application's data layer.
+### `Script` & `Template`: For Data and Presentation Layers
+-   **`Script`**: Use when the primary output is a structured data object (JSON). Ideal for data-layer logic, multi-step agents, and orchestrating various data sources. It is the backbone of your application's data layer.
 
 **Use When:**
 -   **The output is data:** Your main goal is to create a complex object or array to be used by your application.
@@ -846,7 +846,7 @@ In *Cascador-AI*, you have several powerful mechanisms to build workflows. Choos
 -   **Orchestrating multiple sources:** You are fetching data from several APIs, databases, and other renderers and need to combine them into a single, coherent object.
 -   **Readability is key for complex flows:** The top-to-bottom, `await`-free syntax makes complex data dependencies easy to follow.
 
--   **`TemplateRenderer`**: Use when the primary output is a rendered string (for instance an HTML or a Markdown). Ideal for the presentation layer.
+-   **`Template`**: Use when the primary output is a rendered string (for instance an HTML or a Markdown). Ideal for the presentation layer.
 
 **Use When:**
 -   **The output is text:** You are generating a final, human-readable document.
@@ -873,7 +873,7 @@ These are the fundamental JS/TS functions you provide to *both* scripts and temp
 *Cascador-AI* seamlessly integrates vector embeddings from the Vercel AI SDK. By adding embedding functions to the `context` object, you can use them directly in scripts for tasks like semantic search, similarity comparisons, or retrieval-augmented generation (RAG).
 
 ### Example
-Here’s how to find the most similar document to a user query using a `ScriptRunner` to orchestrate the embedding and comparison tasks in parallel.
+Here’s how to find the most similar document to a user query using a `Script` to orchestrate the embedding and comparison tasks in parallel.
 
 ```typescript
 import { openai } from '@ai-sdk/openai';
@@ -881,7 +881,7 @@ import { embed, cosineSimilarity } from 'ai';
 import { create } from 'cascador-ai';
 import fs from 'fs/promises';
 
-const documentFinder = create.ScriptRunner({
+const documentFinder = create.Script({
   context: {
     userQuery: 'machine learning applications',
     readFile: async (filePath) => await fs.readFile(filePath, 'utf-8'),
@@ -925,10 +925,10 @@ const documentFinder = create.ScriptRunner({
 
 ## RAG Integration
 
-*Cascador-AI*’s script-driven approach simplifies retrieval-augmented generation (RAG) workflows. By using `ScriptRunner`, you can clearly define the steps of your RAG pipeline: searching an index, retrieving context, and generating a final answer. This leverages automatic concurrency for maximum efficiency.
+*Cascador-AI*’s script-driven approach simplifies retrieval-augmented generation (RAG) workflows. By using `Script`, you can clearly define the steps of your RAG pipeline: searching an index, retrieving context, and generating a final answer. This leverages automatic concurrency for maximum efficiency.
 
 ### Example
-**Summary**: This example loads 10 documents, builds a vector index with LlamaIndex, and uses a `ScriptRunner` to orchestrate the retrieval of relevant snippets about machine learning for cancer detection and then summarizes them.
+**Summary**: This example loads 10 documents, builds a vector index with LlamaIndex, and uses a `Script` to orchestrate the retrieval of relevant snippets about machine learning for cancer detection and then summarizes them.
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -950,8 +950,8 @@ const answerGenerator = create.TextGenerator.withTemplate({
   prompt: 'Summarize the latest advancements in machine learning for cancer detection based on: {{ context }}'
 });
 
-// RAG orchestrator using ScriptRunner
-const ragOrchestrator = create.ScriptRunner({
+// RAG orchestrator using Script
+const ragOrchestrator = create.Script({
   context: {
     query: 'What are the latest advancements in machine learning for cancer detection?',
     searchIndex: async (queryText) => {
