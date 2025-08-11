@@ -306,7 +306,7 @@ describe('create.ScriptRunner', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the orther of the two object should be as listed.',
+				prompt: 'Generate a JSON array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the orther of the two object should be as listed, do not create an array with just one item in it',
 			});
 			const { elementStream } = await objectStreamer();
 			const result: { id: number }[] = [];
