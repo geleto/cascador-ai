@@ -1,13 +1,13 @@
 import { JSONValue, ToolCallOptions, ToolSet } from 'ai';
-import { ConfigError } from './validate';
-import * as configs from './types-config';
-import * as results from './types-result';
+import { ConfigError } from '../validate';
+import * as configs from '../types/config';
+import * as results from '../types/result';
 
-import { TextGeneratorInstance } from './factory-text-generator';
-import { LLMGeneratorConfig, ObjectGeneratorInstance } from './factory-object-generator';
-import { TemplateInstance } from './factory-template';
-import { ScriptInstance } from './factory-script';
-import * as utils from './type-utils';
+import { TextGeneratorInstance } from './TextGenerator';
+import { LLMGeneratorConfig, ObjectGeneratorInstance } from './ObjectGenerator';
+import { TemplateInstance } from './Template';
+import { ScriptInstance } from './Script';
+import * as utils from '../types/utils';
 
 //@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
 
@@ -67,6 +67,7 @@ export function Tool<
 	if ('debug' in config && config.debug) {
 		console.log('[DEBUG] Tool created with config:', JSON.stringify(config, null, 2));
 	}
+
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!config.parameters) {
 		throw new ConfigError('Tool config requires parameters schema');

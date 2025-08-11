@@ -370,7 +370,7 @@ describe('create.ObjectGenerator', function () {
 			).to.throw(ConfigError, 'no-schema output cannot have schema');
 		});
 
-		it('should throw at runtime if no prompt is provided in config or call', async () => {
+		it('should throw at runtime if no prompt is provided in config or call', () => {
 			const generator = create.ObjectGenerator({ model, temperature, schema: simpleSchema });
 			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,

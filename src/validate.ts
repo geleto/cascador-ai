@@ -1,5 +1,5 @@
-import type * as TypesConfig from "./types-config";
-import { Context } from "./types";
+import type * as TypesConfig from "./types/config";
+import { Context } from "./types/types";
 
 export class ConfigError extends Error {
 	cause?: Error;

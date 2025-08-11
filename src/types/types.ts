@@ -1,6 +1,6 @@
 import { Schema, StreamObjectOnFinishCallback, StreamTextOnFinishCallback, ToolSet } from 'ai';//do not confuze the 'ai' Schema type with the 'zod' Schema type
 import { z } from 'zod';
-import { InferParameters } from './type-utils';
+import { InferParameters } from './utils';
 
 // Template types
 export type Context = Record<string, any>;

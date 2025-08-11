@@ -393,7 +393,7 @@ describe('create.TextStreamer', function () {
 			);
 		});
 
-		it('should reject promises at runtime if no prompt is provided in config or call', async () => {
+		it('should reject promises at runtime if no prompt is provided in config or call', () => {
 			const streamer = create.TextStreamer({ model });
 			// The call returns promises that should reject
 			expect(() => streamer(undefined as unknown as string)).to.throw(

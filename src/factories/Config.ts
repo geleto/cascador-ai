@@ -1,8 +1,8 @@
-import { ConfigData, mergeConfigs } from './ConfigData';
-import { validateBaseConfig } from './validate';
-import { ConfigProvider } from './ConfigData';
-import * as configs from './types-config';
-import * as utils from './type-utils';
+import { ConfigData, mergeConfigs } from '../ConfigData';
+import { validateBaseConfig } from '../validate';
+import { ConfigProvider } from '../ConfigData';
+import * as configs from '../types/config';
+import * as utils from '../types/utils';
 import { ToolSet } from 'ai';
 
 // Single config overload

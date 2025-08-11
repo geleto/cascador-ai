@@ -1,9 +1,9 @@
-import { Context, ScriptPromptType, TemplatePromptType } from './types';
-import * as configs from './types-config';
+import { Context, ScriptPromptType, TemplatePromptType } from './types/types';
+import * as configs from './types/config';
 import { validateCall } from './validate';
-import * as utils from './type-utils';
-import { _createTemplate, TemplateCallSignature } from './factory-template';
-import { _createScript, ScriptCallSignature } from './factory-script';
+import * as utils from './types/utils';
+import { _createTemplate, TemplateCallSignature } from './factories/Template';
+import { _createScript, ScriptCallSignature } from './factories/Script';
 import { LanguageModel } from 'ai';
 import { z } from 'zod';
 

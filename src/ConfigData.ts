@@ -1,5 +1,5 @@
-import { Override } from './type-utils';
-import { TemplatePromptConfig } from './types-config';
+import { Override } from './types/utils';
+import { TemplatePromptConfig } from './types/config';
 
 export interface ConfigProvider<T> {
 	readonly config: T;

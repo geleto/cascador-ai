@@ -12,7 +12,7 @@ import {
 	TemplatePromptType, ScriptPromptType, /*, LLMPromptType */
 	SchemaType
 } from './types';
-import { InferParameters } from './type-utils';
+import { InferParameters } from './utils';
 
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
 // https://github.com/microsoft/TypeScript/issues/54223

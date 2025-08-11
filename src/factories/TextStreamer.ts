@@ -1,13 +1,13 @@
 import { streamText, LanguageModel, ToolSet } from "ai";
 
-import * as results from './types-result';
-import * as configs from './types-config';
-import * as utils from './type-utils';
-import { RequiredPromptType } from "./types";
+import * as results from '../types/result';
+import * as configs from '../types/config';
+import * as utils from '../types/utils';
+import { RequiredPromptType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "./llm";
-import { ConfigProvider, mergeConfigs } from "./ConfigData";
-import { validateBaseConfig, ConfigError } from "./validate";
+import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { validateBaseConfig, ConfigError } from "../validate";
 
 // The generic return type for a TextStreamer instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.

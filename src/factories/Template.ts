@@ -1,9 +1,9 @@
-import { TemplateEngine } from './TemplateEngine';
-import { ConfigProvider, mergeConfigs } from './ConfigData';
-import { validateBaseConfig, ConfigError } from './validate';
-import * as configs from './types-config';
-import * as utils from './type-utils';
-import { Context, TemplatePromptType } from './types';
+import { TemplateEngine } from '../TemplateEngine';
+import { ConfigProvider, mergeConfigs } from '../ConfigData';
+import { validateBaseConfig, ConfigError } from '../validate';
+import * as configs from '../types/config';
+import * as utils from '../types/utils';
+import { Context, TemplatePromptType } from '../types/types';
 
 //@todo Simplify, may not need extends
 export type TemplateInstance<CONFIG extends configs.OptionalTemplatePromptConfig> = TemplateCallSignature<CONFIG>;

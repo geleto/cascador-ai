@@ -1,8 +1,8 @@
 import * as cascada from 'cascada-engine';
 import { z } from 'zod';
-import { Context, SchemaType } from './types';
-import { ScriptConfig } from './types-config';
-import * as results from './types-result';
+import { Context, SchemaType } from './types/types';
+import { ScriptConfig } from './types/config';
+import * as results from './types/result';
 import { JSONValue } from 'ai';
 
 class ScriptError extends Error {

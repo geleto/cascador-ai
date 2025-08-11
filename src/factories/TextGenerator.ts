@@ -1,13 +1,13 @@
 import { generateText, LanguageModel, ToolSet } from "ai";
 
-import * as results from './types-result';
-import * as configs from './types-config';
-import * as utils from './type-utils';
-import { RequiredPromptType } from "./types";
+import * as results from '../types/result';
+import * as configs from '../types/config';
+import * as utils from '../types/utils';
+import { RequiredPromptType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "./llm";
-import { ConfigProvider, mergeConfigs } from "./ConfigData";
-import { validateBaseConfig, ConfigError } from "./validate";
+import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { validateBaseConfig, ConfigError } from "../validate";
 
 export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplatePromptConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
 export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResult<TOOLS, OUTPUT>>>;

@@ -1,15 +1,15 @@
 import { streamObject, LanguageModel, StreamObjectOnFinishCallback } from "ai";
 
-import * as results from './types-result'
-import * as configs from './types-config';
-import * as utils from './type-utils';
-import { RequiredPromptType, SchemaType } from "./types";
+import * as results from '../types/result'
+import * as configs from '../types/config';
+import * as utils from '../types/utils';
+import { RequiredPromptType, SchemaType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "./llm";
-import { ConfigProvider, mergeConfigs } from "./ConfigData";
-import { validateBaseConfig, validateObjectConfig } from "./validate";
+import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { validateBaseConfig, validateObjectConfig } from "../validate";
 
-import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./factory-object-generator";
+import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./ObjectGenerator";
 
 export type LLMStreamerConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>

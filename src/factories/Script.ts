@@ -1,10 +1,10 @@
-import { ConfigProvider, mergeConfigs } from './ConfigData';
-import { validateBaseConfig, ConfigError } from './validate';
-import { ScriptEngine } from './ScriptEngine';
-import * as configs from './types-config';
-import * as results from './types-result';
-import * as utils from './type-utils';
-import { Context, SchemaType, ScriptPromptType } from './types';
+import { ConfigProvider, mergeConfigs } from '../ConfigData';
+import { validateBaseConfig, ConfigError } from '../validate';
+import { ScriptEngine } from '../ScriptEngine';
+import * as configs from '../types/config';
+import * as results from '../types/result';
+import * as utils from '../types/utils';
+import { Context, SchemaType, ScriptPromptType } from '../types/types';
 
 export type ScriptInstance<TConfig extends configs.ScriptConfig<any>> = ScriptCallSignature<TConfig>;
 

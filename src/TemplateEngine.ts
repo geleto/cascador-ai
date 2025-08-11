@@ -1,6 +1,6 @@
 import * as cascada from 'cascada-engine';
-import { Context } from './types';
-import { TemplatePromptConfig } from './types-config';
+import { Context } from './types/types';
+import { TemplatePromptConfig } from './types/config';
 
 class TemplateError extends Error {
 	cause?: Error;

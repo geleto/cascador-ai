@@ -313,7 +313,7 @@ describe('create.ObjectStreamer', function () {
 			);
 		});
 
-		it('should throw ConfigError for invalid output type like "enum"', async () => {
+		it('should throw ConfigError for invalid output type like "enum"', () => {
 			// but this does not work now because of function property TS bug workaround that removes the shape
 			// and I have not implemented alternative type checking yet
 			expect(() =>
@@ -336,7 +336,7 @@ describe('create.ObjectStreamer', function () {
 			).to.throw(ConfigError, 'no-schema output cannot have schema');
 		});
 
-		it('should reject promise at runtime if no prompt is provided in config or call', async () => {
+		it('should reject promise at runtime if no prompt is provided in config or call', () => {
 			const streamer = create.ObjectStreamer({ model, temperature, schema: simpleSchema });
 			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
