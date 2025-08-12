@@ -5,7 +5,8 @@ import * as utils from './types/utils';
 import { _createTemplate, TemplateCallSignature } from './factories/Template';
 import { _createScript, ScriptCallSignature } from './factories/Script';
 import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
-import type { GenerateTextResult, StreamTextResult } from './types/result';
+import type { GenerateTextResult as BaseGenerateTextResult, StreamTextResult as BaseStreamTextResult } from 'ai';
+import type { GenerateTextResultAugmented, StreamTextResultAugmented } from './types/result';
 import { z } from 'zod';
 
 export type LLMCallSignature<
@@ -93,9 +94,9 @@ export function extractCallArguments(promptOrMessageOrContext?: string | ModelMe
 
 // Helpers to prepend the user message into returned results using lazy, memoized getters
 function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
-	result: GenerateTextResult<TOOLS, OUTPUT>,
+	result: BaseGenerateTextResult<TOOLS, OUTPUT>,
 	userMessage: ModelMessage
-): GenerateTextResult<TOOLS, OUTPUT> {
+): GenerateTextResultAugmented<TOOLS, OUTPUT> {
 	type Messages = typeof result.response.messages;
 	type Elem = Messages extends readonly (infer U)[] ? U : never;
 	const originalResponse = result.response;
@@ -120,13 +121,13 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 		enumerable: true,
 		configurable: true,
 	});
-	return { ...result, response: responseWithLazyMessages };
+	return { ...result, response: responseWithLazyMessages } as GenerateTextResultAugmented<TOOLS, OUTPUT>;
 }
 
 function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
-	result: StreamTextResult<TOOLS, PARTIAL>,
+	result: BaseStreamTextResult<TOOLS, PARTIAL>,
 	userMessage: ModelMessage
-): StreamTextResult<TOOLS, PARTIAL> {
+): StreamTextResultAugmented<TOOLS, PARTIAL> {
 	type ResponseT = Awaited<typeof result.response>;
 	type Messages = ResponseT extends { messages: infer M extends readonly unknown[] } ? M : never;
 	type Elem = Messages extends readonly (infer U)[] ? U : never;
@@ -154,7 +155,7 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 			});
 			return responseWithLazyMessages;
 		});
-	return { ...result, response: newResponse };
+	return { ...result, response: newResponse } as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
 
 export function createLLMRenderer<
@@ -255,9 +256,9 @@ export function createLLMRenderer<
 					// we appended prompt as user message; include it in result messages
 					const userMessage: ModelMessage = { role: 'user', content: renderedString } as ModelMessage;
 					if ((vercelFunc as unknown) === generateText) {
-						result = augmentGenerateText(result as GenerateTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
+						result = augmentGenerateText(result as BaseGenerateTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
 					} else if ((vercelFunc as unknown) === streamText) {
-						result = augmentStreamText(result as StreamTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
+						result = augmentStreamText(result as BaseStreamTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
 					} else {
 						// no augmentation for other functions
 					}
@@ -298,9 +299,9 @@ export function createLLMRenderer<
 			if (appendedPromptAsMessage) {
 				const userMessage: ModelMessage = { role: 'user', content: effectivePrompt } as ModelMessage;
 				if ((vercelFunc as unknown) === generateText) {
-					return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, userMessage)) as TFunctionResult;
+					return (result as Promise<BaseGenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, userMessage)) as TFunctionResult;
 				} else if ((vercelFunc as unknown) === streamText) {
-					return (result as Promise<StreamTextResult<any, any>>).then((r) => augmentStreamText(r, userMessage)) as TFunctionResult;
+					return (result as Promise<BaseStreamTextResult<any, any>>).then((r) => augmentStreamText(r, userMessage)) as TFunctionResult;
 				} else {
 					return result;
 				}

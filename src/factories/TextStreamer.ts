@@ -15,7 +15,7 @@ type StreamTextReturn<
 	TConfig extends configs.OptionalTemplatePromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT
-> = LLMCallSignature<TConfig, Promise<results.StreamTextResult<TOOLS, OUTPUT>>>;
+> = LLMCallSignature<TConfig, Promise<results.StreamTextResultAugmented<TOOLS, OUTPUT>>>;
 
 // Version of the return type for when a parent config is present.
 type StreamTextWithParentReturn<
@@ -234,9 +234,9 @@ function _createTextStreamer(
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplatePromptConfig & { model: LanguageModel, prompt: string },
+		merged as configs.TemplatePromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		streamText
-	) as StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplatePromptConfig, any, any>;
+	) as StreamTextReturn<configs.StreamTextConfig & { promptType: 'text' }, any, any>;
 }
 
 export const TextStreamer = Object.assign(withText, { // default is withText

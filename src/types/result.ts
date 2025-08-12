@@ -1,14 +1,33 @@
 import {
 	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial,
 } from 'ai';
+import type {
+	GenerateTextResult as BaseGenerateTextResult,
+	StreamTextResult as BaseStreamTextResult,
+	ToolSet,
+} from 'ai';
 
 // Result types
 export type {
-	GenerateTextResult,
-	StreamTextResult
+	// Keep object-related exports as-is
 } from 'ai';
 
 export type ScriptResult = JSONValue;//Record<string, any> | string | null;
+
+// Augmented text result types with lazy messageHistory
+export type GenerateTextResultAugmented<TOOLS extends ToolSet = ToolSet, OUTPUT = never> =
+	BaseGenerateTextResult<TOOLS, OUTPUT> & {
+		response: BaseGenerateTextResult<TOOLS, OUTPUT>['response'] & {
+			messageHistory: BaseGenerateTextResult<TOOLS, OUTPUT>['response']['messages'];
+		};
+	};
+
+export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL = never> =
+	BaseStreamTextResult<TOOLS, PARTIAL> & {
+		response: BaseStreamTextResult<TOOLS, PARTIAL>['response'] extends Promise<infer R extends { messages: readonly unknown[] }>
+		? Promise<R & { messageHistory: R['messages'] }>
+		: BaseStreamTextResult<TOOLS, PARTIAL>['response'];
+	};
 
 //these are returned in a Promise
 export type GenerateObjectResultAll<OBJECT, ENUM extends string, ELEMENT> =
