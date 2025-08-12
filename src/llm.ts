@@ -4,7 +4,8 @@ import { validateCall } from './validate';
 import * as utils from './types/utils';
 import { _createTemplate, TemplateCallSignature } from './factories/Template';
 import { _createScript, ScriptCallSignature } from './factories/Script';
-import { LanguageModel, ModelMessage } from 'ai';
+import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
+import type { GenerateTextResult, StreamTextResult } from './types/result';
 import { z } from 'zod';
 
 export type LLMCallSignature<
@@ -88,6 +89,41 @@ export function extractCallArguments(promptOrMessageOrContext?: string | ModelMe
 	}
 
 	return { prompt: promptFromArgs, messages: messagesFromArgs, context: contextFromArgs };
+}
+
+// Helpers to prepend the user message into returned results
+function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
+	result: GenerateTextResult<TOOLS, OUTPUT>,
+	userMessage: ModelMessage
+): GenerateTextResult<TOOLS, OUTPUT> {
+	type Messages = typeof result.response.messages;
+	type Elem = Messages extends readonly (infer U)[] ? U : never;
+	const newHead = userMessage as unknown as Elem;
+	const newMessages = [newHead, ...result.response.messages] as Messages;
+	return {
+		...result,
+		response: {
+			...result.response,
+			messages: newMessages,
+		},
+	};
+}
+
+function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
+	result: StreamTextResult<TOOLS, PARTIAL>,
+	userMessage: ModelMessage
+): StreamTextResult<TOOLS, PARTIAL> {
+	type ResponseT = Awaited<typeof result.response>;
+	type Messages = ResponseT extends { messages: infer M extends readonly unknown[] } ? M : never;
+	type Elem = Messages extends readonly (infer U)[] ? U : never;
+	const newResponse = (result.response)
+		.then((r) => {
+			const tail = (r as ResponseT & { messages: Messages }).messages;
+			const newHead = userMessage as unknown as Elem;
+			const newMessages = [newHead, ...tail] as Messages;
+			return { ...r, messages: newMessages } as ResponseT;
+		});
+	return { ...result, response: newResponse };
 }
 
 export function createLLMRenderer<
@@ -183,7 +219,18 @@ export function createLLMRenderer<
 						: { ...config, prompt: renderedString }
 				) as TFunctionConfig;
 
-				const result = await vercelFunc(resultConfig);
+				let result = await vercelFunc(resultConfig);
+				if (finalMessages && baseMessages && renderedString.length > 0) {
+					// we appended prompt as user message; include it in result messages
+					const userMessage: ModelMessage = { role: 'user', content: renderedString } as ModelMessage;
+					if ((vercelFunc as unknown) === generateText) {
+						result = augmentGenerateText(result as GenerateTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
+					} else if ((vercelFunc as unknown) === streamText) {
+						result = augmentStreamText(result as StreamTextResult<any, any>, userMessage) as Awaited<TFunctionResult>;
+					} else {
+						// no augmentation for other functions
+					}
+				}
 				if (config.debug) {
 					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
 				}
@@ -211,10 +258,23 @@ export function createLLMRenderer<
 			const resultConfig = (
 				finalMessages
 					? { ...config, messages: finalMessages }
-					: { ...config, prompt: effectivePrompt }
+					: { ...config, ...(effectivePrompt !== undefined ? { prompt: effectivePrompt } : {}) }
 			) as TFunctionConfig;
 
+			const appendedPromptAsMessage = !!finalMessages && !!baseMessages && typeof effectivePrompt === 'string' && effectivePrompt.length > 0;
+
 			const result = vercelFunc(resultConfig);
+			if (appendedPromptAsMessage) {
+				const userMessage: ModelMessage = { role: 'user', content: effectivePrompt } as ModelMessage;
+				if ((vercelFunc as unknown) === generateText) {
+					return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, userMessage)) as TFunctionResult;
+				} else if ((vercelFunc as unknown) === streamText) {
+					return (result as Promise<StreamTextResult<any, any>>).then((r) => augmentStreamText(r, userMessage)) as TFunctionResult;
+				} else {
+					return result;
+				}
+			}
+
 			if (config.debug) {
 				if (result instanceof Promise) {
 					result.then((r) => {
