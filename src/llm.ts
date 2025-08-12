@@ -146,28 +146,49 @@ export function createLLMRenderer<
 			//@todo - message support for all renderers
 			//@todo - handle prompt rendering to messages
 			//@todo - scripts will be able to render messages not just strings
-			const renderedPrompt = (await renderer(promptOrMessageOrContext as string, messagesOrContext)) as string;
+			const rendered = await renderer(promptOrMessageOrContext as string, messagesOrContext) as string | ModelMessage[];
 			//@todo - async option support
 
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
+				console.log('[DEBUG] createLLMRenderer - rendered output:', Array.isArray(rendered) ? { type: 'messages', length: rendered.length } : { type: 'string', preview: String(rendered).slice(0, 120) });
 			}
 
-			// Build messages: prefer argument messages, else config messages. Always append rendered prompt as a user message if messages exist
-			const finalMessages = buildMessagesWithPrompt(messagesFromArgs ?? config.messages, renderedPrompt);
+			// Build messages based on renderer output
+			const baseMessages = messagesFromArgs ?? config.messages;
+			let finalMessages: ModelMessage[] | undefined;
 
-			// In non-text modes, prompt is required; we send both prompt and messages (augmented) when messages exist
-			const resultConfig = {
-				...config,
-				prompt: renderedPrompt,
-				...(finalMessages ? { messages: finalMessages } : {}),
-			} as TFunctionConfig;
+			if (Array.isArray(rendered)) {
+				// Renderer returned messages, merge them with existing messages (if any)
+				finalMessages = baseMessages ? baseMessages.concat(rendered) : rendered;
 
-			const result = await vercelFunc(resultConfig);
-			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				const resultConfig = {
+					...config,
+					messages: finalMessages,
+				} as TFunctionConfig;
+
+				const result = await vercelFunc(resultConfig);
+				if (config.debug) {
+					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				}
+				return result;
+			} else {
+				// Renderer returned a string prompt, append as a user message when messages exist
+				const renderedString = typeof rendered === 'string' ? rendered : String(rendered);
+				finalMessages = buildMessagesWithPrompt(baseMessages, renderedString);
+
+				// If we appended messages, omit prompt; otherwise include prompt
+				const resultConfig = (
+					finalMessages
+						? { ...config, messages: finalMessages }
+						: { ...config, prompt: renderedString }
+				) as TFunctionConfig;
+
+				const result = await vercelFunc(resultConfig);
+				if (config.debug) {
+					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				}
+				return result;
 			}
-			return result;
 		};
 	} else {
 		// No need to run the prompt through a template/script.
@@ -182,14 +203,16 @@ export function createLLMRenderer<
 			const effectivePrompt = prompt ?? promptFromConfig;
 			const messagesFromConfig = (config as unknown as { messages?: ModelMessage[] }).messages;
 			const baseMessages = messages ?? messagesFromConfig;
+
+			// If messages exist, append the prompt as a user message and DO NOT send prompt
 			const finalMessages = buildMessagesWithPrompt(baseMessages, effectivePrompt);
 
-			// Build payload: keep prompt as-is; when messages provided, we include augmented copy
-			const resultConfig = {
-				...(config as unknown as Record<string, unknown>),
-				...(effectivePrompt !== undefined ? { prompt: effectivePrompt } : {}),
-				...(finalMessages ? { messages: finalMessages } : {}),
-			} as TFunctionConfig;
+			// Build payload: when messages were appended, drop 'prompt'; otherwise include 'prompt'
+			const resultConfig = (
+				finalMessages
+					? { ...config, messages: finalMessages }
+					: { ...config, prompt: effectivePrompt }
+			) as TFunctionConfig;
 
 			const result = vercelFunc(resultConfig);
 			if (config.debug) {
