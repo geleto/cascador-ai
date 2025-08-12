@@ -398,7 +398,7 @@ describe('create.TextStreamer', function () {
 			// The call returns promises that should reject
 			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt argument or config.prompt/messages required',
+				'Either prompt or messages must be provided',
 			);
 		});
 

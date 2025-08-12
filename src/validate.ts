@@ -1,5 +1,7 @@
+import { ModelMessage } from "ai";
 import type * as TypesConfig from "./types/config";
 import { Context } from "./types/types";
+import { extractCallArguments } from './llm';
 
 export class ConfigError extends Error {
 	cause?: Error;
@@ -61,31 +63,53 @@ export function validateBaseConfig(config?: Record<string, any>) {
 	}
 }
 
-export function validateCall(config: Record<string, any>, promptOrContext?: Context | string, maybeContext?: Context) {
+// export function validateCall(config: Record<string, any>, promptOrContext?: Context | string, maybeContext?: Context) {
+export function validateCall(config: Record<string, any>, promptOrMessageOrContext?: string | ModelMessage[] | Context, contextOrMessages?: ModelMessage[] | Context, maybeContext?: Context) {
 	// Debug output if config.debug is true
 	if ('debug' in config && config.debug) {
-		console.log('[DEBUG] validateCall called with:', { config: JSON.stringify(config, null, 2), promptOrContext, maybeContext });
+		console.log('[DEBUG] validateCall called with:', { config: JSON.stringify(config, null, 2), promptOrMessageOrContext, contextOrMessages, maybeContext });
 	}
 
-	if (maybeContext) {
-		if (typeof promptOrContext !== 'string') {
-			throw new ConfigError('First argument must be string when providing context');
-		}
-		if (typeof maybeContext !== 'object') {
-			throw new ConfigError('Second argument must be an object');
+	// Determine mode
+	const isTemplateOrScript = (config.promptType !== 'text' && config.promptType !== undefined);
+
+	// 1) Extract from arguments via helper (with duplicate detection)
+	let promptFromArgs: string | undefined;
+	let messagesFromArgs: ModelMessage[] | undefined;
+	let contextFromArgs: Context | undefined;
+	try {
+		({ prompt: promptFromArgs, messages: messagesFromArgs, context: contextFromArgs } = extractCallArguments(promptOrMessageOrContext, contextOrMessages, maybeContext));
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Invalid arguments';
+		throw new ConfigError(message);
+	}
+	void contextFromArgs;
+
+	// 2) Merge with config defaults
+	const promptFromConfig: string | undefined = (typeof (config as Record<string, unknown>).prompt === 'string' && (config as Record<string, string>).prompt.length > 0)
+		? (config as Record<string, string>).prompt
+		: undefined;
+	const messagesFromConfig: ModelMessage[] | undefined = Array.isArray((config as Record<string, unknown>).messages)
+		? (config as Record<string, unknown>).messages as ModelMessage[]
+		: undefined;
+
+	const prompt: string | undefined = promptFromArgs ?? promptFromConfig;
+	const messages: ModelMessage[] | undefined = messagesFromArgs ?? messagesFromConfig;
+
+	// 3) Apply rules
+	if (isTemplateOrScript) {
+		// PROMPT REQUIRED; messages optional
+		if (!prompt) {
+			throw new ConfigError('Prompt is required when promptType is not "text".');
 		}
 		return;
 	}
 
-	if (!promptOrContext) {
-		if (!('prompt' in config)) {
-			throw new ConfigError('Either prompt argument or config.prompt/messages required');
-		}
-		return;
-	}
-
-	if (typeof promptOrContext !== 'string' && (typeof promptOrContext !== 'object')) {
-		throw new ConfigError('Single argument must be string or object');
+	// TEXT MODE: require either prompt or messages
+	const hasPrompt = typeof prompt === 'string' && prompt.length > 0;
+	const hasMessages = Array.isArray(messages) && messages.length > 0;
+	if (!hasPrompt && !hasMessages) {
+		throw new ConfigError('Either prompt or messages must be provided (via arguments or config).');
 	}
 }
 

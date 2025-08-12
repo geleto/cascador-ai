@@ -340,7 +340,7 @@ describe('create.ObjectStreamer', function () {
 			const streamer = create.ObjectStreamer({ model, temperature, schema: simpleSchema });
 			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt argument or config.prompt/messages required',
+				'Either prompt or messages must be provided',
 			);
 		});
 	});

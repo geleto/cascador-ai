@@ -374,7 +374,7 @@ describe('create.ObjectGenerator', function () {
 			const generator = create.ObjectGenerator({ model, temperature, schema: simpleSchema });
 			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt argument or config.prompt/messages required',
+				'Either prompt or messages must be provided',
 			);
 		});
 

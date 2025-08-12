@@ -4,7 +4,7 @@ import { validateCall } from './validate';
 import * as utils from './types/utils';
 import { _createTemplate, TemplateCallSignature } from './factories/Template';
 import { _createScript, ScriptCallSignature } from './factories/Script';
-import { LanguageModel } from 'ai';
+import { LanguageModel, ModelMessage } from 'ai';
 import { z } from 'zod';
 
 export type LLMCallSignature<
@@ -12,33 +12,81 @@ export type LLMCallSignature<
 	TResult
 > = TConfig extends { promptType: 'text' }
 	? (
-		//TConfig has no template, no context argument is needed
+		// TConfig has no template, no context argument is needed
+		// We can have either a prompt or messages, but not both. No context as nothing is rendered.
 		TConfig extends { prompt: string }
 		? {
-			(prompt?: string): TResult;//TConfig has prompt, prompt is optional
+			// Optional prompt/messages
+			(promptOrMessage?: string | ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 		: {
-			(prompt: string): TResult;//TConfig has no prompt, prompt argument is required
+			// Required either prompt or messages (but not both)
+			(promptOrMessages: string | ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 	)
 	: (
-		// TConfig has template, an optional context argument can be used
-		// and the return type is always a promise because we wait for the result
+		// TConfig has template or script; return type is always a promise
+		// we can have a prompt and/or messages at the same time (prompt gets rendered and added to messages).
 		TConfig extends { prompt: string }
 		? {
-			//TConfig has prompt, prompt is optional
-			(promptOrContext?: Context | string): utils.EnsurePromise<TResult>;//one optional argument, prompt or context
-			(prompt: string, context: Context): utils.EnsurePromise<TResult>;//two arguments, prompt and context
+			// Single signature supporting optional prompt, optional messages, and optional context
+			(promptOrMessageOrContext?: string | ModelMessage[] | Context, messagesOrContext?: ModelMessage[] | Context, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 		: {
-			//TConfig has no prompt, prompt argument is required
-			(prompt: string, context?: Context): utils.EnsurePromise<TResult>;//prompt is a must, context is optional
+			// Single signature supporting required either prompt or messages (but not both), and optional context
+			(prompt: string, messagesOrContext?: ModelMessage[] | Context, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 	);
+
+export function extractCallArguments(promptOrMessageOrContext?: string | ModelMessage[] | Context, contextOrMessages?: ModelMessage[] | Context, maybeContext?: Context): { prompt?: string, messages?: ModelMessage[], context?: Context } {
+	let promptFromArgs: string | undefined;
+	let messagesFromArgs: ModelMessage[] | undefined;
+	let contextFromArgs: Context | undefined;
+
+	// First argument
+	if (typeof promptOrMessageOrContext === 'string') {
+		promptFromArgs = promptOrMessageOrContext;
+	} else if (Array.isArray(promptOrMessageOrContext)) {
+		messagesFromArgs = promptOrMessageOrContext;
+	} else if (promptOrMessageOrContext && !Array.isArray(promptOrMessageOrContext)) {
+		contextFromArgs = promptOrMessageOrContext;
+	}
+
+	// Second argument
+	if (contextOrMessages !== undefined) {
+		if (Array.isArray(contextOrMessages)) {
+			if (messagesFromArgs !== undefined) {
+				throw new Error('Messages provided multiple times across arguments');
+			}
+			messagesFromArgs = contextOrMessages as ModelMessage[];
+		} else {
+			if (contextFromArgs !== undefined) {
+				throw new Error('Context provided multiple times across arguments');
+			}
+			contextFromArgs = contextOrMessages;
+		}
+	}
+
+	// Third argument
+	if (maybeContext !== undefined) {
+		if (!Array.isArray(contextOrMessages)) {
+			throw new Error('Third argument (context) is only allowed when the second argument is messages.');
+		}
+		if (Array.isArray(maybeContext)) {
+			throw new Error('Third argument (context) must be an object');
+		}
+		if (contextFromArgs !== undefined) {
+			throw new Error('Context provided multiple times across arguments');
+		}
+		contextFromArgs = maybeContext;
+	}
+
+	return { prompt: promptFromArgs, messages: messagesFromArgs, context: contextFromArgs };
+}
 
 export function createLLMRenderer<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig>
@@ -69,13 +117,19 @@ export function createLLMRenderer<
 			const textScriptConfig: configs.ScriptConfig<string> = { ...(config as configs.ScriptPromptConfig), schema: z.string() };
 			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
 		}
-		call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<TFunctionResult> => {
+		call = async (
+			promptOrMessageOrContext?: string | ModelMessage[] | Context,
+			messagesOrContext?: ModelMessage[] | Context,
+			maybeContext?: Context
+		): Promise<TFunctionResult> => {
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrContext, maybeContext });
+				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrMessageOrContext, messagesOrContext, maybeContext });
 			}
-			validateCall(config, promptOrContext, maybeContext);
+			validateCall(config, promptOrMessageOrContext, messagesOrContext, maybeContext);
 
-			const renderedPrompt = await renderer(promptOrContext as string, maybeContext);
+			//@todo - message support for all renderers
+			//@todo - handle prompt rendering to messages
+			const renderedPrompt = await renderer(promptOrMessageOrContext as string, messagesOrContext);
 			//@todo - async option support
 
 			if (config.debug) {
@@ -90,12 +144,13 @@ export function createLLMRenderer<
 	} else {
 		// No need to run the prompt through a template/script.
 		// depending on the vercelFunc, the result may be a promise or not
-		call = (prompt: string): TFunctionResult => {
+		call = (prompt?: string, messages?: ModelMessage[]): TFunctionResult => {
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - text path called with prompt:', prompt);
+				console.log('[DEBUG] createLLMRenderer - text path called with:', { prompt, messages });
 			}
-			validateCall(config, prompt);
-			prompt = prompt || config.prompt;
+			validateCall(config, prompt, messages);
+			prompt = prompt ?? config.prompt;
+			//@todo - handle adding the prompt to messages if they exist
 			const result = vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
 			if (config.debug) {
 				if (result instanceof Promise) {

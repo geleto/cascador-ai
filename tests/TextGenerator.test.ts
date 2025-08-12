@@ -415,7 +415,7 @@ describe('create.TextGenerator', function () {
 			// Calling with no arguments should fail.
 			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt argument or config.prompt/messages required',
+				'Either prompt or messages must be provided',
 			);
 		});
 
