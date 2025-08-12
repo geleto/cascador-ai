@@ -4,7 +4,8 @@ import {
 	JSONValue,
 	ToolSet,
 	ToolCallOptions,
-	StreamObjectOnFinishCallback
+	StreamObjectOnFinishCallback,
+	ModelMessage
 } from 'ai';
 import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
 import { z } from 'zod';
@@ -43,6 +44,7 @@ export interface LoaderConfig extends BaseConfig {
 // Config for the template engine with type safety for loader requirement
 export interface TemplatePromptConfig<PROMPT = string> extends CascadaConfig {
 	prompt?: PROMPT;
+	messages?: ModelMessage[];
 	promptType?: TemplatePromptType;
 }
 
@@ -50,6 +52,7 @@ export type OptionalTemplatePromptConfig<PROMPT = string> = TemplatePromptConfig
 
 export interface ScriptPromptConfig<PROMPT = string> extends ScriptConfig<PROMPT> {
 	prompt?: PROMPT;
+	messages?: ModelMessage[];
 	promptType?: ScriptPromptType;
 }
 

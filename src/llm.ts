@@ -92,7 +92,7 @@ export function extractCallArguments(promptOrMessageOrContext?: string | ModelMe
 
 export function createLLMRenderer<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig>
-	& { debug?: boolean, model: LanguageModel, prompt: string }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
+	& { debug?: boolean, model: LanguageModel, prompt?: string, messages?: ModelMessage[] }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel },
 	TFunctionResult,
 >(
@@ -103,6 +103,16 @@ export function createLLMRenderer<
 	if (config.debug) {
 		console.log('[DEBUG] LLMRenderer created with config:', JSON.stringify(config, null, 2));
 	}
+
+	// Helper to create a copy of messages and append the prompt as a user message when available
+	const buildMessagesWithPrompt = (existing: ModelMessage[] | undefined, promptToAppend?: string): ModelMessage[] | undefined => {
+		if (!existing) return undefined;
+		const messagesCopy = existing.slice();
+		if (typeof promptToAppend === 'string' && promptToAppend.length > 0) {
+			messagesCopy.push({ role: 'user', content: promptToAppend } as ModelMessage);
+		}
+		return messagesCopy;
+	};
 
 	let call;
 	if (config.promptType !== 'text' && config.promptType !== undefined) {
@@ -129,15 +139,31 @@ export function createLLMRenderer<
 			}
 			validateCall(config, promptOrMessageOrContext, messagesOrContext, maybeContext);
 
+			// Extract normalized args
+			const { messages: messagesFromArgs } = extractCallArguments(promptOrMessageOrContext, messagesOrContext, maybeContext);
+
+			// Render the prompt using the provided or config prompt
 			//@todo - message support for all renderers
 			//@todo - handle prompt rendering to messages
-			const renderedPrompt = await renderer(promptOrMessageOrContext as string, messagesOrContext);
+			//@todo - scripts will be able to render messages not just strings
+			const renderedPrompt = (await renderer(promptOrMessageOrContext as string, messagesOrContext)) as string;
 			//@todo - async option support
 
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered prompt:', renderedPrompt);
 			}
-			const result = await vercelFunc({ ...config, prompt: renderedPrompt } as unknown as TFunctionConfig);
+
+			// Build messages: prefer argument messages, else config messages. Always append rendered prompt as a user message if messages exist
+			const finalMessages = buildMessagesWithPrompt(messagesFromArgs ?? config.messages, renderedPrompt);
+
+			// In non-text modes, prompt is required; we send both prompt and messages (augmented) when messages exist
+			const resultConfig = {
+				...config,
+				prompt: renderedPrompt,
+				...(finalMessages ? { messages: finalMessages } : {}),
+			} as TFunctionConfig;
+
+			const result = await vercelFunc(resultConfig);
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
 			}
@@ -151,9 +177,21 @@ export function createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - text path called with:', { prompt, messages });
 			}
 			validateCall(config, prompt, messages);
-			prompt = prompt ?? config.prompt;
-			//@todo - handle adding the prompt to messages if they exist
-			const result = vercelFunc({ ...config, prompt } as unknown as TFunctionConfig);
+
+			const promptFromConfig = config.prompt;
+			const effectivePrompt = prompt ?? promptFromConfig;
+			const messagesFromConfig = (config as unknown as { messages?: ModelMessage[] }).messages;
+			const baseMessages = messages ?? messagesFromConfig;
+			const finalMessages = buildMessagesWithPrompt(baseMessages, effectivePrompt);
+
+			// Build payload: keep prompt as-is; when messages provided, we include augmented copy
+			const resultConfig = {
+				...(config as unknown as Record<string, unknown>),
+				...(effectivePrompt !== undefined ? { prompt: effectivePrompt } : {}),
+				...(finalMessages ? { messages: finalMessages } : {}),
+			} as TFunctionConfig;
+
+			const result = vercelFunc(resultConfig);
 			if (config.debug) {
 				if (result instanceof Promise) {
 					result.then((r) => {
