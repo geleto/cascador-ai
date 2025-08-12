@@ -91,22 +91,28 @@ export function extractCallArguments(promptOrMessageOrContext?: string | ModelMe
 	return { prompt: promptFromArgs, messages: messagesFromArgs, context: contextFromArgs };
 }
 
-// Helpers to prepend the user message into returned results
+// Helpers to prepend the user message into returned results using lazy, memoized getters
 function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 	result: GenerateTextResult<TOOLS, OUTPUT>,
 	userMessage: ModelMessage
 ): GenerateTextResult<TOOLS, OUTPUT> {
 	type Messages = typeof result.response.messages;
 	type Elem = Messages extends readonly (infer U)[] ? U : never;
-	const newHead = userMessage as unknown as Elem;
-	const newMessages = [newHead, ...result.response.messages] as Messages;
-	return {
-		...result,
-		response: {
-			...result.response,
-			messages: newMessages,
+	const originalResponse = result.response;
+	let cachedMessages: Messages | undefined;
+	const responseWithLazyMessages = Object.create(originalResponse) as typeof originalResponse & { messages: Messages };
+	Object.defineProperty(responseWithLazyMessages, 'messages', {
+		get() {
+			if (cachedMessages !== undefined) return cachedMessages;
+			const tail = (originalResponse as typeof originalResponse & { messages: Messages }).messages;
+			const newHead = userMessage as unknown as Elem;
+			cachedMessages = [newHead, ...tail] as Messages;
+			return cachedMessages;
 		},
-	};
+		enumerable: true,
+		configurable: true,
+	});
+	return { ...result, response: responseWithLazyMessages };
 }
 
 function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
@@ -118,10 +124,20 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 	type Elem = Messages extends readonly (infer U)[] ? U : never;
 	const newResponse = (result.response)
 		.then((r) => {
-			const tail = (r as ResponseT & { messages: Messages }).messages;
-			const newHead = userMessage as unknown as Elem;
-			const newMessages = [newHead, ...tail] as Messages;
-			return { ...r, messages: newMessages } as ResponseT;
+			let cachedMessages: Messages | undefined;
+			const responseWithLazyMessages = Object.create(r) as ResponseT & { messages: Messages };
+			Object.defineProperty(responseWithLazyMessages, 'messages', {
+				get() {
+					if (cachedMessages !== undefined) return cachedMessages;
+					const tail = (r as ResponseT & { messages: Messages }).messages;
+					const newHead = userMessage as unknown as Elem;
+					cachedMessages = [newHead, ...tail] as Messages;
+					return cachedMessages;
+				},
+				enumerable: true,
+				configurable: true,
+			});
+			return responseWithLazyMessages;
 		});
 	return { ...result, response: newResponse };
 }
