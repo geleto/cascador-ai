@@ -100,7 +100,7 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 	type Elem = Messages extends readonly (infer U)[] ? U : never;
 	const originalResponse = result.response;
 	let cachedMessages: Messages | undefined;
-	const responseWithLazyMessages = Object.create(originalResponse) as typeof originalResponse & { messages: Messages };
+	const responseWithLazyMessages = Object.create(originalResponse) as typeof originalResponse & { messages: Messages, messageHistory: Messages };
 	Object.defineProperty(responseWithLazyMessages, 'messages', {
 		get() {
 			if (cachedMessages !== undefined) return cachedMessages;
@@ -108,6 +108,14 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 			const newHead = userMessage as unknown as Elem;
 			cachedMessages = [newHead, ...tail] as Messages;
 			return cachedMessages;
+		},
+		enumerable: true,
+		configurable: true,
+	});
+	Object.defineProperty(responseWithLazyMessages, 'messageHistory', {
+		get() {
+			// Reuse the same memoized array so we do not recompute
+			return responseWithLazyMessages.messages;
 		},
 		enumerable: true,
 		configurable: true,
@@ -125,7 +133,7 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 	const newResponse = (result.response)
 		.then((r) => {
 			let cachedMessages: Messages | undefined;
-			const responseWithLazyMessages = Object.create(r) as ResponseT & { messages: Messages };
+			const responseWithLazyMessages = Object.create(r) as ResponseT & { messages: Messages, messageHistory: Messages };
 			Object.defineProperty(responseWithLazyMessages, 'messages', {
 				get() {
 					if (cachedMessages !== undefined) return cachedMessages;
@@ -133,6 +141,13 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 					const newHead = userMessage as unknown as Elem;
 					cachedMessages = [newHead, ...tail] as Messages;
 					return cachedMessages;
+				},
+				enumerable: true,
+				configurable: true,
+			});
+			Object.defineProperty(responseWithLazyMessages, 'messageHistory', {
+				get() {
+					return responseWithLazyMessages.messages;
 				},
 				enumerable: true,
 				configurable: true,
