@@ -29,7 +29,6 @@ export type LLMCallSignature<
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
-
 	)
 	: (
 		// TConfig has template or script; return type is always a promise
@@ -85,7 +84,7 @@ export function extractCallArguments(promptOrMessageOrContext?: string | ModelMe
 			throw new Error('Third argument (context) must be an object');
 		}
 		if (contextFromArgs !== undefined) {
-			throw new Error('Context provided multiple times across arguments');
+			throw new Error('Context provided multiple times');
 		}
 		contextFromArgs = maybeContext;
 	}

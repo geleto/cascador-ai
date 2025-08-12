@@ -15,7 +15,7 @@ export type LLMStreamerConfig<OBJECT, ELEMENT> = (
 	| configs.StreamObjectObjectConfig<OBJECT>
 	| configs.StreamObjectArrayConfig<ELEMENT>
 	| configs.StreamObjectNoSchemaConfig
-) & configs.OptionalTemplatePromptConfig;
+) & configs.OptionalPromptConfig;
 
 export type ObjectStreamerInstance<
 	OBJECT, ELEMENT,
@@ -34,7 +34,7 @@ type StreamObjectConfig<OBJECT, ELEMENT> =
 	configs.StreamObjectNoSchemaConfig;
 
 type StreamObjectReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
+	TConfig extends configs.OptionalPromptConfig,
 	OBJECT,
 	ELEMENT,
 > =
@@ -50,13 +50,13 @@ type StreamObjectReturn<
 	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>;// object with no schema, maybe return Error String
 
 type StreamObjectWithParentReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
-	TParentConfig extends configs.OptionalTemplatePromptConfig,
+	TConfig extends configs.OptionalPromptConfig,
+	TParentConfig extends configs.OptionalPromptConfig,
 	OBJECT,
 	ELEMENT,
 	PARENT_OBJECT,
 	PARENT_ELEMENT,
-	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>,
+	TFinalConfig extends configs.OptionalPromptConfig = utils.Override<TParentConfig, TConfig>,
 > =
 	StreamObjectReturn<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT>
 
@@ -376,7 +376,7 @@ function _createObjectStreamer<
 	}
 
 	return createLLMRenderer(
-		merged as configs.OptionalTemplatePromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
+		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		streamObject
 	) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
 }

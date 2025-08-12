@@ -11,22 +11,26 @@ import { validateBaseConfig, ConfigError } from "../validate";
 
 // The generic return type for a TextStreamer instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
-type StreamTextReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
+// Parameterize by the concrete promptType literal used by the implementation.
+type StreamTextReturnWithPrompt<
+	TConfig extends configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
-	OUTPUT
-> = LLMCallSignature<TConfig, Promise<results.StreamTextResultAugmented<TOOLS, OUTPUT>>>;
+	OUTPUT,
+	PType extends 'text' | 'async-template' | 'async-template-name' | 'async-script' | 'async-script-name'
+> = LLMCallSignature<TConfig & { promptType: PType }, Promise<results.StreamTextResultAugmented<TOOLS, OUTPUT>>>;
 
 // Version of the return type for when a parent config is present.
+// Ensure the final merged config reflects the concrete promptType at the type level.
 type StreamTextWithParentReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
-	TParentConfig extends configs.OptionalTemplatePromptConfig,
+	TConfig extends configs.OptionalPromptConfig,
+	TParentConfig extends configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_OUTPUT,
-	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>
-> = StreamTextReturn<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT>;
+	PType extends 'text' | 'async-template' | 'async-template-name' | 'async-script' | 'async-script-name',
+	TFinalConfig extends configs.OptionalPromptConfig = utils.Override<TParentConfig, TConfig>
+> = StreamTextReturnWithPrompt<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT, PType>;
 
 // The full shape of a final, merged config object, including required properties.
 type FinalTextConfigShape = Partial<configs.StreamTextConfig<any, any> & { model: LanguageModel }>;
@@ -90,7 +94,7 @@ export function withText<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text'>;
 
 export function withText<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT>>,
@@ -100,7 +104,7 @@ export function withText<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text'>;
 
 export function withText(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'text', parent);
@@ -112,7 +116,7 @@ export function loadsText<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.LoaderConfig>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text'>;
 
 export function loadsText<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT> & configs.LoaderConfig>,
@@ -122,7 +126,7 @@ export function loadsText<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text'>;
 
 export function loadsText(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'text-name', parent);
@@ -134,7 +138,7 @@ export function withTemplate<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template'>;
 
 export function withTemplate<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
@@ -144,7 +148,7 @@ export function withTemplate<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template'>;
 
 export function withTemplate(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'async-template', parent);
@@ -156,7 +160,7 @@ export function loadsTemplate<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template-name'>;
 
 export function loadsTemplate<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
@@ -166,7 +170,7 @@ export function loadsTemplate<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template-name'>;
 
 export function loadsTemplate(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'async-template-name', parent);
@@ -178,7 +182,7 @@ export function withScript<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script'>;
 
 export function withScript<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
@@ -188,7 +192,7 @@ export function withScript<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script'>;
 
 export function withScript(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'async-script', parent);
@@ -200,7 +204,7 @@ export function loadsScript<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
-): StreamTextReturn<TConfig, TOOLS, OUTPUT>;
+): StreamTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script-name'>;
 
 export function loadsScript<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
@@ -210,7 +214,7 @@ export function loadsScript<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
-): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script-name'>;
 
 export function loadsScript(config: configs.StreamTextConfig, parent?: ConfigProvider<configs.StreamTextConfig>): any {
 	return _createTextStreamer(config, 'async-script-name', parent);
@@ -220,7 +224,7 @@ function _createTextStreamer(
 	config: Partial<configs.StreamTextConfig>,
 	promptType: RequiredPromptType,
 	parent?: ConfigProvider<Partial<configs.StreamTextConfig>>
-): StreamTextReturn<configs.StreamTextConfig & configs.OptionalTemplatePromptConfig, any, any> {
+): StreamTextReturnWithPrompt<configs.StreamTextConfig & configs.OptionalPromptConfig, any, any, 'text'> {
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	validateBaseConfig(merged);
@@ -234,9 +238,9 @@ function _createTextStreamer(
 	}
 
 	return createLLMRenderer(
-		merged as configs.TemplatePromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
+		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		streamText
-	) as StreamTextReturn<configs.StreamTextConfig & { promptType: 'text' }, any, any>;
+	) as StreamTextReturnWithPrompt<configs.StreamTextConfig & { promptType: 'text' }, any, any, 'text'>;
 }
 
 export const TextStreamer = Object.assign(withText, { // default is withText

@@ -9,27 +9,31 @@ import { LLMCallSignature, createLLMRenderer } from "../llm";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, ConfigError } from "../validate";
 
-export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalTemplatePromptConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
+export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalPromptConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
 export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>>;
 
 // The generic return type for a TextGenerator instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
-type GenerateTextReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
+// Parameterize by the concrete promptType literal used by the implementation.
+type GenerateTextReturnWithPrompt<
+	TConfig extends configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
-	OUTPUT
-> = LLMCallSignature<TConfig, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>>;
+	OUTPUT,
+	PType extends RequiredPromptType
+> = LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>>;
 
 // Version of the return type for when a parent config is present.
+// Ensure the final merged config reflects the concrete promptType at the type level.
 type GenerateTextWithParentReturn<
-	TConfig extends configs.OptionalTemplatePromptConfig,
-	TParentConfig extends configs.OptionalTemplatePromptConfig,
+	TConfig extends configs.OptionalPromptConfig,
+	TParentConfig extends configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_OUTPUT,
-	TFinalConfig extends configs.OptionalTemplatePromptConfig = utils.Override<TParentConfig, TConfig>
-> = GenerateTextReturn<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT>;
+	PType extends RequiredPromptType,
+	TFinalConfig extends configs.OptionalPromptConfig = utils.Override<TParentConfig, TConfig>
+> = GenerateTextReturnWithPrompt<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT, PType>;
 
 // The full shape of a final, merged config object, including required properties.
 type FinalTextConfigShape = Partial<configs.GenerateTextConfig<any, any> & { model: LanguageModel }>;
@@ -93,7 +97,7 @@ export function withText<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text'>;
 
 export function withText<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT>>,
@@ -103,7 +107,7 @@ export function withText<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text'>;
 
 export function withText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'text', parent);
@@ -115,7 +119,7 @@ export function loadsText<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.LoaderConfig>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text-name'>;
 
 export function loadsText<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.LoaderConfig>,
@@ -125,7 +129,7 @@ export function loadsText<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text-name'>;
 
 export function loadsText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'text-name', parent);
@@ -137,7 +141,7 @@ export function withTemplate<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template'>;
 
 export function withTemplate<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
@@ -147,7 +151,7 @@ export function withTemplate<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template'>;
 
 export function withTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-template', parent);
@@ -159,7 +163,7 @@ export function loadsTemplate<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template-name'>;
 
 export function loadsTemplate<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
@@ -169,7 +173,7 @@ export function loadsTemplate<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template-name'>;
 
 export function loadsTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-template-name', parent);
@@ -181,7 +185,7 @@ export function withScript<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script'>;
 
 export function withScript<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
@@ -191,7 +195,7 @@ export function withScript<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script'>;
 
 export function withScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-script', parent);
@@ -203,7 +207,7 @@ export function loadsScript<
 	OUTPUT = never
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
-): GenerateTextReturn<TConfig, TOOLS, OUTPUT>;
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script-name'>;
 
 export function loadsScript<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
@@ -213,7 +217,7 @@ export function loadsScript<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script-name'>;
 
 export function loadsScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-script-name', parent);
@@ -223,7 +227,7 @@ function _createTextGenerator(
 	config: Partial<configs.GenerateTextConfig>,
 	promptType: RequiredPromptType,
 	parent?: ConfigProvider<Partial<configs.GenerateTextConfig>>
-): GenerateTextReturn<configs.GenerateTextConfig & configs.OptionalTemplatePromptConfig, any, any> {
+): GenerateTextReturnWithPrompt<configs.GenerateTextConfig & configs.OptionalPromptConfig, any, any, typeof promptType> {
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	validateBaseConfig(merged);
@@ -237,9 +241,9 @@ function _createTextGenerator(
 	}
 
 	return createLLMRenderer(
-		merged as configs.TemplatePromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
+		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		generateText
-	) as GenerateTextReturn<configs.GenerateTextConfig & { promptType: 'text' }, any, any>;
+	) as GenerateTextReturnWithPrompt<configs.GenerateTextConfig & { promptType: 'text' }, any, any, 'text'>;
 }
 
 export const TextGenerator = Object.assign(withText, { // default is withText

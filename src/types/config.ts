@@ -60,6 +60,8 @@ export type OptionalScriptPromptConfig<PROMPT = string> = ScriptPromptConfig<PRO
 
 export type OptionalPromptConfig<PROMPT = string> = OptionalTemplatePromptConfig<PROMPT> | OptionalScriptPromptConfig<PROMPT>;
 
+export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
+
 // Script types
 export interface ScriptConfig<OBJECT> extends CascadaConfig {
 	script?: string;
