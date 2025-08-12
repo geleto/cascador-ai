@@ -8,6 +8,7 @@ import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from '
 import type { GenerateTextResult as BaseGenerateTextResult, StreamTextResult as BaseStreamTextResult } from 'ai';
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from './types/result';
 import { z } from 'zod';
+import { PromptStringOrMessagesSchema } from './types/schemas';
 
 export type LLMCallSignature<
 	TConfig extends configs.OptionalPromptConfig,
@@ -192,9 +193,11 @@ export function createLLMRenderer<
 			type PromptType = Exclude<TemplatePromptType, undefined>;
 			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
 		} else {
-			//the script must render a string (@todo - or Messages[])>
-			//add a schema requiring a string to the config
-			const textScriptConfig: configs.ScriptConfig<string> = { ...(config as configs.ScriptPromptConfig), schema: z.string() };
+			// the script may render a string or messages; set a matching schema
+			const textScriptConfig: configs.ScriptConfig<string | ModelMessage[]> = {
+				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
+				schema: PromptStringOrMessagesSchema as z.ZodType<string | ModelMessage[]>, //the script may render a string or messages
+			};
 			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
 		}
 		call = async (

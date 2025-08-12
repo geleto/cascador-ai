@@ -19,7 +19,7 @@ export {
 
 // Core types
 export { Context, SchemaType, TemplatePromptType, ScriptPromptType/*, LLMPromptType */, StreamObjectOnFinishEvent, StreamTextOnFinishEvent } from './types/types';
-
+export { ModelMessageSchema, PromptStringOrMessagesSchema } from './types/schemas';
 // Result types
 export {
 	ScriptResult,

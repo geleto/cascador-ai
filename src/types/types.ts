@@ -6,7 +6,8 @@ import { InferParameters } from './utils';
 export type Context = Record<string, any>;
 export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 
-export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+// export type SchemaType<T> = z.Schema<T, z.ZodTypeDef, any> | Schema<T>;
+export type SchemaType<T> = z.ZodType<T, z.ZodTypeDef, any> | Schema<T>;
 
 // Define the possible prompt types
 export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name' | undefined;
