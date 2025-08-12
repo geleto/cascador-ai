@@ -14,29 +14,31 @@ export type LLMCallSignature<
 	? (
 		// TConfig has no template, no context argument is needed
 		// We can have either a prompt or messages, but not both. No context as nothing is rendered.
-		TConfig extends { prompt: string }
+		TConfig extends { prompt: string } | { messages: ModelMessage[] }
 		? {
 			// Optional prompt/messages
-			(promptOrMessage?: string | ModelMessage[]): utils.EnsurePromise<TResult>;
+			(promptOrMessage?: string | ModelMessage[], messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 		: {
-			// Required either prompt or messages (but not both)
-			(promptOrMessages: string | ModelMessage[]): utils.EnsurePromise<TResult>;
+			// Required a prompt or messages
+			(prompt: string, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
+			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
+
 	)
 	: (
 		// TConfig has template or script; return type is always a promise
-		// we can have a prompt and/or messages at the same time (prompt gets rendered and added to messages).
+		// we can have a prompt and/or messages at the same time (prompt are required and get rendered).
 		TConfig extends { prompt: string }
 		? {
-			// Single signature supporting optional prompt, optional messages, and optional context
+			// Config already has a prompt => Optional prompt, optional messages, and optional context
 			(promptOrMessageOrContext?: string | ModelMessage[] | Context, messagesOrContext?: ModelMessage[] | Context, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
 		: {
-			// Single signature supporting required either prompt or messages (but not both), and optional context
+			// Requires a prompt, optional messages, and optional context
 			(prompt: string, messagesOrContext?: ModelMessage[] | Context, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 		}
