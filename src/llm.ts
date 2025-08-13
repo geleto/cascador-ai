@@ -9,11 +9,13 @@ import type { GenerateTextResult as BaseGenerateTextResult, StreamTextResult as 
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from './types/result';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
+import { RequiredPromptType } from './types/types';
 
 export type LLMCallSignature<
 	TConfig extends configs.OptionalPromptConfig,
-	TResult
-> = TConfig extends { promptType: 'text' }
+	TResult,
+	PType extends RequiredPromptType = RequiredPromptType
+> = PType extends 'text'
 	? (
 		// TConfig has no template, no context argument is needed
 		// We can have either a prompt or messages, but not both. No context as nothing is rendered.
@@ -163,10 +165,11 @@ export function createLLMRenderer<
 	& { debug?: boolean, model: LanguageModel, prompt?: string, messages?: ModelMessage[] }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel },
 	TFunctionResult,
+	PT extends RequiredPromptType = RequiredPromptType,
 >(
 	config: TConfig,
 	vercelFunc: (config: TFunctionConfig) => TFunctionResult
-): LLMCallSignature<TConfig, TFunctionResult> {
+): LLMCallSignature<TConfig, TFunctionResult, PT> {
 	// Debug output if config.debug is true
 	if (config.debug) {
 		console.log('[DEBUG] LLMRenderer created with config:', JSON.stringify(config, null, 2));
@@ -324,6 +327,6 @@ export function createLLMRenderer<
 		};
 	}
 	const callSignature = Object.assign(call, { config });
-	return callSignature as LLMCallSignature<TConfig, TFunctionResult>;
+	return callSignature as LLMCallSignature<TConfig, TFunctionResult, PT>;
 }
 

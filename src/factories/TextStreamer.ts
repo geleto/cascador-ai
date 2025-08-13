@@ -17,7 +17,7 @@ type StreamTextReturnWithPrompt<
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PType extends 'text' | 'async-template' | 'async-template-name' | 'async-script' | 'async-script-name'
-> = LLMCallSignature<TConfig & { promptType: PType }, Promise<results.StreamTextResultAugmented<TOOLS, OUTPUT>>>;
+> = LLMCallSignature<TConfig, Promise<results.StreamTextResultAugmented<TOOLS, OUTPUT>>, PType>;
 
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
@@ -240,7 +240,7 @@ function _createTextStreamer(
 	return createLLMRenderer(
 		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		streamText
-	) as StreamTextReturnWithPrompt<configs.StreamTextConfig & { promptType: 'text' }, any, any, 'text'>;
+	) as StreamTextReturnWithPrompt<configs.StreamTextConfig, any, any, 'text'>;
 }
 
 export const TextStreamer = Object.assign(withText, { // default is withText

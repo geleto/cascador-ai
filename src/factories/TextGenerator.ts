@@ -20,7 +20,7 @@ type GenerateTextReturnWithPrompt<
 	TOOLS extends ToolSet,
 	OUTPUT,
 	PType extends RequiredPromptType
-> = LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>>;
+> = LLMCallSignature<TConfig, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>, PType>;
 
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
@@ -243,7 +243,7 @@ function _createTextGenerator(
 	return createLLMRenderer(
 		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		generateText
-	) as GenerateTextReturnWithPrompt<configs.GenerateTextConfig & { promptType: 'text' }, any, any, 'text'>;
+	) as GenerateTextReturnWithPrompt<configs.GenerateTextConfig, any, any, 'text'>;
 }
 
 export const TextGenerator = Object.assign(withText, { // default is withText

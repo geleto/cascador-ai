@@ -348,12 +348,11 @@ export function loadsScript<
 function _createObjectStreamer<
 	TConfig extends StreamObjectConfig<any, any>,
 	TParentConfig extends StreamObjectConfig<any, any>,
-	PType extends RequiredPromptType,
 >(
 	config: TConfig,
-	promptType: PType,
+	promptType: RequiredPromptType,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturn<TConfig & { promptType: PType }, any, any> {
+): StreamObjectReturn<TConfig, any, any> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
@@ -378,7 +377,7 @@ function _createObjectStreamer<
 	return createLLMRenderer(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		streamObject
-	) as StreamObjectReturn<TConfig & { promptType: PType }, any, any>;
+	) as StreamObjectReturn<TConfig, any, any>;
 }
 
 export const ObjectStreamer = Object.assign(withText, { // default is withText

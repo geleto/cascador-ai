@@ -36,17 +36,17 @@ type GenerateObjectReturnWithPrompt<
 	PType extends RequiredPromptType
 > =
 	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> }
-	? LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>>
+	? LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>, PType>
 	: TConfig extends { output: 'array' }
 	? `Config Error: Array output requires a schema`
 	: TConfig extends { output: 'enum', enum: readonly (ENUM)[] }
-	? LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateObjectEnumResult<TConfig["enum"][number]>>>
+	? LLMCallSignature<TConfig, Promise<results.GenerateObjectEnumResult<TConfig["enum"][number]>>, PType>
 	: TConfig extends { output: 'enum' }
 	? `Config Error: Enum output requires an enum`
 	: TConfig extends { output: 'no-schema' }
-	? LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateObjectNoSchemaResult>>
+	? LLMCallSignature<TConfig, Promise<results.GenerateObjectNoSchemaResult>, PType>
 	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig & { promptType: PType }, Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>>
+	? LLMCallSignature<TConfig, Promise<results.GenerateObjectObjectResult<utils.InferParameters<TConfig['schema']>>>, PType>
 	: `Config Error: Object output requires a schema`;
 
 // With parent
@@ -453,7 +453,7 @@ function _createObjectGenerator<
 	config: TConfig,
 	promptType: PType,
 	parent?: ConfigProvider<TParentConfig>
-): GenerateObjectReturnWithPrompt<TConfig & { promptType: PType }, any, any, string, PType> {
+): GenerateObjectReturnWithPrompt<TConfig, any, any, string, PType> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
@@ -474,7 +474,7 @@ function _createObjectGenerator<
 	return createLLMRenderer(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		generateObject
-	) as GenerateObjectReturnWithPrompt<TConfig & { promptType: PType }, any, any, any, PType>;
+	) as GenerateObjectReturnWithPrompt<TConfig, any, any, any, PType>;
 }
 
 export const ObjectGenerator = Object.assign(withText, { // default is withText
