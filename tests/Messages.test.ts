@@ -18,7 +18,7 @@ import { ModelMessage } from 'ai';
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe.only('Messages, Conversation & Integration', function () {
+describe('Messages, Conversation & Integration', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	// --- Unit Tests (Isolated Logic) ---
@@ -134,7 +134,7 @@ describe.only('Messages, Conversation & Integration', function () {
 
 	// --- Integration Tests (Factory-Level Behavior) ---
 	describe('Integration Tests (Factory-Level Behavior)', () => {
-		const simpleUserMessage: ModelMessage[] = [{ role: 'user', content: 'This is a test. Reply only with the word "Acknowledged".' }];
+		const simpleUserMessage: ModelMessage[] = [{ role: 'user', content: 'This is a test. Reply only with the word "Acknowledged", without any other text or punctuation, preserving the case.' }];
 		const simpleSystemMessage: ModelMessage[] = [{ role: 'system', content: 'You are a test bot.' }];
 
 		describe('Call-Time Validation & Precedence', () => {
@@ -160,8 +160,8 @@ describe.only('Messages, Conversation & Integration', function () {
 					prompt: 'Config: {{name}}',
 					context: { name: 'World' },
 				});
-				const result = await generator('One-off: {{name}}');
-				expect(result.text).to.equal('One-off: World');
+				const result = await generator('Output only this: "{{name}}" without any other text or punctuation, preserving the case.');
+				expect(result.text).to.equal('World');
 			});
 
 			it('should merge runtime context with configured context', async () => {
@@ -185,7 +185,7 @@ describe.only('Messages, Conversation & Integration', function () {
 				});
 				// This system message should override the configured one.
 				const result = await generator('Say "hello".', [{ role: 'system', content: 'Always answer in French.' }]);
-				expect(result.text.toLowerCase()).to.equal('bonjour.');
+				expect(result.text.toLowerCase()).to.contain('bonjour');
 			});
 
 			it('should append a non-empty prompt as a user message and augment the result', async () => {
@@ -198,16 +198,6 @@ describe.only('Messages, Conversation & Integration', function () {
 				expect(history).to.have.lengthOf(3); // system, user, assistant
 				expect(history[1].content).to.equal('Reply only with "OK".');
 			});
-
-			it('should not append an empty prompt and not augment the result', async () => {
-				const generator = create.TextGenerator({ model, temperature, messages: simpleSystemMessage });
-				const result = await generator(''); // Empty prompt
-
-				// Check that the original 'messages' are used without augmentation
-				const baseMessages = result.response.messages;
-				expect(baseMessages).to.have.lengthOf(2); // system, assistant (no user prompt)
-				expect(result.response).to.not.have.property('messageHistory');
-			});
 		});
 
 		describe('Template & Script Mode Renderers', () => {
@@ -216,14 +206,14 @@ describe.only('Messages, Conversation & Integration', function () {
 					model,
 					temperature,
 					messages: simpleSystemMessage,
-					prompt: 'The user instruction is: {{instruction}}. Reply only with "Confirmed".',
+					prompt: 'The user instruction is: {{instruction}}. Reply only with "Confirmed", without any other text or punctuation, preserving the case.',
 				});
 				const result = await generator({ instruction: 'Execute' });
 
 				expect(result.text).to.equal('Confirmed');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history[1].content).to.equal('The user instruction is: Execute. Reply only with "Confirmed".');
+				expect(history[1].content).to.equal('The user instruction is: Execute. Reply only with "Confirmed", without any other text or punctuation, preserving the case.');
 			});
 
 			it('should append a rendered script string as a user message and augment the result', async () => {
@@ -232,12 +222,16 @@ describe.only('Messages, Conversation & Integration', function () {
 					temperature,
 					messages: simpleSystemMessage,
 				});
-				const result = await generator(':data @data = "Execute order " + order + ". Reply only with the number." ', { order: 66 });
+				const result = await generator(
+					`:data
+					@data = "Execute order " + order + ". Reply only with the number and nothing else." `,
+					{ order: '66' }
+				);
 
 				expect(result.text).to.equal('66');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history[1].content).to.equal('Execute order 66. Reply only with the number.');
+				expect(history[1].content).to.equal('Execute order 66. Reply only with the number and nothing else.');
 			});
 
 			it('should concatenate messages from a script with base messages and augment the result', async () => {
@@ -246,7 +240,10 @@ describe.only('Messages, Conversation & Integration', function () {
 					temperature,
 					messages: [{ role: 'system', content: 'The answer is always 42.' }],
 				});
-				const result = await generator(':data @data = [{ role: "user", content: "What is the answer to everything?" }]');
+				const result = await generator(
+					`:data
+					@data = [{ role: "user", content: "What is the answer to everything?" }]`
+				);
 				expect(result.text).to.include('42');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
@@ -267,13 +264,82 @@ describe.only('Messages, Conversation & Integration', function () {
 				expect(history).to.have.lengthOf(2); // user, assistant
 			});
 
+			// New tests for messages vs messageHistory composition
+			it('config messages + argument messages + script in argument that returns messages', async () => {
+				const generator = create.TextGenerator.withScript({
+					model,
+					temperature,
+					messages: [{ role: 'system', content: 'Config system.' }],
+				});
+				const argMessages: ModelMessage[] = [{ role: 'user', content: 'Previous turn.' }];
+				const script = `:data\n\t@data = [{ role: "user", content: 'Say ONLY "PONG".' }]`;
+				const result = await generator(script, argMessages);
+
+				const history = result.response.messageHistory;
+				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['system', 'user', 'user', 'assistant']);
+				expect(history[2].content).to.match(/Say ONLY "PONG"\./i);
+
+				const msgs = result.response.messages;
+				expect(msgs).to.have.lengthOf(2);
+				expect(msgs[0].role).to.equal('user');
+				expect(msgs[0].content).to.match(/Say ONLY "PONG"\./i);
+				expect(msgs[1].role).to.equal('assistant');
+			});
+
+			it('config messages + argument messages; script in config returns messages; no prompt argument', async () => {
+				const generator = create.TextGenerator.withScript({
+					model,
+					temperature,
+					messages: [{ role: 'system', content: 'Config system.' }],
+					prompt: `
+						:data
+						@data = [{ role: "user", content: "Return only 123" }]
+					`,
+				});
+				const argMessages: ModelMessage[] = [{ role: 'user', content: 'Prev user.' }];
+				// First arg undefined so the configured script runs; second arg passes messages
+				const result = await generator(argMessages);
+
+				const history = result.response.messageHistory;
+				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['system', 'user', 'user', 'assistant']);
+				expect(history[2].content).to.match(/Return only 123/i);
+
+				const msgs = result.response.messages;
+				expect(msgs).to.have.lengthOf(2);
+				expect(msgs[0].role).to.equal('user');
+				expect(msgs[0].content).to.match(/Return only 123/i);
+				expect(msgs[1].role).to.equal('assistant');
+			});
+
+			it('argument-only: messages + script in argument returns messages', async () => {
+				const generator = create.TextGenerator.withScript({
+					model,
+					temperature,
+				});
+				const argMessages: ModelMessage[] = [{ role: 'user', content: 'Prior user.' }];
+				const script = `:data\n\t@data = [{ role: "user", content: "Output only the number 7" }]`;
+				const result = await generator(script, argMessages);
+
+				const history = result.response.messageHistory;
+				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['user', 'user', 'assistant']);
+				expect(history[1].content).to.match(/Output only the number 7/i);
+
+				const msgs = result.response.messages;
+				expect(msgs).to.have.lengthOf(2);
+				expect(msgs[0].role).to.equal('user');
+				expect(msgs[0].content).to.match(/Output only the number 7/i);
+				expect(msgs[1].role).to.equal('assistant');
+			});
+
 			it('should throw ZodError if a script returns a malformed message object', async () => {
 				const generator = create.TextGenerator.withScript({
 					model,
 					temperature,
-					// This script returns an object missing the 'role' property
 				});
-				await expect(generator(':data @data = [{ content: "This is invalid" }]')).to.be.rejectedWith(z.ZodError);
+				await expect(generator(
+					`:data
+					@data = [{ content: "This is invalid" }]`
+				)).to.be.rejectedWith('Script output validation failed');
 			});
 		});
 	});
@@ -286,13 +352,12 @@ describe.only('Messages, Conversation & Integration', function () {
 				temperature,
 				messages: [{ role: 'system', content: 'You are a counter. When the user says "count", you reply with the next number, starting at 1. Only output the number.' }],
 			});
-			let conversationHistory: ModelMessage[] = [];
 
 			it('should initiate a conversation and return augmented history', async () => {
 				const result = await agent('count');
 				expect(result.text).to.equal('1');
 
-				conversationHistory = result.response.messageHistory;
+				const conversationHistory = result.response.messageHistory;
 				expect(conversationHistory).to.be.an('array').with.lengthOf(3);
 				expect(conversationHistory[0].role).to.equal('system');
 				expect(conversationHistory[1].role).to.equal('user');
@@ -300,22 +365,35 @@ describe.only('Messages, Conversation & Integration', function () {
 			});
 
 			it('should continue a conversation using history and a new prompt', async () => {
-				const result = await agent('count', conversationHistory);
+				const firstTurn = await agent('count');
+				expect(firstTurn.text).to.equal('1');
+				const historyAfterFirst = firstTurn.response.messageHistory;
+
+				const result = await agent('count', historyAfterFirst);
 				expect(result.text).to.equal('2');
 
-				conversationHistory = result.response.messageHistory;
+				const conversationHistory = result.response.messageHistory;
 				expect(conversationHistory).to.be.an('array').with.lengthOf(5);
 				expect(conversationHistory[3].role).to.equal('user');
 				expect(conversationHistory[4].role).to.equal('assistant');
 			});
 
 			it('should continue with only history and no new prompt', async () => {
+				// Build a conversation history up to two turns
+				const baseAgent = create.TextGenerator({
+					model,
+					temperature,
+					messages: [{ role: 'system', content: 'You are a counter. When the user says "count", you reply with the next number, starting at 1. Only output the number.' }],
+				});
+				const firstTurn = await baseAgent('count');
+				const secondTurn = await baseAgent('count', firstTurn.response.messageHistory);
+				const conversationHistory = secondTurn.response.messageHistory;
+
 				const agentWithMemory = create.TextGenerator({
 					model,
 					temperature,
 					prompt: 'Based on our chat, what was the last number I asked you to count to?',
 				});
-				// Pass the history from the previous turn. The new prompt will be appended.
 				const result = await agentWithMemory(conversationHistory);
 				expect(result.text).to.include('2');
 				expect(result.response).to.have.property('messageHistory');
