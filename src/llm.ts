@@ -131,8 +131,9 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 			if (prop === 'messageHistory') {
 				if (cachedMessageHistory !== undefined) return cachedMessageHistory;
 				const historyHead = historyPrefix ?? [];
-				const msgs = (receiver as ResponseWithMessages).messages;
-				cachedMessageHistory = [...historyHead, ...msgs];
+				const tail = (target as ResponseWithMessages).messages;
+				const head = prefixForMessages ?? [];
+				cachedMessageHistory = [...historyHead, ...head, ...tail];
 				return cachedMessageHistory;
 			}
 			return Reflect.get(target as object, prop, receiver) as unknown;
@@ -162,13 +163,9 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 					get: () => {
 						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
 						const historyHead = historyPrefix ?? [];
-						const currentMsgs: Messages = cachedMessages ?? ((() => {
-							const tail = (target as ResponseWithMessages).messages;
-							const head = prefixForMessages ?? [];
-							cachedMessages = [...head, ...tail];
-							return cachedMessages;
-						})());
-						cachedMessageHistory = [...historyHead, ...currentMsgs];
+						const tail = (target as ResponseWithMessages).messages;
+						const head = prefixForMessages ?? [];
+						cachedMessageHistory = [...historyHead, ...head, ...tail];
 						return cachedMessageHistory;
 					},
 				} as PropertyDescriptor;
@@ -219,8 +216,9 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 					if (prop === 'messageHistory') {
 						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
 						const historyHead = historyPrefix ?? [];
-						const msgs = (receiver as ResponseWithMessages).messages;
-						cachedMessageHistory = [...historyHead, ...msgs];
+						const tail = (target as ResponseWithMessages).messages;
+						const head = prefixForMessages ?? [];
+						cachedMessageHistory = [...historyHead, ...head, ...tail];
 						return cachedMessageHistory;
 					}
 					return Reflect.get(target as object, prop, receiver) as unknown;
@@ -250,13 +248,9 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 							get: () => {
 								if (cachedMessageHistory !== undefined) return cachedMessageHistory;
 								const historyHead = historyPrefix ?? [];
-								const currentMsgs: Messages = cachedMessages ?? ((() => {
-									const tail = (target as ResponseWithMessages).messages;
-									const head = prefixForMessages ?? [];
-									cachedMessages = [...head, ...tail];
-									return cachedMessages;
-								})());
-								cachedMessageHistory = [...historyHead, ...currentMsgs];
+								const tail = (target as ResponseWithMessages).messages;
+								const head = prefixForMessages ?? [];
+								cachedMessageHistory = [...historyHead, ...head, ...tail];
 								return cachedMessageHistory;
 							},
 						} as PropertyDescriptor;
@@ -367,18 +361,20 @@ export function createLLMRenderer<
 
 				let result = await vercelFunc(resultConfig);
 				if ((vercelFunc as unknown) === generateText) {
-					// Returned messages: call-argument messages + rendered messages + generated messages
-					const prefix = [
+					// Returned messages: prompt-derived messages + generated messages
+					const messagesPrefix = rendered;
+					const historyPrefixFull = [
+						...(configMessages ?? []),
 						...(callArgumentMessages ?? []),
-						...rendered,
 					];
-					result = augmentGenerateText(result as GenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+					result = augmentGenerateText(result as GenerateTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
 				} else if ((vercelFunc as unknown) === streamText) {
-					const prefix = [
+					const messagesPrefix = rendered;
+					const historyPrefixFull = [
+						...(configMessages ?? []),
 						...(callArgumentMessages ?? []),
-						...rendered,
 					];
-					result = augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+					result = augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
 				} else {
 					// no augmentation for other functions
 				}
@@ -399,20 +395,19 @@ export function createLLMRenderer<
 				) as TFunctionConfig;
 
 				let result = await vercelFunc(resultConfig);
-				if (finalMessages && combinedBase.length > 0 && renderedString.length > 0) {
-					// we appended prompt as user message; include it in result messages
-					const userMessage: ModelMessage = { role: 'user', content: renderedString } as ModelMessage;
-					const prefix = [
-						...(callArgumentMessages ?? []),
-						userMessage,
-					];
-					if ((vercelFunc as unknown) === generateText) {
-						result = augmentGenerateText(result as GenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
-					} else if ((vercelFunc as unknown) === streamText) {
-						result = augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
-					} else {
-						// no augmentation for other functions
-					}
+				// Always augment so response.messages contains the prompt-derived user message + reply
+				const userMessage: ModelMessage | undefined = renderedString.length > 0 ? ({ role: 'user', content: renderedString } as ModelMessage) : undefined;
+				const messagesPrefix = userMessage ? [userMessage] : [];
+				const historyPrefixFull = [
+					...(configMessages ?? []),
+					...(callArgumentMessages ?? []),
+				];
+				if ((vercelFunc as unknown) === generateText) {
+					result = augmentGenerateText(result as GenerateTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
+				} else if ((vercelFunc as unknown) === streamText) {
+					result = augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
+				} else {
+					// no augmentation for other functions
 				}
 				if (config.debug) {
 					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
@@ -449,36 +444,20 @@ export function createLLMRenderer<
 					: { ...config, ...(effectivePrompt !== undefined ? { prompt: effectivePrompt } : {}) }
 			) as TFunctionConfig;
 
-			const appendedPromptAsMessage = !!finalMessages && combinedBase.length > 0 && typeof effectivePrompt === 'string' && effectivePrompt.length > 0;
-
 			const result = vercelFunc(resultConfig);
-			if (appendedPromptAsMessage) {
-				const userMessage: ModelMessage = { role: 'user', content: effectivePrompt } as ModelMessage;
-				const prefix = [
-					...(callArgumentMessages ?? []),
-					userMessage,
-				];
-				if ((vercelFunc as unknown) === generateText) {
-					return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, prefix, configMessages)) as TFunctionResult;
-				} else if ((vercelFunc as unknown) === streamText) {
-					return augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as TFunctionResult;
-				} else {
-					return result;
-				}
-			}
+			const userMessage: ModelMessage | undefined = (typeof effectivePrompt === 'string' && effectivePrompt.length > 0)
+				? ({ role: 'user', content: effectivePrompt } as ModelMessage)
+				: undefined;
+			const messagesPrefix = userMessage ? [userMessage] : [];
+			const historyPrefixFull = combinedBase;
 
-			if (config.debug) {
-				if (result instanceof Promise) {
-					result.then((r) => {
-						console.log('[DEBUG] createLLMRenderer - awauted vercelFunc result:', r);
-					}).catch((error: unknown) => {
-						console.error('[DEBUG] createLLMRenderer - vercelFunc error:', error);
-					});
-				} else {
-					console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
-				}
+			if ((vercelFunc as unknown) === generateText) {
+				return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, messagesPrefix, historyPrefixFull)) as TFunctionResult;
+			} else if ((vercelFunc as unknown) === streamText) {
+				return augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as TFunctionResult;
+			} else {
+				return result;
 			}
-			return result;
 		};
 	}
 	const callSignature = Object.assign(call, { config });
