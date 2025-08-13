@@ -8,6 +8,7 @@ import { LLMGeneratorConfig, ObjectGeneratorInstance } from './ObjectGenerator';
 import { TemplateInstance } from './Template';
 import { ScriptInstance } from './Script';
 import * as utils from '../types/utils';
+import { RequiredPromptType } from '../types/types';
 
 //@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
 
@@ -21,12 +22,12 @@ export function Tool<
 	PARAMETERS extends configs.ToolParameters
 >(
 	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
-	parent: TemplateInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any>
+	parent: TemplateInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any, RequiredPromptType>
 ): configs.FunctionTool<PARAMETERS, string>;
 
 // Overload for ObjectGenerator
 export function Tool<
-	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>>,
+	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>, RequiredPromptType>,
 	TResult extends ToolResultFromObjectGenerator<TParent>,
 	TConfig extends configs.ToolConfig<PARAMETERS>,
 	PARAMETERS extends configs.ToolParameters,
@@ -52,8 +53,9 @@ export function Tool<
 	PARAMETERS extends configs.ToolParameters,
 	OBJECT, ELEMENT, ENUM extends string,
 	CONFIG extends configs.ToolConfig<PARAMETERS>,
-	PARENT_TYPE extends TextGeneratorInstance<TOOLS, OUTPUT>
-	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>>
+	PARENT_TYPE extends
+	| TextGeneratorInstance<TOOLS, OUTPUT, RequiredPromptType>
+	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>, RequiredPromptType>
 	| TemplateInstance<configs.OptionalTemplatePromptConfig>
 	| ScriptInstance<configs.ScriptConfig<OBJECT>>,
 	TOOLS extends ToolSet,
@@ -72,6 +74,7 @@ export function Tool<
 	if (!config.parameters) {
 		throw new ConfigError('Tool config requires parameters schema');
 	}
+
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!parent.config) {
 		throw new ConfigError('Tool requires a valid parent (Generator, Renderer, or Runner)');
@@ -97,7 +100,7 @@ export function Tool<
 	// making it a reliable discriminator.
 	else if ('output' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
-			const result = await (parent as ObjectGeneratorInstance<any, any, any, any>)(args);
+			const result = await (parent as ObjectGeneratorInstance<any, any, any, any, RequiredPromptType>)(args);
 			if ('object' in result) { return result.object; }
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
 		};
@@ -105,7 +108,7 @@ export function Tool<
 	// Case 3: TextGenerator has a `model` but is not an ObjectGenerator (which was checked above).
 	else if ('model' in parentConfig) {
 		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
-			const result = await (parent as TextGeneratorInstance<any, any>)(args);
+			const result = await (parent as TextGeneratorInstance<any, any, RequiredPromptType>)(args);
 			if ('text' in result) { return result.text; }
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
 		};

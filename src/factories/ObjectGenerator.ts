@@ -18,8 +18,9 @@ export type LLMGeneratorConfig<OBJECT, ELEMENT, ENUM extends string> = (
 
 export type ObjectGeneratorInstance<
 	OBJECT, ELEMENT, ENUM extends string,
-	CONFIG extends LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>
-> = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>>;
+	CONFIG extends LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>,
+	PType extends RequiredPromptType
+> = LLMCallSignature<CONFIG, Promise<results.GenerateObjectResultAll<OBJECT, ENUM, ELEMENT>>, PType>;
 
 type GenerateObjectConfig<OBJECT, ELEMENT, ENUM extends string> =
 	configs.GenerateObjectObjectConfig<OBJECT> |

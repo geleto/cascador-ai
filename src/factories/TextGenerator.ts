@@ -10,7 +10,7 @@ import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, ConfigError } from "../validate";
 
 export type TextGeneratorConfig<TOOLS extends ToolSet, OUTPUT> = configs.OptionalPromptConfig & configs.GenerateTextConfig<TOOLS, OUTPUT>;
-export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>>;
+export type TextGeneratorInstance<TOOLS extends ToolSet, OUTPUT, PType extends RequiredPromptType> = LLMCallSignature<TextGeneratorConfig<TOOLS, OUTPUT>, Promise<results.GenerateTextResultAugmented<TOOLS, OUTPUT>>, PType>;
 
 // The generic return type for a TextGenerator instance.
 // It correctly infers the TOOL and OUTPUT types from the final merged config.
