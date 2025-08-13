@@ -64,11 +64,11 @@ describe.only('Messages, Conversation & Integration', function () {
 			});
 
 			it('should throw when messages are provided twice', () => {
-				expect(() => extractCallArguments(messages, messages)).to.throw('Messages provided multiple times');
+				expect(() => extractCallArguments(messages, messages)).to.throw('Messages provided multiple times across arguments');
 			});
 
 			it('should throw when context is provided twice', () => {
-				expect(() => extractCallArguments(context, context)).to.throw('Context provided multiple times');
+				expect(() => extractCallArguments(context, context)).to.throw('Context provided multiple times across arguments');
 			});
 
 			it('should throw on invalid third argument (context without messages)', () => {
@@ -96,7 +96,7 @@ describe.only('Messages, Conversation & Integration', function () {
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
 
-				// system, user, assistant
+				// config system + (user + system + assistant)
 				expect(history).to.have.lengthOf(3);
 				expect(history[0].role).to.equal('system');
 				expect(history[1].role).to.equal('user');
@@ -122,7 +122,7 @@ describe.only('Messages, Conversation & Integration', function () {
 				expect(response).to.have.property('messageHistory');
 
 				const history = response.messageHistory;
-				expect(history).to.have.lengthOf(3); // system, user, assistant
+				expect(history).to.have.lengthOf(3); // config system + (user + assistant)
 				expect(history[0].role).to.equal('system');
 
 				// Check memoization (identity check)
@@ -240,7 +240,7 @@ describe.only('Messages, Conversation & Integration', function () {
 				expect(history[1].content).to.equal('Execute order 66. Reply only with the number.');
 			});
 
-			it('should concatenate messages from a script with base messages', async () => {
+			it('should concatenate messages from a script with base messages and augment the result', async () => {
 				const generator = create.TextGenerator.withScript({
 					model,
 					temperature,
@@ -248,17 +248,23 @@ describe.only('Messages, Conversation & Integration', function () {
 				});
 				const result = await generator(':data @data = [{ role: "user", content: "What is the answer to everything?" }]');
 				expect(result.text).to.include('42');
-				expect(result.response).to.not.have.property('messageHistory'); // Not augmented
+				expect(result.response).to.have.property('messageHistory');
+				const history = result.response.messageHistory;
+				expect(history).to.have.lengthOf(3); // system, user, assistant
+				expect(history[0].role).to.equal('system');
 			});
 
-			it('should use only the script-returned messages if no base messages exist', async () => {
+			it('should use only the script-returned messages if no base messages exist and augment the result', async () => {
 				const generator = create.TextGenerator.withScript({
 					model,
 					temperature,
 				});
-				const result = await generator(':data @data = [{ role: "user", content: "Output only the number 2." }]');
+				const result = await generator(`:data
+					@data = [{ role: "user", content: "Output only the number 2." }]`);
 				expect(result.text).to.equal('2');
-				expect(result.response).to.not.have.property('messageHistory'); // Not augmented
+				expect(result.response).to.have.property('messageHistory');
+				const history = result.response.messageHistory;
+				expect(history).to.have.lengthOf(2); // user, assistant
 			});
 
 			it('should throw ZodError if a script returns a malformed message object', async () => {
@@ -345,7 +351,7 @@ describe.only('Messages, Conversation & Integration', function () {
 						type: 'tool-result',
 						toolCallId: toolCall.toolCallId,
 						toolName: 'getWeather',
-						output: 'San Francisco: 75, Sunny',
+						result: 'San Francisco: 75, Sunny',
 					}],
 				} as unknown) as ModelMessage;
 
