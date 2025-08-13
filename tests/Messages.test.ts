@@ -18,12 +18,12 @@ import { ModelMessage } from 'ai';
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe('Messages, Conversation & Integration', function () {
+describe.only('Messages, Conversation & Integration', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
-	// --- Part I: Unit Tests (Isolated Logic) ---
-	describe('Part I: Unit Tests (Isolated Logic)', () => {
-		describe('1.1. extractCallArguments', () => {
+	// --- Unit Tests (Isolated Logic) ---
+	describe('Unit Tests (Isolated Logic)', () => {
+		describe('extractCallArguments', () => {
 			const messages: ModelMessage[] = [{ role: 'user', content: 'hello' }];
 			const context = { user: 'test' };
 			const prompt = 'a prompt';
@@ -80,7 +80,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('1.2. Result Augmentation (via public API)', () => {
+		describe('Result Augmentation (via public API)', () => {
 			const systemMessage: ModelMessage = { role: 'system', content: 'You are a test bot.' };
 
 			// We test augmentation through the public API, as the internal `augment` functions are an implementation detail.
@@ -132,12 +132,12 @@ describe('Messages, Conversation & Integration', function () {
 		});
 	});
 
-	// --- Part II: Integration Tests (Factory-Level Behavior) ---
-	describe('Part II: Integration Tests (Factory-Level Behavior)', () => {
+	// --- Integration Tests (Factory-Level Behavior) ---
+	describe('Integration Tests (Factory-Level Behavior)', () => {
 		const simpleUserMessage: ModelMessage[] = [{ role: 'user', content: 'This is a test. Reply only with the word "Acknowledged".' }];
 		const simpleSystemMessage: ModelMessage[] = [{ role: 'system', content: 'You are a test bot.' }];
 
-		describe('2.1. Call-Time Validation & Precedence', () => {
+		describe('Call-Time Validation & Precedence', () => {
 			it('should succeed in text mode with only messages', async () => {
 				const generator = create.TextGenerator({ model, temperature });
 				const promise = generator(simpleUserMessage);
@@ -176,7 +176,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('2.2. Text Mode Renderers', () => {
+		describe('Text Mode Renderers', () => {
 			it('should use call-time messages over configured messages', async () => {
 				const generator = create.TextGenerator({
 					model,
@@ -210,7 +210,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('2.3. Template & Script Mode Renderers', () => {
+		describe('Template & Script Mode Renderers', () => {
 			it('should append a rendered template string as a user message and augment the result', async () => {
 				const generator = create.TextGenerator.withTemplate({
 					model,
@@ -272,9 +272,9 @@ describe('Messages, Conversation & Integration', function () {
 		});
 	});
 
-	// --- Part III: Advanced Scenarios & End-to-End Workflows ---
-	describe('Part III: Advanced Scenarios & End-to-End Workflows', () => {
-		describe('3.1. Multi-Turn Conversation Chaining', () => {
+	// --- Advanced Scenarios & End-to-End Workflows ---
+	describe('Advanced Scenarios & End-to-End Workflows', () => {
+		describe('Multi-Turn Conversation Chaining', () => {
 			const agent = create.TextGenerator({
 				model,
 				temperature,
@@ -282,7 +282,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 			let conversationHistory: ModelMessage[] = [];
 
-			it('Turn 1: should initiate a conversation and return augmented history', async () => {
+			it('should initiate a conversation and return augmented history', async () => {
 				const result = await agent('count');
 				expect(result.text).to.equal('1');
 
@@ -293,7 +293,7 @@ describe('Messages, Conversation & Integration', function () {
 				expect(conversationHistory[2].role).to.equal('assistant');
 			});
 
-			it('Turn 2: should continue a conversation using history and a new prompt', async () => {
+			it('should continue a conversation using history and a new prompt', async () => {
 				const result = await agent('count', conversationHistory);
 				expect(result.text).to.equal('2');
 
@@ -303,20 +303,20 @@ describe('Messages, Conversation & Integration', function () {
 				expect(conversationHistory[4].role).to.equal('assistant');
 			});
 
-			it('Turn 3: should continue with only history and no new prompt', async () => {
+			it('should continue with only history and no new prompt', async () => {
 				const agentWithMemory = create.TextGenerator({
 					model,
 					temperature,
 					prompt: 'Based on our chat, what was the last number I asked you to count to?',
 				});
-				// Pass the history from Turn 2. The new prompt will be appended.
+				// Pass the history from the previous turn. The new prompt will be appended.
 				const result = await agentWithMemory(conversationHistory);
 				expect(result.text).to.include('2');
 				expect(result.response).to.have.property('messageHistory');
 			});
 		});
 
-		describe('3.2. Tool Use within a Conversation Chain', () => {
+		describe('Tool Use within a Conversation Chain', () => {
 			const toolParent = create.TextGenerator({ model, temperature });
 			const getWeatherTool = create.Tool({
 				description: 'Get the weather for a city',
@@ -329,14 +329,14 @@ describe('Messages, Conversation & Integration', function () {
 			});
 			let conversationHistory: ModelMessage[] = [];
 
-			it('Turn 1: should call a tool when prompted', async () => {
+			it('should call a tool when prompted', async () => {
 				const result = await agent('What is the weather in San Francisco?');
 				expect(result.toolCalls).to.be.an('array').with.lengthOf(1);
 				expect(result.toolCalls[0].toolName).to.equal('getWeather');
 				conversationHistory = result.response.messageHistory;
 			});
 
-			it('Turn 2: should use tool result to answer the user', async () => {
+			it('should use tool result to answer the user', async () => {
 				// Simulate tool execution and create the result message
 				const toolCall = (conversationHistory.at(-1)!.content as unknown as { type: 'tool-call'; toolCallId: string }[])[0];
 				const toolResult = ({
@@ -357,7 +357,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('3.3. Cross-Renderer Conversation Chaining', () => {
+		describe('Cross-Renderer Conversation Chaining', () => {
 			it('should pass conversation history from a TextGenerator to an ObjectGenerator', async () => {
 				const chatAgent = create.TextGenerator({
 					model,
@@ -365,13 +365,13 @@ describe('Messages, Conversation & Integration', function () {
 					messages: [{ role: 'system', content: 'Have a casual conversation about a user\'s order.' }],
 				});
 
-				// Step 1: Have a conversation
+				// Have a conversation
 				const res1 = await chatAgent('Hi, I need to order a large pizza.');
 				const history1 = res1.response.messageHistory;
 				const res2 = await chatAgent('Please add pepperoni and mushrooms.', history1);
 				const finalHistory = res2.response.messageHistory;
 
-				// Step 2: Extract from the conversation
+				// Extract from the conversation
 				const extractionAgent = create.ObjectGenerator.withTemplate({
 					model,
 					schema: z.object({
