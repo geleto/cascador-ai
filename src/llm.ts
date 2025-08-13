@@ -5,7 +5,7 @@ import * as utils from './types/utils';
 import { _createTemplate, TemplateCallSignature } from './factories/Template';
 import { _createScript, ScriptCallSignature } from './factories/Script';
 import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
-import type { GenerateTextResult as BaseGenerateTextResult, StreamTextResult as BaseStreamTextResult } from 'ai';
+import type { GenerateTextResult, StreamTextResult } from 'ai';
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from './types/result';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
@@ -106,80 +106,180 @@ function omitPrompt<T extends { prompt?: unknown }>(cfg: T): Omit<T, 'prompt'> {
 
 // Helpers to prepend the user/message prefixes into returned results using lazy, memoized getters
 function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
-	result: BaseGenerateTextResult<TOOLS, OUTPUT>,
+	result: GenerateTextResult<TOOLS, OUTPUT>,
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,
 ): GenerateTextResultAugmented<TOOLS, OUTPUT> {
 	//type Messages = typeof result.response.messages;
 	type Messages = ModelMessage[];
-	const originalResponse = result.response;
+	type ResponseWithMessages = { messages: Messages } & Record<string, unknown>;
+	type ResponseWithHistory = ResponseWithMessages & { messageHistory: Messages };
+	const originalResponse = result.response as unknown as ResponseWithMessages;
+
 	let cachedMessages: Messages | undefined;
 	let cachedMessageHistory: Messages | undefined;
-	const responseWithLazyMessages = Object.create(originalResponse) as typeof originalResponse & { messages: Messages, messageHistory: Messages };
-	Object.defineProperty(responseWithLazyMessages, 'messages', {
-		get() {
-			if (cachedMessages !== undefined) return cachedMessages;
-			const tail = (originalResponse as typeof originalResponse & { messages: Messages }).messages;
-			const head = prefixForMessages ?? [];
-			cachedMessages = [...head, ...tail];
-			return cachedMessages;
+
+	const responseProxy = new Proxy<ResponseWithHistory>(originalResponse as ResponseWithHistory, {
+		get(target, prop, receiver): unknown {
+			if (prop === 'messages') {
+				if (cachedMessages !== undefined) return cachedMessages;
+				const tail = (target as ResponseWithMessages).messages;
+				const head = prefixForMessages ?? [];
+				cachedMessages = [...head, ...tail];
+				return cachedMessages;
+			}
+			if (prop === 'messageHistory') {
+				if (cachedMessageHistory !== undefined) return cachedMessageHistory;
+				const historyHead = historyPrefix ?? [];
+				const msgs = (receiver as ResponseWithMessages).messages;
+				cachedMessageHistory = [...historyHead, ...msgs];
+				return cachedMessageHistory;
+			}
+			return Reflect.get(target as object, prop, receiver) as unknown;
 		},
-		enumerable: true,
-		configurable: true,
-	});
-	Object.defineProperty(responseWithLazyMessages, 'messageHistory', {
-		get() {
-			if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-			const historyHead = historyPrefix ?? [];
-			const msgs = responseWithLazyMessages.messages;
-			cachedMessageHistory = [...historyHead, ...msgs];
-			return cachedMessageHistory;
+		has(target, prop) {
+			if (prop === 'messages' || prop === 'messageHistory') return true;
+			return prop in target;
 		},
-		enumerable: true,
-		configurable: true,
+		getOwnPropertyDescriptor(target, prop): PropertyDescriptor | undefined {
+			if (prop === 'messages') {
+				return {
+					configurable: true,
+					enumerable: true,
+					get: () => {
+						if (cachedMessages !== undefined) return cachedMessages;
+						const tail = (target as ResponseWithMessages).messages;
+						const head = prefixForMessages ?? [];
+						cachedMessages = [...head, ...tail];
+						return cachedMessages;
+					},
+				} as PropertyDescriptor;
+			}
+			if (prop === 'messageHistory') {
+				return {
+					configurable: true,
+					enumerable: true,
+					get: () => {
+						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
+						const historyHead = historyPrefix ?? [];
+						const currentMsgs: Messages = cachedMessages ?? ((() => {
+							const tail = (target as ResponseWithMessages).messages;
+							const head = prefixForMessages ?? [];
+							cachedMessages = [...head, ...tail];
+							return cachedMessages;
+						})());
+						cachedMessageHistory = [...historyHead, ...currentMsgs];
+						return cachedMessageHistory;
+					},
+				} as PropertyDescriptor;
+			}
+			return Object.getOwnPropertyDescriptor(target, prop as keyof typeof target);
+		},
 	});
-	return { ...result, response: responseWithLazyMessages } as GenerateTextResultAugmented<TOOLS, OUTPUT>;
+
+	const resultProxy = new Proxy<GenerateTextResult<TOOLS, OUTPUT>>(result, {
+		get(target, prop, receiver): unknown {
+			if (prop === 'response') {
+				return responseProxy;
+			}
+			return Reflect.get(target as object, prop, receiver) as unknown;
+		},
+	});
+
+	return resultProxy as GenerateTextResultAugmented<TOOLS, OUTPUT>;
 }
 
 function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
-	result: BaseStreamTextResult<TOOLS, PARTIAL>,
+	result: StreamTextResult<TOOLS, PARTIAL>,
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,
 ): StreamTextResultAugmented<TOOLS, PARTIAL> {
-	type ResponseT = Awaited<typeof result.response>;
 	//type Messages = ResponseT extends { messages: infer M extends readonly unknown[] } ? M : never;
 	//type Elem = Messages extends readonly (infer U)[] ? U : never;
 	type Messages = ModelMessage[];
-	const newResponse = (result.response)
-		.then((r) => {
+	type ResponseWithMessages = { messages: Messages } & Record<string, unknown>;
+	type ResponseWithHistory = ResponseWithMessages & { messageHistory: Messages };
+
+	let cachedResponsePromise: Promise<ResponseWithHistory> | undefined;
+
+	const getAugmentedResponse = (): Promise<ResponseWithHistory> => {
+		cachedResponsePromise ??= (result.response as Promise<unknown>).then((r): ResponseWithHistory => {
 			let cachedMessages: Messages | undefined;
 			let cachedMessageHistory: Messages | undefined;
-			const responseWithLazyMessages = Object.create(r) as ResponseT & { messages: Messages, messageHistory: Messages };
-			Object.defineProperty(responseWithLazyMessages, 'messages', {
-				get() {
-					if (cachedMessages !== undefined) return cachedMessages;
-					const tail = (r as ResponseT & { messages: Messages }).messages;
-					const head = prefixForMessages ?? [];
-					cachedMessages = [...head, ...tail];
-					return cachedMessages;
+
+			const responseProxy = new Proxy<ResponseWithHistory>(r as ResponseWithHistory, {
+				get(target, prop, receiver): unknown {
+					if (prop === 'messages') {
+						if (cachedMessages !== undefined) return cachedMessages;
+						const tail = (target as ResponseWithMessages).messages;
+						const head = prefixForMessages ?? [];
+						cachedMessages = [...head, ...tail];
+						return cachedMessages;
+					}
+					if (prop === 'messageHistory') {
+						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
+						const historyHead = historyPrefix ?? [];
+						const msgs = (receiver as ResponseWithMessages).messages;
+						cachedMessageHistory = [...historyHead, ...msgs];
+						return cachedMessageHistory;
+					}
+					return Reflect.get(target as object, prop, receiver) as unknown;
 				},
-				enumerable: true,
-				configurable: true,
-			});
-			Object.defineProperty(responseWithLazyMessages, 'messageHistory', {
-				get() {
-					if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-					const historyHead = historyPrefix ?? [];
-					const msgs = responseWithLazyMessages.messages;
-					cachedMessageHistory = [...historyHead, ...msgs];
-					return cachedMessageHistory;
+				has(target, prop) {
+					if (prop === 'messages' || prop === 'messageHistory') return true;
+					return prop in target;
 				},
-				enumerable: true,
-				configurable: true,
+				getOwnPropertyDescriptor(target, prop): PropertyDescriptor | undefined {
+					if (prop === 'messages') {
+						return {
+							configurable: true,
+							enumerable: true,
+							get: () => {
+								if (cachedMessages !== undefined) return cachedMessages;
+								const tail = (target as ResponseWithMessages).messages;
+								const head = prefixForMessages ?? [];
+								cachedMessages = [...head, ...tail];
+								return cachedMessages;
+							},
+						} as PropertyDescriptor;
+					}
+					if (prop === 'messageHistory') {
+						return {
+							configurable: true,
+							enumerable: true,
+							get: () => {
+								if (cachedMessageHistory !== undefined) return cachedMessageHistory;
+								const historyHead = historyPrefix ?? [];
+								const currentMsgs: Messages = cachedMessages ?? ((() => {
+									const tail = (target as ResponseWithMessages).messages;
+									const head = prefixForMessages ?? [];
+									cachedMessages = [...head, ...tail];
+									return cachedMessages;
+								})());
+								cachedMessageHistory = [...historyHead, ...currentMsgs];
+								return cachedMessageHistory;
+							},
+						} as PropertyDescriptor;
+					}
+					return Object.getOwnPropertyDescriptor(target, prop as keyof typeof target);
+				},
 			});
-			return responseWithLazyMessages;
+
+			return responseProxy;
 		});
-	return { ...result, response: newResponse } as StreamTextResultAugmented<TOOLS, PARTIAL>;
+		return cachedResponsePromise;
+	};
+
+	const resultProxy = new Proxy<StreamTextResult<TOOLS, PARTIAL>>(result, {
+		get(target, prop, receiver): unknown {
+			if (prop === 'response') {
+				return getAugmentedResponse();
+			}
+			return Reflect.get(target as object, prop, receiver) as unknown;
+		},
+	});
+
+	return resultProxy as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
 
 export function createLLMRenderer<
@@ -245,12 +345,7 @@ export function createLLMRenderer<
 				...(callArgumentMessages ?? []),
 			];
 
-			// Render the prompt using the provided or config prompt
-			//@todo - message support for all renderers
-			//@todo - handle prompt rendering to messages
-			//@todo - scripts will be able to render messages not just strings
 			const rendered = await renderer(promptOrMessageOrContext as string, messagesOrContext) as string | ModelMessage[];
-			//@todo - async option support
 
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered output:', Array.isArray(rendered) ? { type: 'messages', length: rendered.length } : { type: 'string', preview: String(rendered).slice(0, 120) });
@@ -277,13 +372,13 @@ export function createLLMRenderer<
 						...(callArgumentMessages ?? []),
 						...rendered,
 					];
-					result = augmentGenerateText(result as BaseGenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+					result = augmentGenerateText(result as GenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
 				} else if ((vercelFunc as unknown) === streamText) {
 					const prefix = [
 						...(callArgumentMessages ?? []),
 						...rendered,
 					];
-					result = augmentStreamText(result as BaseStreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+					result = augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
 				} else {
 					// no augmentation for other functions
 				}
@@ -312,9 +407,9 @@ export function createLLMRenderer<
 						userMessage,
 					];
 					if ((vercelFunc as unknown) === generateText) {
-						result = augmentGenerateText(result as BaseGenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+						result = augmentGenerateText(result as GenerateTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
 					} else if ((vercelFunc as unknown) === streamText) {
-						result = augmentStreamText(result as BaseStreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
+						result = augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as Awaited<TFunctionResult>;
 					} else {
 						// no augmentation for other functions
 					}
@@ -364,9 +459,9 @@ export function createLLMRenderer<
 					userMessage,
 				];
 				if ((vercelFunc as unknown) === generateText) {
-					return (result as Promise<BaseGenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, prefix, configMessages)) as TFunctionResult;
+					return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, prefix, configMessages)) as TFunctionResult;
 				} else if ((vercelFunc as unknown) === streamText) {
-					return (result as Promise<BaseStreamTextResult<any, any>>).then((r) => augmentStreamText(r, prefix, configMessages)) as TFunctionResult;
+					return augmentStreamText(result as StreamTextResult<any, any>, prefix, configMessages) as TFunctionResult;
 				} else {
 					return result;
 				}
