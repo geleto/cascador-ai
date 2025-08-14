@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { RequiredPromptType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, ConfigError } from "../validate";
 
@@ -240,7 +240,7 @@ function _createTextGenerator(
 		console.log('[DEBUG] TextGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(
+	return _createLLMRenderer(
 		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		generateText
 	) as GenerateTextReturnWithPrompt<configs.GenerateTextConfig, any, any, 'text'>;

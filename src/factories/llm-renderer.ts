@@ -1,15 +1,15 @@
-import { Context, ScriptPromptType, TemplatePromptType } from './types/types';
-import * as configs from './types/config';
-import { validateCall } from './validate';
-import * as utils from './types/utils';
-import { _createTemplate, TemplateCallSignature } from './factories/Template';
-import { _createScript, ScriptCallSignature } from './factories/Script';
+import { Context, ScriptPromptType, TemplatePromptType } from '../types/types';
+import * as configs from '../types/config';
+import { validateCall } from '../validate';
+import * as utils from '../types/utils';
+import { _createTemplate, TemplateCallSignature } from './Template';
+import { _createScript, ScriptCallSignature } from './Script';
 import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
-import type { GenerateTextResultAugmented, StreamTextResultAugmented } from './types/result';
+import type { GenerateTextResultAugmented, StreamTextResultAugmented } from '../types/result';
 import { z } from 'zod';
-import { PromptStringOrMessagesSchema } from './types/schemas';
-import { RequiredPromptType } from './types/types';
+import { PromptStringOrMessagesSchema } from '../types/schemas';
+import { RequiredPromptType } from '../types/types';
 
 export type LLMCallSignature<
 	TConfig extends configs.OptionalPromptConfig,
@@ -196,7 +196,7 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 	return result as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
 
-export function createLLMRenderer<
+export function _createLLMRenderer<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig>
 	& { debug?: boolean, model: LanguageModel, prompt?: string, messages?: ModelMessage[] }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel },

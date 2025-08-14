@@ -1,7 +1,7 @@
 import { ModelMessage } from "ai";
 import type * as TypesConfig from "./types/config";
 import { Context } from "./types/types";
-import { extractCallArguments } from './llm';
+import { extractCallArguments } from './factories/llm-renderer';
 
 export class ConfigError extends Error {
 	cause?: Error;

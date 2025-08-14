@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { RequiredPromptType, SchemaType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "../validate";
 
@@ -377,7 +377,7 @@ function _createObjectStreamer<
 		console.log('[DEBUG] _ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(
+	return _createLLMRenderer(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		streamObject
 	) as StreamObjectReturnWithPrompt<TConfig, any, any, RequiredPromptType>;

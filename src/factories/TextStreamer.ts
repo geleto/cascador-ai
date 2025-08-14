@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { RequiredPromptType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, ConfigError } from "../validate";
 
@@ -237,7 +237,7 @@ function _createTextStreamer(
 		console.log('[DEBUG] TextStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(
+	return _createLLMRenderer(
 		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		streamText
 	) as StreamTextReturnWithPrompt<configs.StreamTextConfig, any, any, 'text'>;

@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { RequiredPromptType, SchemaType } from "../types/types";
 
-import { LLMCallSignature, createLLMRenderer } from "../llm";
+import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "../validate";
 
@@ -472,7 +472,7 @@ function _createObjectGenerator<
 		console.log('[DEBUG] _ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return createLLMRenderer(
+	return _createLLMRenderer(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		generateObject
 	) as GenerateObjectReturnWithPrompt<TConfig, any, any, any, PType>;
