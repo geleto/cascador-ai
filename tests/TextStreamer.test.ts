@@ -13,7 +13,7 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 
 // Helper to consume a text stream and return the full string
-async function streamToString(stream: StreamTextResult<any, any>['textStream']): Promise<string> {
+export async function streamToString(stream: StreamTextResult<any, any>['textStream']): Promise<string> {
 	let text = '';
 	for await (const delta of stream) {
 		text += delta;

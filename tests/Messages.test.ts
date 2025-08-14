@@ -11,14 +11,15 @@ import {
 	// The augment functions are tested through the public API, so direct import is not needed.
 	// augmentGenerateText,
 	// augmentStreamText,
-} from '../src/llm';
+} from '../src/factories/llm-renderer';
 import { ModelMessage } from 'ai';
+import { streamToString } from './TextStreamer.test';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe('Messages, Conversation & Integration', function () {
+describe.only('Messages, Conversation & Integration', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	// --- Unit Tests (Isolated Logic) ---
@@ -97,10 +98,9 @@ describe('Messages, Conversation & Integration', function () {
 				const history = result.response.messageHistory;
 
 				// config system + (user + system + assistant)
-				expect(history).to.have.lengthOf(3);
-				expect(history[0].role).to.equal('system');
-				expect(history[1].role).to.equal('user');
-				expect(history[2].role).to.equal('assistant');
+				expect(history).to.have.lengthOf(2);
+				expect(history[0].role).to.equal('user');
+				expect(history[1].role).to.equal('assistant');
 
 				// Check memoization (identity check)
 				const history2 = result.response.messageHistory;
@@ -122,8 +122,8 @@ describe('Messages, Conversation & Integration', function () {
 				expect(response).to.have.property('messageHistory');
 
 				const history = response.messageHistory;
-				expect(history).to.have.lengthOf(3); // config system + (user + assistant)
-				expect(history[0].role).to.equal('system');
+				expect(history).to.have.lengthOf(2); // (user + assistant), config excluded
+				expect(history[0].role).to.equal('user');
 
 				// Check memoization (identity check)
 				const history2 = response.messageHistory;
@@ -195,8 +195,8 @@ describe('Messages, Conversation & Integration', function () {
 				expect(result.text).to.equal('OK');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history).to.have.lengthOf(3); // system, user, assistant
-				expect(history[1].content).to.equal('Reply only with "OK".');
+				expect(history).to.have.lengthOf(2); // user, assistant (config excluded)
+				expect(history[0].content).to.equal('Reply only with "OK".');
 			});
 		});
 
@@ -213,7 +213,7 @@ describe('Messages, Conversation & Integration', function () {
 				expect(result.text).to.equal('Confirmed');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history[1].content).to.equal('The user instruction is: Execute. Reply only with "Confirmed", without any other text or punctuation, preserving the case.');
+				expect(history[0].content).to.equal('The user instruction is: Execute. Reply only with "Confirmed", without any other text or punctuation, preserving the case.');
 			});
 
 			it('should append a rendered script string as a user message and augment the result', async () => {
@@ -231,7 +231,7 @@ describe('Messages, Conversation & Integration', function () {
 				expect(result.text).to.equal('66');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history[1].content).to.equal('Execute order 66. Reply only with the number and nothing else.');
+				expect(history[0].content).to.equal('Execute order 66. Reply only with the number and nothing else.');
 			});
 
 			it('should concatenate messages from a script with base messages and augment the result', async () => {
@@ -247,8 +247,8 @@ describe('Messages, Conversation & Integration', function () {
 				expect(result.text).to.include('42');
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
-				expect(history).to.have.lengthOf(3); // system, user, assistant
-				expect(history[0].role).to.equal('system');
+				expect(history).to.have.lengthOf(2); // user, assistant (config excluded)
+				expect(history[0].role).to.equal('user');
 			});
 
 			it('should use only the script-returned messages if no base messages exist and augment the result', async () => {
@@ -272,17 +272,21 @@ describe('Messages, Conversation & Integration', function () {
 					messages: [{ role: 'system', content: 'Config system.' }],
 				});
 				const argMessages: ModelMessage[] = [{ role: 'user', content: 'Previous turn.' }];
-				const script = `:data\n\t@data = [{ role: "user", content: 'Say ONLY "PONG".' }]`;
+				const script = `
+					:data
+					@data = [{ role: "user", content: 'Say ONLY "PONG".' }]
+				`;
 				const result = await generator(script, argMessages);
 
 				const history = result.response.messageHistory;
-				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['system', 'user', 'user', 'assistant']);
-				expect(history[2].content).to.match(/Say ONLY "PONG"\./i);
+				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['user', 'user', 'assistant']);
+				expect(history[0].content).to.equal('Previous turn.');
+				expect(history[1].content).to.equal('Say ONLY "PONG".');
 
 				const msgs = result.response.messages;
 				expect(msgs).to.have.lengthOf(2);
 				expect(msgs[0].role).to.equal('user');
-				expect(msgs[0].content).to.match(/Say ONLY "PONG"\./i);
+				expect(msgs[0].content).to.equal('Say ONLY "PONG".');
 				expect(msgs[1].role).to.equal('assistant');
 			});
 
@@ -301,13 +305,14 @@ describe('Messages, Conversation & Integration', function () {
 				const result = await generator(argMessages);
 
 				const history = result.response.messageHistory;
-				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['system', 'user', 'user', 'assistant']);
-				expect(history[2].content).to.match(/Return only 123/i);
+				expect(history.map((m: ModelMessage) => m.role)).to.deep.equal(['user', 'user', 'assistant']);
+				expect(history[0].content).to.equal('Prev user.');
+				expect(history[1].content).to.equal('Return only 123');
 
 				const msgs = result.response.messages;
 				expect(msgs).to.have.lengthOf(2);
 				expect(msgs[0].role).to.equal('user');
-				expect(msgs[0].content).to.match(/Return only 123/i);
+				expect(msgs[0].content).to.equal('Return only 123');
 				expect(msgs[1].role).to.equal('assistant');
 			});
 
@@ -353,15 +358,14 @@ describe('Messages, Conversation & Integration', function () {
 				messages: [{ role: 'system', content: 'You are a counter. When the user says "count", you reply with the next number, starting at 1. Only output the number.' }],
 			});
 
-			it('should initiate a conversation and return augmented history', async () => {
+			it('should initiate a conversation and return augmented history and then use it in new prompt', async () => {
 				const result = await agent('count');
 				expect(result.text).to.equal('1');
 
 				const conversationHistory = result.response.messageHistory;
-				expect(conversationHistory).to.be.an('array').with.lengthOf(3);
-				expect(conversationHistory[0].role).to.equal('system');
-				expect(conversationHistory[1].role).to.equal('user');
-				expect(conversationHistory[2].role).to.equal('assistant');
+				expect(conversationHistory).to.be.an('array').with.lengthOf(2);
+				expect(conversationHistory[0].role).to.equal('user');
+				expect(conversationHistory[1].role).to.equal('assistant');
 			});
 
 			it('should continue a conversation using history and a new prompt', async () => {
@@ -373,9 +377,9 @@ describe('Messages, Conversation & Integration', function () {
 				expect(result.text).to.equal('2');
 
 				const conversationHistory = result.response.messageHistory;
-				expect(conversationHistory).to.be.an('array').with.lengthOf(5);
-				expect(conversationHistory[3].role).to.equal('user');
-				expect(conversationHistory[4].role).to.equal('assistant');
+				expect(conversationHistory).to.be.an('array').with.lengthOf(4);
+				expect(conversationHistory[2].role).to.equal('user');
+				expect(conversationHistory[3].role).to.equal('assistant');
 			});
 
 			it('should continue with only history and no new prompt', async () => {
@@ -397,6 +401,41 @@ describe('Messages, Conversation & Integration', function () {
 				const result = await agentWithMemory(conversationHistory);
 				expect(result.text).to.include('2');
 				expect(result.response).to.have.property('messageHistory');
+			});
+
+			const streamAgent = create.TextStreamer({
+				model,
+				temperature,
+				messages: [{ role: 'system', content: 'You are a counter. When the user says "count", you reply with the next number, starting at 1. Only output the number.' }],
+			});
+
+			it('should initiate a streamed conversation and return augmented history', async () => {
+				const result = await streamAgent('count');
+				const streamedText = await streamToString(result.textStream);
+				expect(streamedText).to.equal('1');
+
+				const response = await result.response;
+				const conversationHistory = response.messageHistory;
+				expect(conversationHistory).to.be.an('array').with.lengthOf(2);
+				expect(conversationHistory[0].role).to.equal('user');
+				expect(conversationHistory[1].role).to.equal('assistant');
+			});
+
+			it('should continue a streamedconversation using history and a new prompt', async () => {
+				const firstTurn = await streamAgent('count');
+				const firstText = await streamToString(firstTurn.textStream);
+				expect(firstText).to.equal('1');
+
+				const historyAfterFirst = (await firstTurn.response).messageHistory;
+
+				const secondTurn = await streamAgent('count', historyAfterFirst);
+				const secondText = await streamToString(secondTurn.textStream);
+				expect(secondText).to.equal('2');
+
+				const conversationHistory = (await secondTurn.response).messageHistory;
+				expect(conversationHistory).to.be.an('array').with.lengthOf(4);
+				expect(conversationHistory[2].role).to.equal('user');
+				expect(conversationHistory[3].role).to.equal('assistant');
 			});
 		});
 
@@ -465,9 +504,9 @@ describe('Messages, Conversation & Integration', function () {
 					prompt: 'From the above conversation, extract the final pizza order into a JSON object.',
 				});
 
-				const extractionResult = await extractionAgent(finalHistory);
+				const result = await extractionAgent(finalHistory);
 
-				expect(extractionResult.object).to.deep.equal({
+				expect(result.object).to.deep.equal({
 					size: 'large',
 					toppings: ['pepperoni', 'mushrooms'],
 				});
