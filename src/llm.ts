@@ -104,86 +104,57 @@ function omitPrompt<T extends { prompt?: unknown }>(cfg: T): Omit<T, 'prompt'> {
 	return cloned as Omit<T, 'prompt'>;
 }
 
-// Helpers to prepend the user/message prefixes into returned results using lazy, memoized getters
+// Helper function to augment a response object with messages and messageHistory
+function augmentResponseObject(
+	responseObject: any,
+	prefixForMessages: ModelMessage[] | undefined,
+	historyPrefix: ModelMessage[] | undefined,
+	originalMessages: ModelMessage[]
+): void {
+	let cachedMessages: ModelMessage[] | undefined;
+	let cachedMessageHistory: ModelMessage[] | undefined;
+
+	// Override the messages property with a lazy, memoized getter
+	Object.defineProperty(responseObject, 'messages', {
+		get() {
+			if (cachedMessages !== undefined) return cachedMessages;
+			const head = prefixForMessages ?? [];
+			cachedMessages = [...head, ...originalMessages];
+			return cachedMessages;
+		},
+		enumerable: true,
+		configurable: true
+	});
+
+	// Add the messageHistory property
+	Object.defineProperty(responseObject, 'messageHistory', {
+		get() {
+			if (cachedMessageHistory !== undefined) return cachedMessageHistory;
+			const historyHead = historyPrefix ?? [];
+			const head = prefixForMessages ?? [];
+			cachedMessageHistory = [...historyHead, ...head, ...originalMessages];
+			return cachedMessageHistory;
+		},
+		enumerable: true,
+		configurable: true
+	});
+}
+
 function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 	result: GenerateTextResult<TOOLS, OUTPUT>,
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,
 ): GenerateTextResultAugmented<TOOLS, OUTPUT> {
-	//type Messages = typeof result.response.messages;
-	type Messages = ModelMessage[];
-	type ResponseWithMessages = { messages: Messages } & Record<string, unknown>;
-	type ResponseWithHistory = ResponseWithMessages & { messageHistory: Messages };
-	const originalResponse = result.response as unknown as ResponseWithMessages;
+	// Get the actual response object that the getter returns
+	const actualResponse = result.steps[result.steps.length - 1].response;
 
-	let cachedMessages: Messages | undefined;
-	let cachedMessageHistory: Messages | undefined;
+	// Store the original messages before we override them
+	const originalMessages = actualResponse.messages;
 
-	const responseProxy = new Proxy<ResponseWithHistory>(originalResponse as ResponseWithHistory, {
-		get(target, prop, receiver): unknown {
-			if (prop === 'messages') {
-				if (cachedMessages !== undefined) return cachedMessages;
-				const tail = (target as ResponseWithMessages).messages;
-				const head = prefixForMessages ?? [];
-				cachedMessages = [...head, ...tail];
-				return cachedMessages;
-			}
-			if (prop === 'messageHistory') {
-				if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-				const historyHead = historyPrefix ?? [];
-				const tail = (target as ResponseWithMessages).messages;
-				const head = prefixForMessages ?? [];
-				cachedMessageHistory = [...historyHead, ...head, ...tail];
-				return cachedMessageHistory;
-			}
-			return Reflect.get(target as object, prop, receiver) as unknown;
-		},
-		has(target, prop) {
-			if (prop === 'messages' || prop === 'messageHistory') return true;
-			return prop in target;
-		},
-		getOwnPropertyDescriptor(target, prop): PropertyDescriptor | undefined {
-			if (prop === 'messages') {
-				return {
-					configurable: true,
-					enumerable: true,
-					get: () => {
-						if (cachedMessages !== undefined) return cachedMessages;
-						const tail = (target as ResponseWithMessages).messages;
-						const head = prefixForMessages ?? [];
-						cachedMessages = [...head, ...tail];
-						return cachedMessages;
-					},
-				} as PropertyDescriptor;
-			}
-			if (prop === 'messageHistory') {
-				return {
-					configurable: true,
-					enumerable: true,
-					get: () => {
-						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-						const historyHead = historyPrefix ?? [];
-						const tail = (target as ResponseWithMessages).messages;
-						const head = prefixForMessages ?? [];
-						cachedMessageHistory = [...historyHead, ...head, ...tail];
-						return cachedMessageHistory;
-					},
-				} as PropertyDescriptor;
-			}
-			return Object.getOwnPropertyDescriptor(target, prop as keyof typeof target);
-		},
-	});
+	// Augment the response object
+	augmentResponseObject(actualResponse, prefixForMessages, historyPrefix, originalMessages);
 
-	const resultProxy = new Proxy<GenerateTextResult<TOOLS, OUTPUT>>(result, {
-		get(target, prop, receiver): unknown {
-			if (prop === 'response') {
-				return responseProxy;
-			}
-			return Reflect.get(target as object, prop, receiver) as unknown;
-		},
-	});
-
-	return resultProxy as GenerateTextResultAugmented<TOOLS, OUTPUT>;
+	return result as GenerateTextResultAugmented<TOOLS, OUTPUT>;
 }
 
 function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
@@ -191,89 +162,38 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,
 ): StreamTextResultAugmented<TOOLS, PARTIAL> {
-	//type Messages = ResponseT extends { messages: infer M extends readonly unknown[] } ? M : never;
-	//type Elem = Messages extends readonly (infer U)[] ? U : never;
-	type Messages = ModelMessage[];
-	type ResponseWithMessages = { messages: Messages } & Record<string, unknown>;
-	type ResponseWithHistory = ResponseWithMessages & { messageHistory: Messages };
+	// We need to modify the response when it becomes available
+	let cachedResponsePromise: Promise<ResponseWithMessages> | undefined;
 
-	let cachedResponsePromise: Promise<ResponseWithHistory> | undefined;
+	// Helper type to extract the resolved response type from the promise that has messages
+	type ResponseWithMessages = StreamTextResult<TOOLS, PARTIAL>['response'] extends Promise<infer R>
+		? R
+		: never;
 
-	const getAugmentedResponse = (): Promise<ResponseWithHistory> => {
-		cachedResponsePromise ??= (result.response as Promise<unknown>).then((r): ResponseWithHistory => {
-			let cachedMessages: Messages | undefined;
-			let cachedMessageHistory: Messages | undefined;
+	const getAugmentedResponse = (): Promise<ResponseWithMessages> => {
+		cachedResponsePromise ??= (result.response)
+			.then((resolvedResponse: ResponseWithMessages) => {
+				// Store the original messages before we override them
+				const originalMessages = resolvedResponse.messages as unknown as ModelMessage[];
 
-			const responseProxy = new Proxy<ResponseWithHistory>(r as ResponseWithHistory, {
-				get(target, prop, receiver): unknown {
-					if (prop === 'messages') {
-						if (cachedMessages !== undefined) return cachedMessages;
-						const tail = (target as ResponseWithMessages).messages;
-						const head = prefixForMessages ?? [];
-						cachedMessages = [...head, ...tail];
-						return cachedMessages;
-					}
-					if (prop === 'messageHistory') {
-						if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-						const historyHead = historyPrefix ?? [];
-						const tail = (target as ResponseWithMessages).messages;
-						const head = prefixForMessages ?? [];
-						cachedMessageHistory = [...historyHead, ...head, ...tail];
-						return cachedMessageHistory;
-					}
-					return Reflect.get(target as object, prop, receiver) as unknown;
-				},
-				has(target, prop) {
-					if (prop === 'messages' || prop === 'messageHistory') return true;
-					return prop in target;
-				},
-				getOwnPropertyDescriptor(target, prop): PropertyDescriptor | undefined {
-					if (prop === 'messages') {
-						return {
-							configurable: true,
-							enumerable: true,
-							get: () => {
-								if (cachedMessages !== undefined) return cachedMessages;
-								const tail = (target as ResponseWithMessages).messages;
-								const head = prefixForMessages ?? [];
-								cachedMessages = [...head, ...tail];
-								return cachedMessages;
-							},
-						} as PropertyDescriptor;
-					}
-					if (prop === 'messageHistory') {
-						return {
-							configurable: true,
-							enumerable: true,
-							get: () => {
-								if (cachedMessageHistory !== undefined) return cachedMessageHistory;
-								const historyHead = historyPrefix ?? [];
-								const tail = (target as ResponseWithMessages).messages;
-								const head = prefixForMessages ?? [];
-								cachedMessageHistory = [...historyHead, ...head, ...tail];
-								return cachedMessageHistory;
-							},
-						} as PropertyDescriptor;
-					}
-					return Object.getOwnPropertyDescriptor(target, prop as keyof typeof target);
-				},
+				// Augment the response object
+				augmentResponseObject(resolvedResponse, prefixForMessages, historyPrefix, originalMessages);
+
+				return resolvedResponse;
 			});
-
-			return responseProxy;
-		});
 		return cachedResponsePromise;
 	};
 
-	const resultProxy = new Proxy<StreamTextResult<TOOLS, PARTIAL>>(result, {
-		get(target, prop, receiver): unknown {
-			if (prop === 'response') {
-				return getAugmentedResponse();
-			}
-			return Reflect.get(target as object, prop, receiver) as unknown;
+	// Override the response getter to return our augmented promise
+	Object.defineProperty(result, 'response', {
+		get() {
+			return getAugmentedResponse();
 		},
+		enumerable: true,
+		configurable: true
 	});
 
-	return resultProxy as StreamTextResultAugmented<TOOLS, PARTIAL>;
+	return result as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
 
 export function createLLMRenderer<
@@ -315,7 +235,9 @@ export function createLLMRenderer<
 			const textScriptConfig: configs.ScriptConfig<string | ModelMessage[]> = {
 				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
 				schema: PromptStringOrMessagesSchema as z.ZodType<string | ModelMessage[]>, //the script may render a string or messages
+				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead
 			};
+			delete (textScriptConfig as configs.PromptConfig).prompt;
 			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
 		}
 		call = async (
