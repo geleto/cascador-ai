@@ -62,12 +62,18 @@ export type OptionalPromptConfig<PROMPT = string> = OptionalTemplatePromptConfig
 
 export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
-// Script types
+// For use in Script (where the script property is used instead of prompt)
 export interface ScriptConfig<OBJECT> extends CascadaConfig {
 	script?: string;
 	promptType?: ScriptPromptType;
 	schema?: SchemaType<OBJECT>;
 };
+
+export interface TemplateConfig<OBJECT> extends CascadaConfig {
+	prompt?: string;//@todo - rename to template
+	promptType?: ScriptPromptType;
+	schema?: SchemaType<OBJECT>;
+}
 
 export type ToolParameters = z.ZodTypeAny | Schema<any>;//@todo - specialize for OBJECT
 
