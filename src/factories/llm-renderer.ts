@@ -170,8 +170,11 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
 		? R
 		: never;
 
+	// Capture the original response promise before overriding the getter to avoid recursion
+	const originalResponsePromise = result.response as unknown as Promise<ResponseWithMessages>;
+
 	const getAugmentedResponse = (): Promise<ResponseWithMessages> => {
-		cachedResponsePromise ??= (result.response)
+		cachedResponsePromise ??= originalResponsePromise
 			.then((resolvedResponse: ResponseWithMessages) => {
 				// Store the original messages before we override them
 				const originalMessages = resolvedResponse.messages as unknown as ModelMessage[];
@@ -286,14 +289,14 @@ export function _createLLMRenderer<
 					// Returned messages: prompt-derived messages + generated messages
 					const messagesPrefix = rendered;
 					const historyPrefixFull = [
-						...(configMessages ?? []),
+						// Exclude config messages from messageHistory
 						...(callArgumentMessages ?? []),
 					];
 					result = augmentGenerateText(result as GenerateTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
 				} else if ((vercelFunc as unknown) === streamText) {
 					const messagesPrefix = rendered;
 					const historyPrefixFull = [
-						...(configMessages ?? []),
+						// Exclude config messages from messageHistory
 						...(callArgumentMessages ?? []),
 					];
 					result = augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
@@ -321,7 +324,7 @@ export function _createLLMRenderer<
 				const userMessage: ModelMessage | undefined = renderedString.length > 0 ? ({ role: 'user', content: renderedString } as ModelMessage) : undefined;
 				const messagesPrefix = userMessage ? [userMessage] : [];
 				const historyPrefixFull = [
-					...(configMessages ?? []),
+					// Exclude config messages from messageHistory
 					...(callArgumentMessages ?? []),
 				];
 				if ((vercelFunc as unknown) === generateText) {
@@ -338,12 +341,13 @@ export function _createLLMRenderer<
 			}
 		};
 	} else {
-		// No need to run the prompt through a template/script.
+		// No need to run the prompt through a template/script and process a context
 		// depending on the vercelFunc, the result may be a promise or not
-		call = (prompt?: string, messages?: ModelMessage[]): TFunctionResult => {
+		call = (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): TFunctionResult => {
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - text path called with:', { prompt, messages });
+				console.log('[DEBUG] createLLMRenderer - text path called with:', { promptOrMessages, maybeMessages });
 			}
+			const { prompt, messages } = extractCallArguments(promptOrMessages, maybeMessages);
 			validateCall(config, prompt, messages);
 
 			const promptFromConfig = config.prompt;
@@ -371,7 +375,7 @@ export function _createLLMRenderer<
 				? ({ role: 'user', content: effectivePrompt } as ModelMessage)
 				: undefined;
 			const messagesPrefix = userMessage ? [userMessage] : [];
-			const historyPrefixFull = combinedBase;
+			const historyPrefixFull = callArgumentMessages ?? [];
 
 			if ((vercelFunc as unknown) === generateText) {
 				return (result as Promise<GenerateTextResult<any, any>>).then((r) => augmentGenerateText(r, messagesPrefix, historyPrefixFull)) as TFunctionResult;
