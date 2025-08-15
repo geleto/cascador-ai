@@ -138,6 +138,24 @@ describe('create.TextStreamer', function () {
 			expect(errorCaught).to.be.an.instanceOf(Error);
 			expect(errorCaught.message).to.include('invalid x-api-key');
 		});
+
+		it('should have correct type property', () => {
+			const streamer = create.TextStreamer({
+				model,
+				temperature,
+				prompt: 'Hello world'
+			});
+
+			const templateStreamer = create.TextStreamer.withTemplate({
+				model,
+				temperature,
+				prompt: 'Hello {{ name }}'
+			});
+
+			// Check that TextStreamer instances have the correct type
+			expect(streamer.type).to.equal('StreamText');
+			expect(templateStreamer.type).to.equal('StreamText');
+		});
 	});
 
 	describe('Configuration & Inheritance', () => {

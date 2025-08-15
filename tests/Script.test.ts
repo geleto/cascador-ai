@@ -99,6 +99,21 @@ describe('create.Script', function () {
 			const result = await scriptRunner();
 			expect(result).to.deep.equal({ name: 'Carol', permissions: ['read', 'write'] });
 		});
+
+		it('should have correct type property', () => {
+			const scriptRunner = create.Script({
+				script: ':data @data = "Hello"'
+			});
+
+			const scriptWithContext = create.Script({
+				context: { name: 'World' },
+				script: ':data @data = "Hello " + name'
+			});
+
+			// Check that Script instances have the correct type
+			expect(scriptRunner.type).to.equal('Script');
+			expect(scriptWithContext.type).to.equal('Script');
+		});
 	});
 
 	describe('Vanilla Vercel AI Stream Consumer', () => {

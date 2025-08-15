@@ -25,12 +25,14 @@ export type LLMCallSignature<
 			(prompt: string, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
+			type: string;
 		}
 		: {
 			// Required a prompt or messages
 			(prompt: string, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
+			type: string;
 		}
 	)
 	: (
@@ -43,12 +45,14 @@ export type LLMCallSignature<
 			(prompt: string | ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
 			(context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
+			type: string;
 		}
 		: {
 			// Requires a prompt, optional messages, and optional context
 			//(prompt: string, message: ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
 			(prompt: string, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
+			type: string;
 		}
 	);
 
@@ -386,7 +390,11 @@ export function _createLLMRenderer<
 			}
 		};
 	}
-	const callSignature = Object.assign(call, { config });
+	// Get the function name and capitalize it to create the type
+	const functionName = vercelFunc.name;
+	const type = functionName.charAt(0).toUpperCase() + functionName.slice(1);
+
+	const callSignature = Object.assign(call, { config, type });
 	return callSignature as LLMCallSignature<TConfig, TFunctionResult, PT>;
 }
 

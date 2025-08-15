@@ -80,6 +80,35 @@ export function Tool<
 		throw new ConfigError('Tool requires a valid parent (Generator, Renderer, or Runner)');
 	}
 
+	// Runtime validation to ensure parent is a valid type and reject streamers
+	function validateParentType(parent: PARENT_TYPE): void {
+		const parentConfig = parent.config;
+
+		// Check if parent has a valid config object
+		if (typeof parentConfig !== 'object') {
+			throw new ConfigError('Parent must have a valid config object');
+		}
+
+		// Check if parent has a type property
+		if (!('type' in parent) || typeof parent.type !== 'string') {
+			throw new ConfigError('Parent must have a valid type property');
+		}
+
+		// Check for streamer types and reject them
+		if (parent.type === 'StreamText' || parent.type === 'StreamObject') {
+			throw new ConfigError('Streamers (TextStreamer, ObjectStreamer) are not supported as Tool parents. Use TextGenerator, ObjectGenerator, Script, or Template instead.');
+		}
+
+		// Validate that parent is one of the supported types
+		const validTypes = ['GenerateText', 'GenerateObject', 'Script', 'Template'];
+		if (!validTypes.includes(parent.type)) {
+			throw new ConfigError(`Parent type '${parent.type}' is not supported. Supported types are: ${validTypes.join(', ')}`);
+		}
+	}
+
+	// Run the validation
+	validateParentType(parent);
+
 	// This signature MUST match the Vercel SDK's execute type
 	let execute: (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions) => Promise<any>;
 

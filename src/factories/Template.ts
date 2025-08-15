@@ -15,11 +15,13 @@ export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePrompt
 		(promptOrContext?: Context | string): Promise<string>;//one optional argument, prompt or context
 		(prompt?: string, context?: Context): Promise<string>;//two arguments, prompt and context
 		config: TConfig;
+		type: string;
 	}
 	: {
 		//TConfig has no prompt, prompt argument is needed
 		(prompt: string, context?: Context): Promise<string>;//prompt is a must, context is optional
 		config: TConfig;
+		type: string;
 	};
 
 // Internal common creator for template renderer
@@ -82,7 +84,7 @@ export function _createTemplate(
 		}
 	};
 
-	const callSignature = Object.assign(call, { config: merged });
+	const callSignature = Object.assign(call, { config: merged, type: 'Template' });
 
 	return callSignature as TemplateCallSignature<any>;
 }

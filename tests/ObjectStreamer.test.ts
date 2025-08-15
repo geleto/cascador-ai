@@ -119,6 +119,35 @@ describe('create.ObjectStreamer', function () {
 			const finalObject = mergePartials(partials);
 			expect(finalObject).to.deep.equal({ name: 'RuntimeStream', value: 555 });
 		});
+
+		it('should have correct type property', () => {
+			const objectStreamer = create.ObjectStreamer({
+				model,
+				temperature,
+				schema: simpleSchema,
+				prompt: 'Generate a test object'
+			});
+
+			const templateStreamer = create.ObjectStreamer.withTemplate({
+				model,
+				temperature,
+				schema: simpleSchema,
+				prompt: 'Generate {{ name }}'
+			});
+
+			const arrayStreamer = create.ObjectStreamer({
+				model,
+				temperature,
+				output: 'array',
+				schema: arraySchema.element,
+				prompt: 'Generate an array'
+			});
+
+			// Check that all ObjectStreamer variants have the correct type
+			expect(objectStreamer.type).to.equal('StreamObject');
+			expect(templateStreamer.type).to.equal('StreamObject');
+			expect(arrayStreamer.type).to.equal('StreamObject');
+		});
 	});
 
 	describe('Configuration & Inheritance', () => {

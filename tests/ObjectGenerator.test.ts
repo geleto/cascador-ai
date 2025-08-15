@@ -176,6 +176,44 @@ describe('create.ObjectGenerator', function () {
 			expect(object).to.eql([{ id: 1, success: true }, { id: 2, success: false }]);
 		});
 
+		it('should have correct type property', () => {
+			const objectGenerator = create.ObjectGenerator({
+				model,
+				temperature,
+				schema: simpleSchema,
+				prompt: 'Generate a test object'
+			});
+
+			const templateGenerator = create.ObjectGenerator.withTemplate({
+				model,
+				temperature,
+				schema: simpleSchema,
+				prompt: 'Generate {{ name }}'
+			});
+
+			const arrayGenerator = create.ObjectGenerator({
+				model,
+				temperature,
+				output: 'array',
+				schema: arraySchema.element,
+				prompt: 'Generate an array'
+			});
+
+			const enumGenerator = create.ObjectGenerator({
+				model,
+				temperature,
+				output: 'enum',
+				enum: enumValues,
+				prompt: 'Choose a color'
+			});
+
+			// Check that all ObjectGenerator variants have the correct type
+			expect(objectGenerator.type).to.equal('GenerateObject');
+			expect(templateGenerator.type).to.equal('GenerateObject');
+			expect(arrayGenerator.type).to.equal('GenerateObject');
+			expect(enumGenerator.type).to.equal('GenerateObject');
+		});
+
 		it('should generate an object when inheriting and prompt is at runtime', async () => {
 			const parentWithSchema = create.ObjectGenerator({
 				model, temperature,

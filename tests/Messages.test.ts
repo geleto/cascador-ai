@@ -19,7 +19,7 @@ import { streamToString } from './TextStreamer.test';
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe.only('Messages, Conversation & Integration', function () {
+describe('Messages, Conversation & Integration', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	// --- Unit Tests (Isolated Logic) ---

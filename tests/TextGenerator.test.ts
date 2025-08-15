@@ -157,6 +157,24 @@ describe('create.TextGenerator', function () {
 			expect(result.text).to.equal('*(apples)*');
 		});
 
+		it('should have correct type property', () => {
+			const generator = create.TextGenerator({
+				model,
+				temperature,
+				prompt: 'Hello world'
+			});
+
+			const templateGenerator = create.TextGenerator.withTemplate({
+				model,
+				temperature,
+				prompt: 'Hello {{ name }}'
+			});
+
+			// Check that all TextGenerator variants have the correct type
+			expect(generator.type).to.equal('GenerateText');
+			expect(templateGenerator.type).to.equal('GenerateText');
+		});
+
 		it('should merge and deduplicate "loader" arrays', () => {
 			const loader1 = new StringLoader();
 			const loader2 = new StringLoader();

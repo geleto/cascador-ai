@@ -19,11 +19,13 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 		(scriptOrContext?: Context | string): ScriptResultPromise<TConfig>;
 		(script?: string, context?: Context): ScriptResultPromise<TConfig>;
 		config: TConfig;
+		type: string;
 	}
 	: {
 		// TConfig has no script, so the script argument is required.
 		(script: string, context?: Context): ScriptResultPromise<TConfig>;
 		config: TConfig;
+		type: string;
 	};
 
 // Internal common creator
@@ -83,7 +85,7 @@ export function _createScript(
 		}
 	};
 
-	const callSignature = Object.assign(call, { config: merged });
+	const callSignature = Object.assign(call, { config: merged, type: 'Script' });
 
 	return callSignature as ScriptCallSignature<any>;
 }
