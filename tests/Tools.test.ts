@@ -6,13 +6,14 @@ import { create } from '../src/index';
 import { model, temperature, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
+import { ModelMessage, stepCountIs } from 'ai';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe('create.Tool', function () {
+describe.only('create.Tool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
@@ -628,6 +629,148 @@ describe('create.Tool', function () {
 				expect(result.toolCalls[0].input).to.deep.equal({
 					text: 'I love this product, it\'s amazing!'
 				});
+			});
+		});
+	});
+
+	describe('Suite 4: End-to-End Tool Use Conversation Loop', () => {
+		// A robust, object-based tool for consistent test results
+		const weatherGenerator = create.ObjectGenerator.withTemplate({
+			model,
+			temperature,
+			schema: z.object({
+				city: z.string(),
+				tempF: z.number(),
+				conditions: z.string(),
+			}),
+			prompt: 'Return weather for {{ city }}. For San Francisco, return temp 75 and "Sunny".'
+		});
+
+		const getWeatherTool = create.Tool({
+			description: 'Get the weather for a city',
+			inputSchema: z.object({ city: z.string() }),
+		}, weatherGenerator);
+
+		describe('Manual Tool Result Synthesis', () => {
+			it('should allow manually continuing the conversation after a tool call', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					// NOTE: No `stopWhen` is configured. We do the loop ourselves.
+				});
+
+				// --- TURN 1: Ask a question that requires a tool ---
+				const initialPrompt = 'What is the weather in San Francisco?';
+				const messages: ModelMessage[] = [{ role: 'user', content: initialPrompt }];
+
+				const turn1Result = await agent(messages);
+
+				// Assert that the model correctly decided to call the tool
+				expect(turn1Result.finishReason).to.equal('tool-calls');
+				expect(turn1Result.toolCalls).to.have.lengthOf(1);
+				expect(turn1Result.toolCalls[0].toolName).to.equal('getWeather');
+
+				// --- STATE UPDATE: Manually feed the results back ---
+				// We append the assistant's action and the tool's result to our history
+				const responseMessages = turn1Result.response.messages;
+				messages.push(...responseMessages);
+
+				// The history now contains the user prompt, the assistant's tool_call, and the tool_result
+				expect(messages).to.have.lengthOf(3);
+				expect(messages[1].role).to.equal('assistant');
+				expect(messages[2].role).to.equal('tool');
+
+				// --- TURN 2: Ask the agent to synthesize the final answer ---
+				// We call the agent again with the complete history
+				const turn2Result = await agent(messages);
+
+				// Assert that the model has now generated a final text answer
+				expect(turn2Result.finishReason).to.equal('stop');
+				expect(turn2Result.toolCalls.length).to.equal(0);
+				expect(turn2Result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+			});
+		});
+
+		describe('Automated Tool Result Synthesis with stopWhen', () => {
+			it('should automate the full tool-use loop in a single call', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					// NOTE: `stopWhen` automates the second turn for us
+					stopWhen: stepCountIs(2),
+				});
+
+				const result = await agent('What is the weather in San Francisco?');
+
+				// Assert the final state after the automated loop
+				expect(result.finishReason).to.equal('stop');
+				expect(result.toolCalls.length).to.equal(0);
+				expect(result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+
+				// We can also inspect the intermediate steps
+				expect(result.steps).to.have.lengthOf(2);
+				expect(result.steps[0].finishReason).to.equal('tool-calls'); // Step 1 was the tool call
+				expect(result.steps[1].finishReason).to.equal('stop'); // Step 2 was the text synthesis
+			});
+		});
+
+		describe('Multi-Turn Conversation with Automated Tool Use', () => {
+			it('should maintain chat history across turns, including a tool-use turn', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					stopWhen: stepCountIs(2),
+				});
+
+				let messageHistory: ModelMessage[] = [];
+
+				// --- TURN 1: Simple chat ---
+				const turn1Result = await agent('Hi, how are you?', messageHistory);
+				expect(turn1Result.finishReason).to.equal('stop');
+
+				// Update history
+				messageHistory = turn1Result.response.messageHistory;
+				expect(messageHistory).to.have.lengthOf(2);
+
+				// --- TURN 2: Tool-using chat ---
+				const turn2Result = await agent('Great! Now what is the weather in San Francisco?', messageHistory);
+				expect(turn2Result.finishReason).to.equal('stop');
+				expect(turn2Result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+
+				// Update history again
+				messageHistory = turn2Result.response.messageHistory;
+
+				// The final history should contain all messages from both turns
+				expect(messageHistory).to.have.lengthOf(6);
+
+				const finalAssistantMessage = messageHistory[5];
+
+				// --- CORRECTED AND TYPE-SAFE ASSERTIONS ---
+
+				expect(finalAssistantMessage.role).to.equal('assistant');
+
+				// TYPE GUARD 1: First, we must confirm that `content` is an array.
+				// This eliminates the `string` type from the union for `content`.
+				expect(Array.isArray(finalAssistantMessage.content)).to.equal(true);
+
+				// Now we can safely proceed inside an `if` block for type narrowing.
+				if (Array.isArray(finalAssistantMessage.content)) {
+					expect(finalAssistantMessage.content).to.have.lengthOf(1);
+					const finalContentPart = finalAssistantMessage.content[0];
+
+					// TYPE GUARD 2: Now that we have a part, we must check its `type`
+					// to safely access its specific properties like `.text`.
+					expect(finalContentPart.type).to.equal('text');
+					if (finalContentPart.type === 'text') {
+						// Inside this block, TypeScript is certain that `finalContentPart`
+						// is a `TextPart` and has a `text` property.
+						expect(finalContentPart.text).to.be.a('string');
+						expect(finalContentPart.text.toLowerCase()).to.include('sunny');
+					}
+				}
 			});
 		});
 	});

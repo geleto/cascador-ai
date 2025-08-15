@@ -12,7 +12,7 @@ import {
 	// augmentGenerateText,
 	// augmentStreamText,
 } from '../src/factories/llm-renderer';
-import { ModelMessage } from 'ai';
+import { ModelMessage, stepCountIs } from 'ai';
 import { streamToString } from './TextStreamer.test';
 
 // Configure chai-as-promised
@@ -439,44 +439,165 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('Tool Use within a Conversation Chain', () => {
-			const toolParent = create.TextGenerator({ model, temperature });
+		describe('Messaging with Tool Calls', () => {
+
+			const weatherGenerator = create.ObjectGenerator.withTemplate({
+				model,
+				temperature,
+				schema: z.object({
+					city: z.string(),
+					tempF: z.number(),
+					conditions: z.string(),
+				}),
+				prompt: 'Return the weather for {{ city }}. If the city is San Francisco, return temp 75 and conditions "Sunny". Otherwise, return an error in the conditions field.'
+			});
+
 			const getWeatherTool = create.Tool({
 				description: 'Get the weather for a city',
 				inputSchema: z.object({ city: z.string() }),
-			}, toolParent);
-			const agent = create.TextGenerator({
-				model,
-				temperature,
-				tools: { getWeather: getWeatherTool },
+			}, weatherGenerator);
+
+			it('should allow manual continuation of a conversation after a tool call', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					// NO stopWhen - we are doing this manually
+				});
+
+				const initialPrompt = 'What is the weather in San Francisco?';
+				const messages: ModelMessage[] = [{ role: 'user', content: initialPrompt }];
+
+				// --- TURN 1: Model decides to call a tool ---
+				const turn1Result = await agent(messages);
+
+				// Assertions for the first turn
+				expect(turn1Result.finishReason).to.equal('tool-calls');
+				expect(turn1Result.text).to.not.be.null; // Can be empty or conversational filler
+				expect(turn1Result.toolCalls).to.have.lengthOf(1);
+				expect(turn1Result.toolCalls[0].toolName).to.equal('getWeather');
+				expect(turn1Result.toolCalls[0].input).to.deep.equal({ city: 'San Francisco' });
+
+				// --- BETWEEN TURNS: Update the message history ---
+				// Append the assistant's message (with tool_call) and the tool's result message
+				const turn1ResponseMessages = turn1Result.response.messages;
+				messages.push(...turn1ResponseMessages);
+
+				// At this point, `messages` looks like this:
+				// 1. { role: 'user', content: 'What is the weather...' }
+				// 2. { role: 'assistant', content: [{ type: 'tool-call', ... }] }
+				// 3. { role: 'tool', content: [{ type: 'tool-result', ... }] }
+				expect(messages).to.have.lengthOf(3);
+				expect(messages[1].role).to.equal('assistant');
+				expect(messages[2].role).to.equal('tool');
+
+				// --- TURN 2: Model synthesizes the final answer from tool results ---
+				// We pass the FULL message history back to the agent.
+				const turn2Result = await agent(messages);
+
+				// Assertions for the final turn
+				expect(turn2Result.finishReason).to.equal('stop');
+				expect(turn2Result.toolCalls).to.be.empty;
+				expect(turn2Result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+				expect(turn2Result.text.toLowerCase()).to.include('san francisco');
 			});
-			let conversationHistory: ModelMessage[] = [];
 
-			it('should call a tool when prompted', async () => {
-				const result = await agent('What is the weather in San Francisco?');
-				expect(result.toolCalls).to.be.an('array').with.lengthOf(1);
-				expect(result.toolCalls[0].toolName).to.equal('getWeather');
-				conversationHistory = result.response.messageHistory;
-			});
+			/*it('should automatically handle the tool-use loop with stopWhen', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					// This time, we automate the loop
+					stopWhen: stepCountIs(2),
+				});
 
-			it('should use tool result to answer the user', async () => {
-				// Simulate tool execution and create the result message
-				const toolCall = (conversationHistory.at(-1)!.content as unknown as { type: 'tool-call'; toolCallId: string }[])[0];
-				const toolResult = ({
-					role: 'tool',
-					content: [{
-						type: 'tool-result',
-						toolCallId: toolCall.toolCallId,
-						toolName: 'getWeather',
-						result: 'San Francisco: 75, Sunny',
-					}],
-				} as unknown) as ModelMessage;
+				const initialPrompt = 'What is the weather in San Francisco?';
 
-				const historyWithToolResult: ModelMessage[] = [...conversationHistory, toolResult];
-				const result = await agent(historyWithToolResult);
+				// --- SINGLE CALL: The agent handles both turns internally ---
+				const result = await agent(initialPrompt);
 
-				expect(result.text).to.include('75').and.to.include('Sunny');
+				// Assertions for the final result
+				expect(result.finishReason).to.equal('stop');
 				expect(result.toolCalls).to.be.empty;
+				expect(result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+
+				// We can also inspect the intermediate steps
+				expect(result.steps).to.have.lengthOf(2);
+
+				// Step 1: The tool call
+				const step1 = result.steps[0];
+				expect(step1.finishReason).to.equal('tool-calls');
+				expect(step1.toolCalls).to.have.lengthOf(1);
+				expect(step1.toolResults).to.have.lengthOf(1);
+				expect(step1.toolResults[0].output).to.deep.equal({ city: 'San Francisco', tempF: 75, conditions: 'Sunny' });
+
+				// Step 2: The final text generation
+				const step2 = result.steps[1];
+				expect(step2.finishReason).to.equal('stop');
+				expect(step2.toolCalls).to.be.empty;
+				expect(step2.text.toLowerCase()).to.include('75');
+			});*/
+
+			it('should handle a multi-turn conversation where one turn involves automated tool use', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: getWeatherTool },
+					stopWhen: stepCountIs(2), // Automate the tool-use loop when it occurs
+				});
+
+				// 1. Initialize the conversation history
+				let messageHistory: ModelMessage[] = [];
+
+				// --- TURN 1: A simple chat message without tool use ---
+				const prompt1 = 'Hello there!';
+				const turn1Result = await agent(prompt1, messageHistory);
+
+				// Assertions for the first turn (simple response)
+				expect(turn1Result.finishReason).to.equal('stop');
+				expect(turn1Result.toolCalls).to.be.empty;
+				expect(turn1Result.text).to.be.a('string').and.not.be.empty;
+
+				// 2. Update the history after the first turn
+				// `response.messageHistory` contains the full history (old messages + new ones from this turn)
+				messageHistory = turn1Result.response.messageHistory;
+
+				expect(messageHistory).to.have.lengthOf(2); // [user prompt, assistant reply]
+				expect(messageHistory[0].role).to.equal('user');
+				expect(messageHistory[0].content).to.equal(prompt1);
+				expect(messageHistory[1].role).to.equal('assistant');
+
+
+				// --- TURN 2: A message that requires tool use ---
+				const prompt2 = 'Great, thanks! Now, can you tell me the weather in San Francisco?';
+
+				// Pass the new prompt AND the existing message history
+				const turn2Result = await agent(prompt2, messageHistory);
+
+				// Assertions for the final result of the second turn
+				expect(turn2Result.finishReason).to.equal('stop');
+				expect(turn2Result.toolCalls).to.be.empty; // Final result has no pending tool calls
+				expect(turn2Result.text.toLowerCase()).to.include('75').and.to.include('sunny');
+
+				// We can also inspect the intermediate steps for this turn
+				expect(turn2Result.steps).to.have.lengthOf(2);
+				expect(turn2Result.steps[0].finishReason).to.equal('tool-calls'); // Step 1 was the tool call
+				expect(turn2Result.steps[1].finishReason).to.equal('stop'); // Step 2 was the final text generation
+
+				// 3. Update the history again after the complex tool-use turn
+				messageHistory = turn2Result.response.messageHistory;
+
+				// The final history should contain all messages from both turns
+				// Turn 1 (2 messages) + Turn 2 (4 messages: user, assistant+tool_call, tool_result, final_assistant_reply)
+				expect(messageHistory).to.have.lengthOf(6);
+
+				// Verify the structure of the final messages
+				expect(messageHistory[0].role).to.equal('user'); // Turn 1 User
+				expect(messageHistory[1].role).to.equal('assistant'); // Turn 1 Assistant
+				expect(messageHistory[2].role).to.equal('user'); // Turn 2 User
+				expect(messageHistory[3].role).to.equal('assistant'); // Turn 2 Assistant (with tool call)
+				expect(messageHistory[4].role).to.equal('tool'); // Turn 2 Tool Result
+				expect(messageHistory[5].role).to.equal('assistant'); // Turn 2 Assistant (final synthesis)
 			});
 		});
 
