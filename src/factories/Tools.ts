@@ -90,8 +90,13 @@ export function Tool<
 
 	// Case 1: Script is the only type with `script`
 	if ('script' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
-			const result = await (parent as ScriptInstance<configs.ScriptConfig<OBJECT>>)(args);
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions): Promise<JSONValue> => {
+			// Inject _toolCallOptions into the context
+			const contextWithToolCallOptions = {
+				...args,
+				_toolCallOptions: options
+			};
+			const result = await (parent as ScriptInstance<configs.ScriptConfig<OBJECT>>)(contextWithToolCallOptions);
 			return result ?? '';
 		};
 	}
@@ -99,24 +104,39 @@ export function Tool<
 	// The ObjectGenerator factory ensures this property is always present on the config,
 	// making it a reliable discriminator.
 	else if ('output' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<JSONValue> => {
-			const result = await (parent as ObjectGeneratorInstance<any, any, any, any, RequiredPromptType>)(args);
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions): Promise<JSONValue> => {
+			// Inject _toolCallOptions into the context
+			const contextWithToolCallOptions = {
+				...args,
+				_toolCallOptions: options
+			};
+			const result = await (parent as ObjectGeneratorInstance<any, any, any, any, RequiredPromptType>)(contextWithToolCallOptions);
 			if ('object' in result) { return result.object; }
 			throw new ConfigError('Parent ObjectGenerator result did not contain an "object" property.');
 		};
 	}
 	// Case 3: TextGenerator has a `model` but is not an ObjectGenerator (which was checked above).
 	else if ('model' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
-			const result = await (parent as TextGeneratorInstance<any, any, RequiredPromptType>)(args);
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions): Promise<string> => {
+			// Inject _toolCallOptions into the context
+			const contextWithToolCallOptions = {
+				...args,
+				_toolCallOptions: options
+			};
+			const result = await (parent as TextGeneratorInstance<any, any, RequiredPromptType>)(contextWithToolCallOptions);
 			if ('text' in result) { return result.text; }
 			throw new ConfigError('Parent TextGenerator result did not contain a "text" property.');
 		};
 	}
 	// Case 4: Template has `prompt` or `promptType` but no `model`.
 	else if ('prompt' in parentConfig || 'promptType' in parentConfig) {
-		execute = async (args: utils.InferParameters<PARAMETERS>/*, options: ToolCallOptions*/): Promise<string> => {
-			return await (parent as TemplateInstance<configs.OptionalTemplatePromptConfig>)(args);
+		execute = async (args: utils.InferParameters<PARAMETERS>, options: ToolCallOptions): Promise<string> => {
+			// Inject _toolCallOptions into the context
+			const contextWithToolCallOptions = {
+				...args,
+				_toolCallOptions: options
+			};
+			return await (parent as TemplateInstance<configs.OptionalTemplatePromptConfig>)(contextWithToolCallOptions);
 		};
 	}
 	// Error case: The parent type could not be determined.
