@@ -21,21 +21,21 @@ describe('create.Tool', function () {
 	}
 
 	describe('Suite 1: Validation & Unit Tests', () => {
-		describe('Error: Missing parameters Schema', () => {
-			it('should throw ConfigError when parameters schema is missing', () => {
+		describe('Error: Missing inputSchema Schema', () => {
+			it('should throw ConfigError when inputSchema schema is missing', () => {
 				const textGenerator = create.TextGenerator({
 					model,
 					temperature,
 					prompt: 'Hello world'
 				});
 
-				//@ts-expect-error - missing parameters schema
+				//@ts-expect-error - missing inputSchema schema
 				expect(() => create.Tool({
 					description: 'A test tool'
-					// Missing parameters
+					// Missing inputSchema
 				}, textGenerator)).to.throw(
 					ConfigError,
-					'Tool config requires parameters schema'
+					'Tool config requires inputSchema schema'
 				);
 			});
 		});
@@ -50,7 +50,7 @@ describe('create.Tool', function () {
 
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 					//@ts-expect-error - streamers not supported
 				}, textStreamer)).to.throw(
 					ConfigError,
@@ -71,7 +71,7 @@ describe('create.Tool', function () {
 
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 					//@ts-expect-error - streamers not supported
 				}, objectStreamer)).to.throw(
 					ConfigError,
@@ -100,12 +100,12 @@ describe('create.Tool', function () {
 				// These should not throw errors
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 				}, textGenerator)).to.not.throw();
 
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 				}, objectGenerator)).to.not.throw();
 			});
 
@@ -153,7 +153,7 @@ describe('create.Tool', function () {
 
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 					//@ts-expect-error - unrecognized parent
 				}, unrecognizedParent)).to.throw(
 					ConfigError,
@@ -172,21 +172,21 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string().describe('The name to greet')
 					})
 				}, textGenerator);
 
 				expect(tool).to.have.property('type', 'function');
 				expect(tool).to.have.property('description', 'A test tool');
-				expect(tool).to.have.property('parameters');
+				expect(tool).to.have.property('inputSchema');
 				expect(tool).to.have.property('execute');
 				expect(tool.execute).to.be.a('function');
 			});
 		});
 
-		describe('Error: Invalid Parameters Schema', () => {
-			it('should throw error if parameters is not a z.object', () => {
+		describe('Error: Invalid inputSchema Schema', () => {
+			it('should throw error if inputSchema is not a z.object', () => {
 				const textGenerator = create.TextGenerator({
 					model,
 					temperature,
@@ -195,10 +195,10 @@ describe('create.Tool', function () {
 
 				expect(() => create.Tool({
 					description: 'A test tool',
-					parameters: z.string() // Not z.object
+					inputSchema: z.string() // Not z.object
 				}, textGenerator)).to.throw(
 					ConfigError,
-					'Tool config requires parameters schema'
+					'Tool config requires inputSchema schema'
 				);
 			});
 		});
@@ -219,7 +219,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A script tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						input: z.string()
 					})
 				}, script);
@@ -241,7 +241,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'An object generator tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string(),
 						count: z.number()
 					})
@@ -261,7 +261,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A text generator tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string()
 					})
 				}, textGenerator);
@@ -278,7 +278,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A template tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string(),
 						age: z.number()
 					})
@@ -302,7 +302,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 					//@ts-expect-error - mock ObjectGenerator
 				}, mockObjectGenerator);
 
@@ -324,7 +324,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 					//@ts-expect-error - mock TextGenerator
 				}, mockTextGenerator);
 
@@ -350,7 +350,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({})
+					inputSchema: z.object({})
 				}, script);
 
 				await expect(tool.execute({}, toolCallOptions)).to.be.rejectedWith('API Error');
@@ -358,14 +358,14 @@ describe('create.Tool', function () {
 		});
 
 		describe('Sub-Suite 2.3: Parameter & Signature Handling', () => {
-			it('should correctly pass Zod schema parameters to parent', async () => {
+			it('should correctly pass Zod schema inputSchema to parent', async () => {
 				const template = create.Template({
 					prompt: 'Hello {{ name }}, your age is {{ age }}'
 				});
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string().describe('The person\'s name'),
 						age: z.number().describe('The person\'s age')
 					})
@@ -382,7 +382,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						city: z.string().describe('The city name'),
 						country: z.string().describe('The country name')
 					})
@@ -399,7 +399,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string()
 					})
 				}, template);
@@ -425,7 +425,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A translation tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						text: z.string(),
 						language: z.string()
 					})
@@ -456,7 +456,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A data processing tool',
-					parameters: z.object({
+					inputSchema: z.object({
 						input: z.string()
 					})
 				}, script);
@@ -472,7 +472,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool that accesses _toolCallOptions',
-					parameters: z.object({
+					inputSchema: z.object({
 						testParam: z.string()
 					})
 				}, template);
@@ -496,7 +496,7 @@ describe('create.Tool', function () {
 
 				const tool = create.Tool({
 					description: 'A test tool that accesses _toolCallOptions in script',
-					parameters: z.object({
+					inputSchema: z.object({
 						testParam: z.string()
 					})
 				}, script);
@@ -517,7 +517,7 @@ describe('create.Tool', function () {
 				// Create a simple weather tool
 				const weatherTool = create.Tool({
 					description: 'Get the current weather for a city',
-					parameters: z.object({
+					inputSchema: z.object({
 						city: z.string().describe('The city to get weather for')
 					})
 				}, create.Template({
@@ -544,7 +544,7 @@ describe('create.Tool', function () {
 			it('should allow LLM to extract multiple arguments from natural language', async () => {
 				const createUserTool = create.Tool({
 					description: 'Create a new user profile',
-					parameters: z.object({
+					inputSchema: z.object({
 						name: z.string().describe('The user\'s full name'),
 						age: z.number().describe('The user\'s age'),
 						email: z.string().describe('The user\'s email address')
@@ -576,7 +576,7 @@ describe('create.Tool', function () {
 			it('should not call tool when prompt does not require it', async () => {
 				const weatherTool = create.Tool({
 					description: 'Get the current weather for a city',
-					parameters: z.object({
+					inputSchema: z.object({
 						city: z.string().describe('The city to get weather for')
 					})
 				}, create.Template({
@@ -601,7 +601,7 @@ describe('create.Tool', function () {
 			it('should work with ObjectGenerator that uses LLM for structured output', async () => {
 				const sentimentTool = create.Tool({
 					description: 'Analyze the sentiment of a text',
-					parameters: z.object({
+					inputSchema: z.object({
 						text: z.string().describe('The text to analyze')
 					})
 				}, create.ObjectGenerator({

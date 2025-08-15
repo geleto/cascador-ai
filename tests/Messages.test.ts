@@ -443,7 +443,7 @@ describe('Messages, Conversation & Integration', function () {
 			const toolParent = create.TextGenerator({ model, temperature });
 			const getWeatherTool = create.Tool({
 				description: 'Get the weather for a city',
-				parameters: z.object({ city: z.string() }),
+				inputSchema: z.object({ city: z.string() }),
 			}, toolParent);
 			const agent = create.TextGenerator({
 				model,

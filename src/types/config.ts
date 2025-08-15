@@ -84,15 +84,18 @@ export type ToolParameters = z.ZodTypeAny | Schema<any>;//@todo - specialize for
 export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
 	type?: 'function';
 	description?: string;
-	parameters: PARAMETERS;
+	inputSchema: PARAMETERS;
 }
 
 /**
  * The output of the `create.Tool` factory.
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  */
-export type FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> = ToolConfig<PARAMETERS> & {
+export interface FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> {
+	description?: string;
+	inputSchema: PARAMETERS;
 	execute: (args: InferParameters<PARAMETERS>, options: ToolCallOptions) => PromiseLike<RESULT>;
+	type: 'function';
 }
 
 // Utility types

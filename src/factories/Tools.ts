@@ -10,7 +10,7 @@ import { ScriptInstance } from './Script';
 import * as utils from '../types/utils';
 import { RequiredPromptType } from '../types/types';
 
-//@todo - a tool shall either have description or parameters with a description, maybe validate at runtime
+//@todo - a tool shall either have description or inputSchema with a description, maybe validate at runtime
 
 // Helper type to get the result from an ObjectGenerator parent.
 // The result of the tool's `execute` function is the `.object` property of the generator's full result.
@@ -71,8 +71,8 @@ export function Tool<
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if (!config.parameters) {
-		throw new ConfigError('Tool config requires parameters schema');
+	if (!config.inputSchema) {
+		throw new ConfigError('Tool config requires inputSchema schema');
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -176,7 +176,7 @@ export function Tool<
 
 	return {
 		description: config.description,
-		parameters: config.parameters,
+		inputSchema: config.inputSchema,
 		execute,
 		type: 'function' as const, // Explicitly return as a function tool
 	};

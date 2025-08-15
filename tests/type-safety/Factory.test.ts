@@ -26,7 +26,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// Define sample tools for city attraction lookup
 	const cityTools = {
 		cityAttractions: {
-			parameters: z.object({ city: z.string() }),
+			inputSchema: z.object({ city: z.string() }),
 			execute: async (city: string) => {
 				console.log(city);
 				await new Promise(resolve => setTimeout(resolve, 100));
@@ -701,7 +701,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const sentimentTool2 = create.Tool({
 		description: 'Analyze the sentiment of a given text',
-		parameters: z.object({
+		inputSchema: z.object({
 			text: z.string().describe('The text to analyze')
 		}),
 	}, textRenderer);
@@ -717,7 +717,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const weatherTool = create.Tool({
 		description: 'Get weather information for a city',
-		parameters: z.object({
+		inputSchema: z.object({
 			city: z.string().describe('The city to get weather for')
 		})
 	}, scriptRenderer);
@@ -732,7 +732,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	const summaryTool = create.Tool({
 		description: 'Create a summary of the given text',
-		parameters: z.object({
+		inputSchema: z.object({
 			content: z.string().describe('The text to summarize')
 		})
 	}, objectRenderer);
@@ -752,15 +752,15 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 
 	// SECTION 14: Error Cases for Tool Factory
 
-	// @ts-expect-error - Missing required parameters in tool configuration
+	// @ts-expect-error - Missing required inputSchema in tool configuration
 	const toolWithoutParameters = create.Tool({
 		description: 'Test tool'
-	}, textRenderer); // ✗ Missing parameters
+	}, textRenderer); // ✗ Missing inputSchema
 
 	// @ts-expect-error - Missing required parent renderer in tool configuration
 	const toolWithoutParent = create.Tool({
 		description: 'Test tool',
-		parameters: z.object({ text: z.string() })
+		inputSchema: z.object({ text: z.string() })
 	}); // ✗ Missing parent renderer
 
 	// SECTION 13: Tool Factory Tests (Expanded)
@@ -774,7 +774,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	const sentimentTool = create.Tool({
 		description: 'Analyzes the sentiment of a given text.',
-		parameters: z.object({ text: z.string().describe('The text to analyze') }),
+		inputSchema: z.object({ text: z.string().describe('The text to analyze') }),
 	}, textGenParent);
 
 	// Type-check execute function and result
@@ -790,7 +790,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	const userProfileTool = create.Tool({
 		description: 'Generates a user profile object based on text content.',
-		parameters: z.object({ content: z.string() }),
+		inputSchema: z.object({ content: z.string() }),
 	}, objectGenParent);
 	// Type-check execute function and result
 	const userProfileResult: z.infer<typeof schema> = await userProfileTool.execute({ content: 'Cats and dogs' }, { toolCallId: 'test', messages: [] });
@@ -810,7 +810,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	const locationTool = create.Tool({
 		description: 'Gets the current time for a specified location.',
-		parameters: z.object({ city: z.string() }),
+		inputSchema: z.object({ city: z.string() }),
 	}, scriptRunnerParent);
 	// Type-check execute function and result
 	const locationResult = await locationTool.execute({ city: 'New York' }, { toolCallId: 'test', messages: [] }) as { location: string, time: string };
@@ -825,7 +825,7 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 	const magicWordTool = create.Tool({
 		description: 'Generates a magic word for a user.',
-		parameters: z.object({
+		inputSchema: z.object({
 			user: z.string(),
 			word: z.string(),
 		}),
@@ -833,10 +833,10 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// Type-check execute function and result
 	const magicWordResult: string = await magicWordTool.execute({ user: 'Gandalf', word: 'mellon' }, { toolCallId: 'test', messages: [] });
 
-	// 1e. Tool with no parameters
+	// 1e. Tool with no inputSchema
 	const timestampTool = create.Tool({
 		description: 'Gets the current timestamp.',
-		parameters: z.object({}), // or z.any()
+		inputSchema: z.object({}), // or z.any()
 	}, create.Script({ script: '@data = new Date().toISOString()' }));
 	const timestampResult: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Correctly takes empty object
 	const timestampResult2: JSONValue = await timestampTool.execute({}, { toolCallId: 'test', messages: [] }); // ✓ Or no arguments at all
@@ -867,29 +867,29 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	}, parentModelConfig);
 	const translationTool = create.Tool({
 		description: 'Translates text to French.',
-		parameters: z.object({ text: z.string() }),
+		inputSchema: z.object({ text: z.string() }),
 	}, childTextGen); // ✓ This is valid as model is inherited
 
 	// SECTION 14: Advanced Tool and Error Cases
 
 	// Test 4: Invalid Tool configurations
-	// 4a. Missing parameters
-	// @ts-expect-error - Missing required parameters in tool configuration
+	// 4a. Missing inputSchema
+	// @ts-expect-error - Missing required inputSchema in tool configuration
 	const toolWithoutParameters = create.Tool({
-		description: 'A tool without parameters.',
+		description: 'A tool without inputSchema.',
 	}, textGenParent);
 
 	// 4b. Missing parent renderer
 	// @ts-expect-error - Missing required parent renderer in tool configuration
 	const toolWithoutParent = create.Tool({
 		description: 'A tool without a parent.',
-		parameters: z.object({ text: z.string() }),
+		inputSchema: z.object({ text: z.string() }),
 	});
 
 	// 4c. Parent is not a valid renderer instance (e.g., a raw Config)
 	const toolWithInvalidParent = create.Tool({
 		description: 'A tool with an invalid parent.',
-		parameters: z.object({ text: z.string() }),
+		inputSchema: z.object({ text: z.string() }),
 		// @ts-expect-error - Cannot use a Config object as parent, must be a renderer instance
 	}, parentModelConfig); // ✗ Cannot use a Config object, must be a renderer instance
 
@@ -897,14 +897,14 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	// @ts-expect-error - Unknown property in tool configuration
 	const toolWithExtraProps = create.Tool({
 		description: 'A tool with extra properties.',
-		parameters: z.object({ text: z.string() }),
+		inputSchema: z.object({ text: z.string() }),
 		extra: 'property'
 	}, textGenParent);
 
 	// 4e. Check result type mismatches
 	const anotherObjectTool = create.Tool({
 		description: 'Generates a user profile object based on text content.',
-		parameters: z.object({ content: z.string() }),
+		inputSchema: z.object({ content: z.string() }),
 	}, objectGenParent);
 	// @ts-expect-error - Result should be the schema object, not a string
 	const badResult: string = await anotherObjectTool.execute({ content: 'test' }, { toolCallId: 'test', messages: [] });
@@ -922,8 +922,8 @@ const openAIModel: LanguageModel = {} as LanguageModel; // Mocking for type safe
 	});
 
 	const complexTool = create.Tool({
-		description: 'A tool with complex parameters.',
-		parameters: complexSchema,
+		description: 'A tool with complex inputSchema.',
+		inputSchema: complexSchema,
 	}, textGenParent);
 
 	// This call is valid, and the type of `args` inside the tool's execute function

@@ -621,14 +621,14 @@ You can define the tool's logic in two ways:
     ```typescript
     const getTimeTool = create.Tool({
         description: 'Gets the current time for a specific timezone.',
-        parameters: z.object({ timezone: z.string() }),
+        inputSchema: z.object({ timezone: z.string() }),
         execute: async ({ timezone }) => ({
           time: new Date().toLocaleTimeString('en-US', { timeZone: timezone })
         })
     });
     ```
 
-2.  **Wrapping a Renderer**: For complex, multi-step logic that might involve LLM calls or data orchestration, you can wrap any other Cascador-AI renderer. The tool's `parameters` are passed as `context` to the wrapped renderer.
+2.  **Wrapping a Renderer**: For complex, multi-step logic that might involve LLM calls or data orchestration, you can wrap any other Cascador-AI renderer. The tool's `inputSchema` are passed as `context` to the wrapped renderer.
 
     ```typescript
     // Define a renderer to perform a specific task
@@ -639,7 +639,7 @@ You can define the tool's logic in two ways:
     // Wrap it in a Tool
     const summarizeTool = create.Tool({
       description: 'Summarizes a given piece of text into a single sentence.',
-      parameters: z.object({ text: z.string() }),
+      inputSchema: z.object({ text: z.string() }),
     }, summarizer); // The summarizer renderer is now the tool's implementation
     ```
 
@@ -661,7 +661,7 @@ The `_toolCallOptions` object contains:
 - **`messages`**: `ModelMessage[]` - The message history sent to the LLM that triggered this tool call. Does not include the system prompt or the assistant's response.
 - **`abortSignal`**: `AbortSignal` (optional) - A signal to gracefully cancel the operation if the overall request is aborted.
 
-**Example:**
+#### Example
 You can use this context within your tool's template or script to add logging or change its behavior.
 
 ```typescript
@@ -675,7 +675,7 @@ const loggingSummarizer = create.TextGenerator.withTemplate({
 
 const smarterTool = create.Tool({
   description: 'Summarizes text and logs the call ID.',
-  parameters: z.object({ text: z.string() }),
+  inputSchema: z.object({ text: z.string() }),
 }, loggingSummarizer);
 
 // To use the tool, provide it to an LLM renderer:
@@ -832,7 +832,7 @@ import { z } from 'zod';
 
 // Define a tool using the create.Tool factory
 const getWeatherTool = create.Tool({
-  parameters: z.object({ city: z.string() }),
+  inputSchema: z.object({ city: z.string() }),
   execute: async ({ city }) => ({ temperature: Math.floor(Math.random() * 30) })
 });
 

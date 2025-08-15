@@ -27,11 +27,11 @@ export type StrictType<T, Shape> = T extends Shape
 // Helper to get keys as a string array for the error message
 export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F & string, ...KeysToStringArray<R>] : [];
 
-// Helper to infer parameters from the schema
+// Helper to infer inputSchema from the schema
 export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 	? z.infer<T>
-	: T extends { parameters: z.ZodTypeAny }
-	? z.infer<T['parameters']>
+	: T extends { inputSchema: z.ZodTypeAny }
+	? z.infer<T['inputSchema']>
 	: any;
 
 export type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
