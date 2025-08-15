@@ -614,31 +614,83 @@ You can also specify `schemaName` and `schemaDescription` for additional guidanc
 ### Tool
 **What it does**: Wraps another renderer or a standard JavaScript function into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
 
+You can define the tool's logic in two ways:
+
+1.  **Using an `execute` Function**: For direct, straightforward logic, provide a standard JavaScript function. This is ideal for simple API calls or data transformations.
+
+    ```typescript
+    const getTimeTool = create.Tool({
+        description: 'Gets the current time for a specific timezone.',
+        parameters: z.object({ timezone: z.string() }),
+        execute: async ({ timezone }) => ({
+          time: new Date().toLocaleTimeString('en-US', { timeZone: timezone })
+        })
+    });
+    ```
+
+2.  **Wrapping a Renderer**: For complex, multi-step logic that might involve LLM calls or data orchestration, you can wrap any other Cascador-AI renderer. The tool's `parameters` are passed as `context` to the wrapped renderer.
+
+    ```typescript
+    // Define a renderer to perform a specific task
+    const summarizer = create.TextGenerator.withTemplate({
+      model: openai('gpt-4o-mini'),
+      prompt: 'Provide a concise, one-sentence summary of: {{ text }}',
+    });
+    // Wrap it in a Tool
+    const summarizeTool = create.Tool({
+      description: 'Summarizes a given piece of text into a single sentence.',
+      parameters: z.object({ text: z.string() }),
+    }, summarizer); // The summarizer renderer is now the tool's implementation
+    ```
+
+#### Providing the Tool to an LLM Renderer
+Once you have created a tool, you make it available to a language model by passing it to a `TextGenerator` or `TextStreamer` within the `tools` property. This property accepts an object where each key is the name you want the model to use for the tool, and the value is the tool object itself. This enables the model to reason about when to use the tool based on the user's prompt.
+
 ```typescript
-// 1. Define a renderer to perform a specific task
-const summarizer = create.TextGenerator.withTemplate({
+const agent = create.TextGenerator({
+  tools: { summarize: summarizeTool, getTime: getTimeTool },
+  ...
+});
+```
+
+#### Accessing Tool Call Context
+When you wrap a renderer that uses a template or script, Cascador-AI automatically injects a `_toolCallOptions` object into the renderer's `context`. This gives your tool's internal logic access to important metadata about the call.
+
+The `_toolCallOptions` object contains:
+- **`toolCallId`**: `string` - The unique ID for this specific tool call. Useful for logging or streaming updates.
+- **`messages`**: `ModelMessage[]` - The message history sent to the LLM that triggered this tool call. Does not include the system prompt or the assistant's response.
+- **`abortSignal`**: `AbortSignal` (optional) - A signal to gracefully cancel the operation if the overall request is aborted.
+
+**Example:**
+You can use this context within your tool's template or script to add logging or change its behavior.
+
+```typescript
+const loggingSummarizer = create.TextGenerator.withTemplate({
   model: openai('gpt-4o-mini'),
-  prompt: 'Provide a concise, one-sentence summary of: {{ text }}',
+  prompt: `
+    SYSTEM LOG: Starting summarization for tool call ID {{ _toolCallOptions.toolCallId }}.
+    TASK: Provide a concise, one-sentence summary of: {{ text }}
+  `,
 });
 
-// 2. Wrap it in a Tool to create a Vercel AI SDK-compatible tool object, callable by an LLM
-const summarizeTool = create.Tool({
-  description: 'Summarizes a given piece of text into a single sentence.',
+const smarterTool = create.Tool({
+  description: 'Summarizes text and logs the call ID.',
   parameters: z.object({ text: z.string() }),
-}, summarizer); // The summarizer renderer is now the tool's implementation
+}, loggingSummarizer);
 
-// 3. Provide the tool to an LLM
-const summarizeAgent = create.TextGenerator({
+// To use the tool, provide it to an LLM renderer:
+const agent = create.TextGenerator({
   model: openai('gpt-4o'),
-  tools: { summarize: summarizeTool },
+  tools: { summarize: smarterTool },
   prompt: "Please summarize this for me: 'Cascador-AI is an AI orchestration library...'",
 });
 
 // The LLM will decide to call the tool to fulfill the request
-const chatResult = await summarizeAgent();
-console.log('Model-Driven Result:', chatResult.toolCalls);
+(async () => {
+    const chatResult = await agent();
+    console.log('Model-Driven Result:', chatResult.toolCalls);
+})();
 ```
-
 **Use it for**: Creating modular, reusable, and type-safe functions that empower an autonomous agent to decide which actions to take.
 
 ## Template and Script Properties
@@ -1006,7 +1058,7 @@ These are the fundamental JS/TS functions you provide to *both* scripts and temp
 -   **You want to expose utilities:** Provide helper functions (e.g., `formatDate`, `calculateTotal`) to your scripts and templates.
 
 ### `Tools`: For Developer-Defined Functionality
-`create.Tools` provides a clean, type-safe way to expose custom functionality to your AI workflows.
+`create.Tool` provides a clean, type-safe way to expose custom functionality to your AI workflows.
 
 **Use When:**
 -   **The workflow is unpredictable**: You can't know ahead of time what the user will ask. The LLM must infer intent and select the appropriate tool (e.g., `getWeather` vs. `sendEmail`).
@@ -1053,8 +1105,6 @@ const documentFinder = create.Script({
         similarity: compareSimilarity(queryEmbedding, docEmbedding)
       })
     endfor
-    // Note: Reading from @data is not yet supported.
-    // Sorting must be done in the calling JavaScript/TypeScript code.
   `
 });
 
