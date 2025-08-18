@@ -91,7 +91,7 @@ type ValidateTextParentConfig<
 		: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof (configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & MoreConfig)> & string}'`
 	) : TParentConfig; // Shape is invalid.
 
-export function withText<
+function withText<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT>,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -99,7 +99,7 @@ export function withText<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text'>;
 
-export function withText<
+function withText<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT>>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT>>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -109,11 +109,11 @@ export function withText<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text'>;
 
-export function withText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function withText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'text', parent);
 }
 
-export function loadsText<
+function loadsText<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.LoaderConfig,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -121,7 +121,7 @@ export function loadsText<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.LoaderConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'text-name'>;
 
-export function loadsText<
+function loadsText<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.LoaderConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.LoaderConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -131,11 +131,11 @@ export function loadsText<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'text-name'>;
 
-export function loadsText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function loadsText(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'text-name', parent);
 }
 
-export function withTemplate<
+function withTemplate<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -143,7 +143,7 @@ export function withTemplate<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template'>;
 
-export function withTemplate<
+function withTemplate<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.CascadaConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -153,11 +153,11 @@ export function withTemplate<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template'>;
 
-export function withTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function withTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-template', parent);
 }
 
-export function loadsTemplate<
+function loadsTemplate<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -165,7 +165,7 @@ export function loadsTemplate<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template-name'>;
 
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -175,11 +175,11 @@ export function loadsTemplate<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template-name'>;
 
-export function loadsTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function loadsTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-template-name', parent);
 }
 
-export function withScript<
+function withScript<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -187,7 +187,7 @@ export function withScript<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script'>;
 
-export function withScript<
+function withScript<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.CascadaConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -197,11 +197,11 @@ export function withScript<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script'>;
 
-export function withScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function withScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-script', parent);
 }
 
-export function loadsScript<
+function loadsScript<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig,
 	TOOLS extends ToolSet = ToolSet,
 	OUTPUT = never
@@ -209,7 +209,7 @@ export function loadsScript<
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig & configs.LoaderConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-script-name'>;
 
-export function loadsScript<
+function loadsScript<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -219,7 +219,7 @@ export function loadsScript<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig & configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-script-name'>;
 
-export function loadsScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function loadsScript(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-script-name', parent);
 }
 

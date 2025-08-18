@@ -29,7 +29,7 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	};
 
 // Internal common creator
-export function _createScript(
+function _createScript(
 	config: configs.ScriptConfig<any>,
 	scriptType: Exclude<ScriptPromptType, undefined>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
@@ -91,14 +91,14 @@ export function _createScript(
 }
 
 // Default behavior: inline/embedded script
-export function baseScript<
+function baseScript<
 	const TConfig extends configs.ScriptConfig<OBJECT>,
 	OBJECT = any
 >(
 	config: utils.StrictType<TConfig, configs.ScriptConfig<OBJECT>>
 ): ScriptCallSignature<TConfig>;
 
-export function baseScript<
+function baseScript<
 	TConfig extends configs.ScriptConfig<OBJECT>,
 	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT>,
 	OBJECT = any,
@@ -108,7 +108,7 @@ export function baseScript<
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_OBJECT>>>
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function baseScript(
+function baseScript(
 	config: configs.ScriptConfig<any>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
 ): any {
@@ -116,14 +116,14 @@ export function baseScript(
 }
 
 // loadsScript: load by name via provided loader
-export function loadsScript<
+function loadsScript<
 	const TConfig extends configs.ScriptConfig<OBJECT> & configs.LoaderConfig,
 	OBJECT = any
 >(
 	config: TConfig
 ): ScriptCallSignature<TConfig>;
 
-export function loadsScript<
+function loadsScript<
 	TConfig extends configs.ScriptConfig<OBJECT> & configs.LoaderConfig,
 	TParentConfig extends configs.ScriptConfig<PARENT_OBJECT> & configs.LoaderConfig,
 	OBJECT = any,
@@ -133,7 +133,7 @@ export function loadsScript<
 	parent: ConfigProvider<TParentConfig>
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function loadsScript(
+function loadsScript(
 	config: configs.ScriptConfig<any> & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
 ): any {

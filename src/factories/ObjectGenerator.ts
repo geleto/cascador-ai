@@ -185,7 +185,7 @@ type ValidateObjectGeneratorParentConfig<
 	{ output?: ConfigOutput; }, //
 	MoreConfig>
 
-export function withText<
+function withText<
 	TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM>,
 	OBJECT = any,
 	ELEMENT = any,
@@ -196,7 +196,7 @@ export function withText<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'text'>;
 
 // Overload 2: With parent parameter
-export function withText<
+function withText<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>>,
 	OBJECT = any,
@@ -216,7 +216,7 @@ export function withText<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM, 'text'>;
 
 // Implementation signature that handles both cases
-export function withText<
+function withText<
 	TConfig extends GenerateObjectConfig<any, any, string>,
 	TParentConfig extends GenerateObjectConfig<any, any, string>,
 >(
@@ -226,7 +226,7 @@ export function withText<
 	return _createObjectGenerator(config, 'text', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string, 'text'>;
 }
 
-export function loadsText<
+function loadsText<
 	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -238,7 +238,7 @@ export function loadsText<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'text'>;
 
 // Overload 2: With parent parameter
-export function loadsText<
+function loadsText<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.LoaderConfig,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.LoaderConfig,
 	OBJECT = any,
@@ -259,7 +259,7 @@ export function loadsText<
 
 
 // Implementation signature that handles both cases
-export function loadsText<
+function loadsText<
 	TConfig extends GenerateObjectConfig<any, any, string> & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.LoaderConfig,
 >(
@@ -269,7 +269,7 @@ export function loadsText<
 	return _createObjectGenerator(config, 'text-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string, 'text'>;
 }
 
-export function withTemplate<
+function withTemplate<
 	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -281,7 +281,7 @@ export function withTemplate<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'async-template'>;
 
 // Overload 2: With parent parameter
-export function withTemplate<
+function withTemplate<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
 	OBJECT = any,
@@ -303,7 +303,7 @@ export function withTemplate<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM, 'async-template'>;
 
 // Implementation signature that handles both cases
-export function withTemplate<
+function withTemplate<
 	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
 	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
 >(
@@ -313,7 +313,7 @@ export function withTemplate<
 	return _createObjectGenerator(config, 'async-template', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string, 'async-template'>;
 }
 
-export function loadsTemplate<
+function loadsTemplate<
 	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -325,7 +325,7 @@ export function loadsTemplate<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'async-template'>;
 
 // Overload 2: With parent parameter
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
@@ -347,7 +347,7 @@ export function loadsTemplate<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM, 'async-template'>;
 
 // Implementation signature that handles both cases
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig
 >(
@@ -357,7 +357,7 @@ export function loadsTemplate<
 	return _createObjectGenerator(config, 'async-template-name', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string, 'async-template'>;
 }
 
-export function withScript<
+function withScript<
 	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -369,7 +369,7 @@ export function withScript<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'async-script'>;
 
 // Overload 2: With parent parameter
-export function withScript<
+function withScript<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM>> & configs.CascadaConfig,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM>> & configs.CascadaConfig,
 	OBJECT = any,
@@ -391,7 +391,7 @@ export function withScript<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM, 'async-script'>;
 
 // Implementation signature that handles both cases
-export function withScript<
+function withScript<
 	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig,
 	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig
 >(
@@ -401,7 +401,7 @@ export function withScript<
 	return _createObjectGenerator(config, 'async-script', parent) as unknown as GenerateObjectWithParentReturn<TConfig, TParentConfig, any, any, string, any, any, string, 'async-script'>;
 }
 
-export function loadsScript<
+function loadsScript<
 	const TConfig extends GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -413,7 +413,7 @@ export function loadsScript<
 ): GenerateObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, ENUM, 'async-script'>;
 
 // Overload 2: With parent parameter
-export function loadsScript<
+function loadsScript<
 	TConfig extends Partial<GenerateObjectConfig<OBJECT, ELEMENT, ENUM> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM & configs.CascadaConfig & configs.LoaderConfig>>,
 	OBJECT = any,
@@ -435,7 +435,7 @@ export function loadsScript<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, ENUM, PARENT_OBJECT, PARENT_ELEMENT, PARENT_ENUM, 'async-script'>;
 
 // Implementation signature that handles both cases
-export function loadsScript<
+function loadsScript<
 	TConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<any, any, string> & configs.CascadaConfig & configs.LoaderConfig
 >(

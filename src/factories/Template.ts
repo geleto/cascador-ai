@@ -25,7 +25,7 @@ export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePrompt
 	};
 
 // Internal common creator for template renderer
-export function _createTemplate(
+function _createTemplate(
 	config: configs.TemplatePromptConfig,
 	promptType: Exclude<TemplatePromptType, undefined>,
 	parent?: ConfigProvider<configs.TemplatePromptConfig>
@@ -90,13 +90,13 @@ export function _createTemplate(
 }
 
 // Default behavior: inline/embedded template
-export function baseTemplate<
+function baseTemplate<
 	const TConfig extends configs.TemplatePromptConfig
 >(
 	config: utils.StrictType<TConfig, configs.TemplatePromptConfig>
 ): TemplateCallSignature<TConfig>;
 
-export function baseTemplate<
+function baseTemplate<
 	TConfig extends configs.TemplatePromptConfig,
 	TParentConfig extends configs.TemplatePromptConfig
 >(
@@ -104,7 +104,7 @@ export function baseTemplate<
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplatePromptConfig>>
 ): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function baseTemplate(
+function baseTemplate(
 	config: configs.TemplatePromptConfig,
 	parent?: ConfigProvider<configs.TemplatePromptConfig>
 ): any {
@@ -112,13 +112,13 @@ export function baseTemplate(
 }
 
 // loadsTemplate: load by name via provided loader
-export function loadsTemplate<
+function loadsTemplate<
 	const TConfig extends configs.TemplatePromptConfig & configs.LoaderConfig
 >(
 	config: TConfig
 ): TemplateCallSignature<TConfig>;
 
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends configs.TemplatePromptConfig & configs.LoaderConfig,
 	TParentConfig extends configs.TemplatePromptConfig & configs.LoaderConfig
 >(
@@ -126,7 +126,7 @@ export function loadsTemplate<
 	parent: ConfigProvider<TParentConfig>
 ): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
 
-export function loadsTemplate(
+function loadsTemplate(
 	config: configs.TemplatePromptConfig & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.TemplatePromptConfig & configs.LoaderConfig>
 ): any {

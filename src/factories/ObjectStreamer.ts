@@ -103,7 +103,7 @@ type ValidateObjectStreamerParentConfig<
 	{ output?: ConfigOutput; }, //
 	MoreConfig>
 
-export function withText<
+function withText<
 	TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
 	OBJECT = any,
 	ELEMENT = any,
@@ -114,7 +114,7 @@ export function withText<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'text'>;
 
 // Overload 2: With parent parameter
-export function withText<
+function withText<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>>,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>>,
 	OBJECT = any,
@@ -133,7 +133,7 @@ export function withText<
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'text'>;
 
 // Implementation signature that handles both cases
-export function withText<
+function withText<
 	TConfig extends StreamObjectConfig<any, any>,
 	TParentConfig extends StreamObjectConfig<any, any>,
 >(
@@ -143,7 +143,7 @@ export function withText<
 	return _createObjectStreamer(config, 'text', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text'>;
 }
 
-export function loadsText<
+function loadsText<
 	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -154,7 +154,7 @@ export function loadsText<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'text-name'>;
 
 // Overload 2: With parent parameter
-export function loadsText<
+function loadsText<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.LoaderConfig,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.LoaderConfig,
 	OBJECT = any,
@@ -173,7 +173,7 @@ export function loadsText<
 
 
 // Implementation signature that handles both cases
-export function loadsText<
+function loadsText<
 	TConfig extends StreamObjectConfig<any, any> & configs.LoaderConfig,
 	TParentConfig extends StreamObjectConfig<any, any> & configs.LoaderConfig,
 >(
@@ -183,7 +183,7 @@ export function loadsText<
 	return _createObjectStreamer(config, 'text-name', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text-name'>;
 }
 
-export function withTemplate<
+function withTemplate<
 	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -194,7 +194,7 @@ export function withTemplate<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-template'>;
 
 // Overload 2: With parent parameter
-export function withTemplate<
+function withTemplate<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
 	OBJECT = any,
@@ -214,7 +214,7 @@ export function withTemplate<
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'async-template'>;
 
 // Implementation signature that handles both cases
-export function withTemplate<
+function withTemplate<
 	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
 	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
 >(
@@ -224,7 +224,7 @@ export function withTemplate<
 	return _createObjectStreamer(config, 'async-template', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template'>;
 }
 
-export function loadsTemplate<
+function loadsTemplate<
 	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -235,7 +235,7 @@ export function loadsTemplate<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-template-name'>;
 
 // Overload 2: With parent parameter
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
@@ -255,7 +255,7 @@ export function loadsTemplate<
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'async-template-name'>;
 
 // Implementation signature that handles both cases
-export function loadsTemplate<
+function loadsTemplate<
 	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig
 >(
@@ -265,7 +265,7 @@ export function loadsTemplate<
 	return _createObjectStreamer(config, 'async-template-name', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template-name'>;
 }
 
-export function withScript<
+function withScript<
 	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -276,7 +276,7 @@ export function withScript<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-script'>;
 
 // Overload 2: With parent parameter
-export function withScript<
+function withScript<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>> & configs.CascadaConfig,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>> & configs.CascadaConfig,
 	OBJECT = any,
@@ -296,7 +296,7 @@ export function withScript<
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'async-script'>;
 
 // Implementation signature that handles both cases
-export function withScript<
+function withScript<
 	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig,
 	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig
 >(
@@ -306,7 +306,7 @@ export function withScript<
 	return _createObjectStreamer(config, 'async-script', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script'>;
 }
 
-export function loadsScript<
+function loadsScript<
 	const TConfig extends StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig,
 	OBJECT = any,
 	ELEMENT = any,
@@ -317,7 +317,7 @@ export function loadsScript<
 ): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-script-name'>;
 
 // Overload 2: With parent parameter
-export function loadsScript<
+function loadsScript<
 	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & configs.CascadaConfig & configs.LoaderConfig>,
 	OBJECT = any,
@@ -337,7 +337,7 @@ export function loadsScript<
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'async-script-name'>;
 
 // Implementation signature that handles both cases
-export function loadsScript<
+function loadsScript<
 	TConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends StreamObjectConfig<any, any> & configs.CascadaConfig & configs.LoaderConfig
 >(
