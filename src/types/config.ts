@@ -23,14 +23,22 @@ import { InferParameters } from './utils';
 // Then I add the specific properties for each function/overload - which are not many
 // This is much less likely to break in future Vercel versions than copy/pasting the whole type definitions
 
-interface BaseConfig {
+export interface BaseConfig<
+	//@todo - remove the generic parameters default values
+	OBJECT = JSONValue, //output type
+	PARAMETERS extends Record<string, any> = Record<string, any> //input type
+> {
 	debug?: boolean;
+	description?: string;//useful for future OpenTelemetry, error logging, etc.
+	inputSchema?: SchemaType<PARAMETERS>;//@todo - specialize for PARAMETERS
+	schema?: SchemaType<OBJECT>;//@todo - specialize for OBJECT
+	//todo - get rid of ELEMENT
 }
 
 export type CascadaFilter = Record<string, (input: any, ...args: any[]) => any>;
 
 // Shared for scripts and templates
-export interface CascadaConfig extends BaseConfig {
+export interface CascadaConfig<OBJECT = JSONValue> extends BaseConfig<OBJECT> {
 	context?: Record<string, any>;
 	filters?: CascadaFilter;
 	options?: ConfigureOptions;
@@ -63,35 +71,34 @@ export type OptionalPromptConfig<PROMPT = string> = OptionalTemplatePromptConfig
 export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
 // For use in Script (where the script property is used instead of prompt)
-export interface ScriptConfig<OBJECT> extends CascadaConfig {
+export interface ScriptConfig<OBJECT> extends CascadaConfig<OBJECT> {
 	script?: string;
 	promptType?: ScriptPromptType;
 	schema?: SchemaType<OBJECT>;
 };
 
-export interface TemplateConfig<OBJECT> extends CascadaConfig {
+export interface TemplateConfig<OBJECT> extends CascadaConfig<OBJECT> {
 	prompt?: string;//@todo - rename to template
 	promptType?: ScriptPromptType;
 	schema?: SchemaType<OBJECT>;
 }
 
-export type ToolParameters = z.ZodTypeAny | Schema<any>;//@todo - specialize for OBJECT
-
 /**
  * The configuration object passed to the `create.Tool` factory.
  * It is the vercel function tool without the execute function.
  */
-export type ToolConfig<PARAMETERS extends ToolParameters = any> = BaseConfig & {
+export type ToolConfig<PARAMETERS extends SchemaType<any>, RESULT> = BaseConfig & {
 	type?: 'function';
 	description?: string;
 	inputSchema: PARAMETERS;
+	execute?: (args: InferParameters<PARAMETERS>, options: ToolCallOptions) => PromiseLike<RESULT>;
 }
 
 /**
  * The output of the `create.Tool` factory.
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  */
-export interface FunctionTool<PARAMETERS extends ToolParameters = any, RESULT = any> {
+export interface FunctionTool<PARAMETERS extends SchemaType<any>, RESULT> {
 	description?: string;
 	inputSchema: PARAMETERS;
 	execute: (args: InferParameters<PARAMETERS>, options: ToolCallOptions) => PromiseLike<RESULT>;
