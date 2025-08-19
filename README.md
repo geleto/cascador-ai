@@ -198,8 +198,8 @@ These modifiers create a renderer designed to load its prompt or script from an 
 
 Here's a quick overview of the primary renderers you'll use:
 *   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects.
-*   [**`create.Script`**](#scriptrunner): **For data-layer orchestration.** Executes a Cascada script.
-*   [**`create.Template`**](#templaterenderer): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
+*   [**`create.Script`**](#script): **For data-layer orchestration.** Executes a Cascada script.
+*   [**`create.Template`**](#template): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
 *   [**`create.TextGenerator` / `create.TextStreamer`**](#textgenerator): **For LLM-based text generation.** Generates or streams unstructured text.
 *   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects.
 *   [**`create.Tool`**](#tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool.
