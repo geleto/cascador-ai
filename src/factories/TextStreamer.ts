@@ -66,7 +66,7 @@ type ValidateTextConfig<
 		) : (
 			// Parent Shape is invalid - let TypeScript produce its standard error.
 			// @todo - check for excess properties in TConfig
-			TParentConfig
+			TConfig
 		)
 	) : TConfig; // Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
 
