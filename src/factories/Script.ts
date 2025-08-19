@@ -29,7 +29,7 @@ export type ScriptCallSignature<TConfig extends configs.ScriptConfig<any>> =
 	};
 
 // Internal common creator
-function _createScript(
+export function _createScript(
 	config: configs.ScriptConfig<any>,
 	scriptType: Exclude<ScriptPromptType, undefined>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
