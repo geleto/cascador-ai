@@ -32,28 +32,27 @@ export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL =
 //these are returned in a Promise
 export type GenerateObjectResultAll<
 	OUTPUT extends JSONValue = never,
-	ELEMENT extends JSONValue = never,
 	ENUM extends string = string
 > =
 	| GenerateObjectObjectResult<OUTPUT>
-	| GenerateObjectArrayResult<ELEMENT>
+	| GenerateObjectArrayResult<OUTPUT>
 	| GenerateObjectEnumResult<ENUM>
 	| GenerateObjectNoSchemaResult;
 
-export type GenerateObjectObjectResult<OBJECT> = GenerateObjectResult<OBJECT>;
-export type GenerateObjectArrayResult<ELEMENT> = GenerateObjectResult<ELEMENT[]>;
+export type GenerateObjectObjectResult<OUTPUT> = GenerateObjectResult<OUTPUT>;
+export type GenerateObjectArrayResult<OUTPUT> = GenerateObjectResult<OUTPUT[]>;
 export type GenerateObjectEnumResult<ENUM extends string> = GenerateObjectResult<ENUM>;
 export type GenerateObjectNoSchemaResult = GenerateObjectResult<JSONValue>;
 
-export type StreamObjectResultAll<OBJECT, ELEMENT> =
-	| StreamObjectObjectResult<OBJECT>
-	| StreamObjectArrayResult<ELEMENT>
+export type StreamObjectResultAll<OUTPUT> =
+	| StreamObjectObjectResult<OUTPUT>
+	| StreamObjectArrayResult<OUTPUT>
 	| StreamObjectNoSchemaResult;
 
 //These are returned as is without a promise, many of the properties are promises,
 //this allows accessing individual fields as they arrive, rather than waiting for the entire object to complete.
-export type StreamObjectObjectResult<OBJECT> = StreamObjectResult<DeepPartial<OBJECT>, OBJECT, never>;
-export type StreamObjectArrayResult<ELEMENT> = StreamObjectResult<ELEMENT[], ELEMENT[], AsyncIterableStream<ELEMENT>>;
+export type StreamObjectObjectResult<OUTPUT> = StreamObjectResult<DeepPartial<OUTPUT>, OUTPUT, never>;
+export type StreamObjectArrayResult<OUTPUT> = StreamObjectResult<OUTPUT[], OUTPUT[], AsyncIterableStream<OUTPUT>>;
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;

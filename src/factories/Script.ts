@@ -13,6 +13,7 @@ export type ScriptInstance<
 	OUTPUT extends JSONValue = never
 > = ScriptCallSignature<TConfig, INPUT, OUTPUT>;
 
+//@todo - move to result
 type ScriptResultPromise<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any> = never,
@@ -73,7 +74,7 @@ export function _createScript(
 		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');
 	}
 
-	const runner = new ScriptEngine<typeof merged, any>(merged);
+	const runner = new ScriptEngine(merged as configs.ScriptConfig);
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {

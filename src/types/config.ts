@@ -29,81 +29,72 @@ export interface BaseConfig<
 > {
 	debug?: boolean;
 	description?: string;//useful for future OpenTelemetry, error logging, etc.
-	inputSchema?: SchemaType<INPUT>;//@todo - specialize for PARAMETERS
-	schema?: SchemaType<OUTPUT>;//@todo - specialize for OBJECT
-	//todo - get rid of ELEMENT
+	inputSchema?: SchemaType<INPUT>;
+	schema?: SchemaType<OUTPUT>;
 }
 
 export type CascadaFilter = Record<string, (input: any, ...args: any[]) => any>;
 
 // Shared for scripts and templates
-export interface CascadaConfig<INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never> extends BaseConfig<INPUT, OUTPUT> {
+export interface CascadaConfig {
 	context?: Record<string, any>;
 	filters?: CascadaFilter;
 	options?: ConfigureOptions;
 	loader?: ILoaderAny | ILoaderAny[] | null;
 }
 
-export interface LoaderConfig extends BaseConfig {
+export interface LoaderConfig {
 	loader: ILoaderAny | ILoaderAny[];
 }
+
+/*export interface LoaderConfig<
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+> extends BaseConfig<INPUT, OUTPUT> {
+	loader: ILoaderAny | ILoaderAny[];
+}*/
 
 // Config for the template engine with type safety for loader requirement
 export interface TemplatePromptConfig<
 	PROMPT = string,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-> extends CascadaConfig<INPUT, OUTPUT> {
+> extends CascadaConfig {
 	prompt?: PROMPT;
 	messages?: ModelMessage[];
 	promptType?: TemplatePromptType;
 }
 
 export type OptionalTemplatePromptConfig<
-	PROMPT = string,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-> = TemplatePromptConfig<PROMPT, INPUT, OUTPUT> | { promptType: 'text'/*, prompt?: string */ };
+	PROMPT = string
+> = TemplatePromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
 
 export interface ScriptPromptConfig<
-	PROMPT = string,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
-> extends ScriptConfig<INPUT, OUTPUT> {
+	PROMPT = string
+> extends ScriptConfig {
 	prompt?: PROMPT;
 	messages?: ModelMessage[];
 	promptType?: ScriptPromptType;
 }
 
 export type OptionalScriptPromptConfig<
-	PROMPT = string,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
-> = ScriptPromptConfig<PROMPT, INPUT, OUTPUT> | { promptType: 'text'/*, prompt?: string */ };
+	PROMPT = string
+> = ScriptPromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
 
 //@todo OptionalGeneratedPromptConfig
 export type OptionalPromptConfig<
-	PROMPT = string,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
-> = OptionalTemplatePromptConfig<PROMPT, INPUT, OUTPUT> | OptionalScriptPromptConfig<PROMPT, INPUT, OUTPUT>;
+	PROMPT = string //In some cases prompt can be ModelMessage[]
+> = OptionalTemplatePromptConfig<PROMPT> | OptionalScriptPromptConfig<PROMPT>;
 
-export type PromptConfig<PROMPT = string, INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT, INPUT, OUTPUT>;
+export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
 // For use in Script (where the script property is used instead of prompt)
-export interface ScriptConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
-> extends CascadaConfig<INPUT, OUTPUT> {
+export interface ScriptConfig extends CascadaConfig {
 	script?: string;
 	promptType?: ScriptPromptType;
-	//schema?: SchemaType<OUTPUT>;
 };
 
-export interface TemplateConfig<INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never> extends CascadaConfig<INPUT, OUTPUT> {
+export interface TemplateConfig extends CascadaConfig {
 	prompt?: string;//@todo - rename to template
 	promptType?: ScriptPromptType;
-	schema?: SchemaType<OUTPUT>;
 }
 
 /**
@@ -176,12 +167,11 @@ export type GenerateObjectObjectConfig<
 
 export type GenerateObjectArrayConfig<
 	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never, //ELEMENT[]
-	ELEMENT extends JSONValue = never,
+	OUTPUT extends JSONValue = never,
 	PROMPT = string
 > = GenerateObjectBaseConfig<INPUT, OUTPUT, PROMPT> & {
 	output: 'array';
-	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+	schema: z.Schema<OUTPUT, z.ZodTypeDef, any> | Schema<OUTPUT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -217,13 +207,12 @@ export type StreamObjectBaseConfig<
 	& { prompt?: PROMPT; onFinish?: StreamObjectOnFinishCallback<OUTPUT>; };
 
 export type StreamObjectObjectConfig<
-	OBJECT,
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never,
 	PROMPT = string
 > = StreamObjectBaseConfig<INPUT, OUTPUT, PROMPT> & {
 	output?: 'object' | undefined;
-	schema: z.Schema<OBJECT, z.ZodTypeDef, any> | Schema<OBJECT>;
+	schema: SchemaType<OUTPUT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -232,11 +221,10 @@ export type StreamObjectObjectConfig<
 export type StreamObjectArrayConfig<
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never,
-	ELEMENT extends JSONValue = never,
 	PROMPT = string
 > = StreamObjectBaseConfig<INPUT, OUTPUT, PROMPT> & {
 	output: 'array';
-	schema: z.Schema<ELEMENT, z.ZodTypeDef, any> | Schema<ELEMENT>;
+	schema: SchemaType<OUTPUT>;
 	schemaName?: string;
 	schemaDescription?: string;
 	mode?: 'auto' | 'json' | 'tool';
@@ -255,27 +243,25 @@ export type AnyNoTemplateConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never,
-	ELEMENT extends JSONValue = never,
 	ENUM extends string = never,
 	PROMPT = string
 > =
 	| GenerateTextConfig<TOOLS, INPUT, OUTPUT, PROMPT>
 	| StreamTextConfig<TOOLS, INPUT, OUTPUT, PROMPT>
 	| GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT>
-	| GenerateObjectArrayConfig<INPUT, OUTPUT, ELEMENT, PROMPT>
+	| GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT>
 	| GenerateObjectEnumConfig<INPUT, OUTPUT, ENUM, PROMPT>
 	| GenerateObjectNoSchemaConfig<INPUT, OUTPUT, PROMPT>
-	| StreamObjectObjectConfig<OUTPUT, INPUT, OUTPUT, PROMPT>
-	| StreamObjectArrayConfig<INPUT, OUTPUT, ELEMENT, PROMPT>
+	| StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT>
+	| StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT>
 	| StreamObjectNoSchemaConfig<INPUT, OUTPUT, PROMPT>;
 
 export type AnyConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never,
-	ELEMENT extends JSONValue = never, //@TODO - output?
 	ENUM extends string = string,
 	PROMPT = string
 > =
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM, PROMPT> & { promptType: 'text' }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM, PROMPT> & TemplatePromptConfig); // template modes including undefined
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & { promptType: 'text' }) // text mode - no template props
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & TemplatePromptConfig); // template modes including undefined

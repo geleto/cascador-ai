@@ -1,4 +1,4 @@
-import { streamObject, LanguageModel, StreamObjectOnFinishCallback } from "ai";
+import { streamObject, LanguageModel, StreamObjectOnFinishCallback, JSONValue } from "ai";
 
 import * as results from '../types/result'
 import * as configs from '../types/config';
@@ -11,17 +11,21 @@ import { validateBaseConfig, validateObjectConfig } from "../validate";
 
 import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./ObjectGenerator";
 
-export type LLMStreamerConfig<OBJECT, ELEMENT> = (
-	| configs.StreamObjectObjectConfig<OBJECT>
-	| configs.StreamObjectArrayConfig<ELEMENT>
+export type LLMStreamerConfig<
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never
+> = (
+	| configs.StreamObjectObjectConfig<INPUT, OUTPUT>
+	| configs.StreamObjectArrayConfig<INPUT, OUTPUT>
 	| configs.StreamObjectNoSchemaConfig
 ) & configs.OptionalPromptConfig;
 
 export type ObjectStreamerInstance<
-	OBJECT, ELEMENT,
-	CONFIG extends LLMStreamerConfig<OBJECT, ELEMENT>,
-	PType extends RequiredPromptType
-> = LLMCallSignature<CONFIG, Promise<results.StreamObjectResultAll<OBJECT, ELEMENT>>, PType>;
+	TConfig extends LLMStreamerConfig<INPUT, OUTPUT>,
+	PType extends RequiredPromptType,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+> = LLMCallSignature<TConfig, Promise<results.StreamObjectResultAll<OUTPUT>>, PType, INPUT, OUTPUT>;
 
 // Allow additional callback properties in config
 interface StreamCallbacks {
@@ -29,39 +33,42 @@ interface StreamCallbacks {
 	onError?: (event: { error: unknown }) => Promise<void> | void;
 }
 
-type StreamObjectConfig<OBJECT, ELEMENT> =
-	configs.StreamObjectObjectConfig<OBJECT> |
-	configs.StreamObjectArrayConfig<ELEMENT> |
+type StreamObjectConfig<
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never
+> =
+	configs.StreamObjectObjectConfig<INPUT, OUTPUT> |
+	configs.StreamObjectArrayConfig<INPUT, OUTPUT> |
 	configs.StreamObjectNoSchemaConfig;
 
-type StreamObjectReturnWithPrompt<
-	TConfig extends configs.OptionalPromptConfig,
-	OBJECT,
-	ELEMENT,
-	PType extends RequiredPromptType
+type StreamObjectReturn<
+	TConfig extends configs.OptionalPromptConfig<PType, INPUT, OUTPUT>,
+	PType extends RequiredPromptType,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
 > =
-	TConfig extends { output: 'array', schema: SchemaType<ELEMENT> }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>, PType>
+	TConfig extends { output: 'array', schema: SchemaType<OUTPUT> }
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<OUTPUT>>, PType, INPUT, OUTPUT>
 	: TConfig extends { output: 'array' }
 	? `Config Error: Array output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<any>>>//array with no schema, maybe return Error String
 	: TConfig extends { output: 'no-schema' }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>, PType>
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectNoSchemaResult>, PType, INPUT, OUTPUT>
 	//no schema, no array - it's 'object' or no output which defaults to 'object'
-	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OBJECT> }
-	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<utils.InferParameters<TConfig['schema']>>>, PType>
+	: TConfig extends { output?: 'object' | undefined, schema: SchemaType<OUTPUT> }
+	? LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<OUTPUT>>, PType, INPUT, OUTPUT>
 	: `Config Error: Object output requires a schema`//LLMCallSignature<TConfig, Promise<results.StreamObjectObjectResult<any>>>;// object with no schema, maybe return Error String
 
 type StreamObjectWithParentReturn<
-	TConfig extends configs.OptionalPromptConfig,
-	TParentConfig extends configs.OptionalPromptConfig,
-	OBJECT,
-	ELEMENT,
-	PARENT_OBJECT,
-	PARENT_ELEMENT,
+	TConfig extends configs.OptionalPromptConfig<string, never, OUTPUT>,
+	TParentConfig extends configs.OptionalPromptConfig<string, never, PARENT_OUTPUT>,
 	PType extends RequiredPromptType,
-	TFinalConfig extends configs.OptionalPromptConfig = utils.Override<TParentConfig, TConfig>,
+
+	OUTPUT extends JSONValue = never,
+	PARENT_OUTPUT extends JSONValue = never,
+
+	TFinalConfig extends configs.OptionalPromptConfig<string, never, any> = utils.Override<TParentConfig, TConfig>,
 > =
-	StreamObjectReturnWithPrompt<TFinalConfig, OBJECT extends never ? PARENT_OBJECT : OBJECT, ELEMENT extends never ? PARENT_ELEMENT : ELEMENT, PType>
+	StreamObjectReturn<TFinalConfig, PType, never, OUTPUT extends never ? PARENT_OUTPUT : OUTPUT>
 
 // A mapping from the 'output' literal to its full, correct config type.
 interface ConfigShapeMap {
@@ -76,61 +83,62 @@ type ConfigOutput = keyof ConfigShapeMap | undefined;
 //type ConfigOutput = 'array' | 'no-schema' | 'object' | undefined;
 
 type ValidateObjectStreamerConfig<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT> & MoreConfig>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
-	OBJECT,
-	ELEMENT,
-	PARENT_OBJECT,
-	PARENT_ELEMENT,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+	PARENT_INPUT extends Record<string, any> = never,
+	PARENT_OUTPUT extends JSONValue = never,
 	MoreConfig = object
 > = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<OBJECT, ELEMENT> & MoreConfig>, //TConfig Shape
-	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>, //TParentConfig Shape
+	Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>, //TConfig Shape
+	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	MoreConfig>
 
 // Validator for the `parent` config's GENERIC type
 type ValidateObjectStreamerParentConfig<
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
-	PARENT_OBJECT,
-	PARENT_ELEMENT,
+	PARENT_INPUT extends Record<string, any> = never,
+	PARENT_OUTPUT extends JSONValue = never,
 	MoreConfig = object
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT> & MoreConfig>, //TParentConfig Shape
+	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
 	{ output?: ConfigOutput; }, //
 	MoreConfig>
 
 function withText<
-	TConfig extends StreamObjectConfig<OBJECT, ELEMENT>,
-	OBJECT = any,
-	ELEMENT = any,
+	TConfig extends StreamObjectConfig<INPUT, OUTPUT>,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		OBJECT, ELEMENT, OBJECT, ELEMENT,
+		INPUT, OUTPUT, INPUT, OUTPUT,
 		StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'text'>;
+): StreamObjectReturn<TConfig, 'text', OUTPUT>;
 
 // Overload 2: With parent parameter
 function withText<
-	TConfig extends Partial<StreamObjectConfig<OBJECT, ELEMENT>>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_OBJECT, PARENT_ELEMENT>>,
-	OBJECT = any,
-	ELEMENT = any,
-	PARENT_OBJECT = any,
-	PARENT_ELEMENT = any,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT>> & StreamCallbacks & configs.OptionalPromptConfig<string, INPUT, OUTPUT>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>> & StreamCallbacks & configs.OptionalPromptConfig<string, PARENT_INPUT, PARENT_OUTPUT>,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+	PARENT_INPUT extends Record<string, any> = never,
+	PARENT_OUTPUT extends JSONValue = never,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
 		StreamCallbacks>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_OBJECT, PARENT_ELEMENT>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
-): StreamObjectWithParentReturn<TConfig, TParentConfig, OBJECT, ELEMENT, PARENT_OBJECT, PARENT_ELEMENT, 'text'>;
+): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text', OUTPUT>;
 
 // Implementation signature that handles both cases
 function withText<
@@ -139,8 +147,8 @@ function withText<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'text'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text'> {
-	return _createObjectStreamer(config, 'text', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text'>;
+): StreamObjectReturn<TConfig, 'text', OUTPUT> | StreamObjectWithParentReturn<TConfig, TParentConfig, 'text', OUTPUT> {
+	return _createObjectStreamer(config, 'text', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, 'text', OUTPUT>;
 }
 
 function loadsText<
@@ -151,7 +159,7 @@ function loadsText<
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.LoaderConfig & StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'text-name'>;
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT, 'text-name'>;
 
 // Overload 2: With parent parameter
 function loadsText<
@@ -179,7 +187,7 @@ function loadsText<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'text-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text-name'> {
+): StreamObjectReturn<TConfig, any, any, 'text-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text-name'> {
 	return _createObjectStreamer(config, 'text-name', parent) as unknown as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'text-name'>;
 }
 
@@ -191,7 +199,7 @@ function withTemplate<
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-template'>;
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT, 'async-template'>;
 
 // Overload 2: With parent parameter
 function withTemplate<
@@ -220,8 +228,8 @@ function withTemplate<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'async-template'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template'> {
-	return _createObjectStreamer(config, 'async-template', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template'>;
+): StreamObjectReturn<TConfig, any, any, 'async-template'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template'> {
+	return _createObjectStreamer(config, 'async-template', parent);
 }
 
 function loadsTemplate<
@@ -232,7 +240,7 @@ function loadsTemplate<
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-template-name'>;
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT, 'async-template-name'>;
 
 // Overload 2: With parent parameter
 function loadsTemplate<
@@ -261,8 +269,8 @@ function loadsTemplate<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'async-template-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template-name'> {
-	return _createObjectStreamer(config, 'async-template-name', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template-name'>;
+): StreamObjectReturn<TConfig, any, any, 'async-template-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-template-name'> {
+	return _createObjectStreamer(config, 'async-template-name', parent);
 }
 
 function withScript<
@@ -273,7 +281,7 @@ function withScript<
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-script'>;
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT, 'async-script'>;
 
 // Overload 2: With parent parameter
 function withScript<
@@ -302,8 +310,8 @@ function withScript<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'async-script'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script'> {
-	return _createObjectStreamer(config, 'async-script', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script'>;
+): StreamObjectReturn<TConfig, any, any, 'async-script'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script'> {
+	return _createObjectStreamer(config, 'async-script', parent);
 }
 
 function loadsScript<
@@ -314,7 +322,7 @@ function loadsScript<
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
 		OBJECT, ELEMENT, OBJECT, ELEMENT,
 		configs.CascadaConfig & configs.LoaderConfig & StreamCallbacks>,
-): StreamObjectReturnWithPrompt<TConfig, OBJECT, ELEMENT, 'async-script-name'>;
+): StreamObjectReturn<TConfig, OBJECT, ELEMENT, 'async-script-name'>;
 
 // Overload 2: With parent parameter
 function loadsScript<
@@ -343,8 +351,8 @@ function loadsScript<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, 'async-script-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script-name'> {
-	return _createObjectStreamer(config, 'async-script-name', parent) as StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script-name'>;
+): StreamObjectReturn<TConfig, any, any, 'async-script-name'> | StreamObjectWithParentReturn<TConfig, TParentConfig, any, any, any, any, 'async-script-name'> {
+	return _createObjectStreamer(config, 'async-script-name', parent);
 }
 
 //common function for the specialized from/loads Template/Script/Text
@@ -355,7 +363,7 @@ function _createObjectStreamer<
 	config: TConfig,
 	promptType: RequiredPromptType,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturnWithPrompt<TConfig, any, any, RequiredPromptType> {
+): StreamObjectReturn<TConfig, any, any, RequiredPromptType> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
@@ -380,7 +388,7 @@ function _createObjectStreamer<
 	return _createLLMRenderer(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: SchemaType<any> },
 		streamObject
-	) as StreamObjectReturnWithPrompt<TConfig, any, any, RequiredPromptType>;
+	) as StreamObjectReturn<TConfig, any, any, RequiredPromptType>;
 }
 
 export const ObjectStreamer = Object.assign(withText, { // default is withText
