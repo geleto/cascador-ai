@@ -14,8 +14,8 @@ export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
  * The return type is exactly the union of P & C (with child overriding parent).
  */
 export function mergeConfigs<
-	TChild extends Record<string, any> & Omit<TemplatePromptConfig, 'promptType'>,
-	TParent extends Record<string, any> & Omit<TemplatePromptConfig, 'promptType'>
+	TChild extends Record<string, any> & Omit<TemplatePromptConfig<any, any, any>, 'promptType'>,
+	TParent extends Record<string, any> & Omit<TemplatePromptConfig<any, any, any>, 'promptType'>
 >(
 	parentConfig: TParent,
 	childConfig: TChild

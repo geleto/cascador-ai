@@ -30,8 +30,12 @@ export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL =
 	};
 
 //these are returned in a Promise
-export type GenerateObjectResultAll<OBJECT, ENUM extends string, ELEMENT> =
-	| GenerateObjectObjectResult<OBJECT>
+export type GenerateObjectResultAll<
+	OUTPUT extends JSONValue = never,
+	ELEMENT extends JSONValue = never,
+	ENUM extends string = string
+> =
+	| GenerateObjectObjectResult<OUTPUT>
 	| GenerateObjectArrayResult<ELEMENT>
 	| GenerateObjectEnumResult<ENUM>
 	| GenerateObjectNoSchemaResult;

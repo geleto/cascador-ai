@@ -5,16 +5,18 @@ import * as utils from '../types/utils';
 import { _createTemplate, TemplateCallSignature } from './Template';
 import { _createScript, ScriptCallSignature } from './Script';
 import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
-import type { GenerateTextResult, StreamTextResult } from 'ai';
+import type { GenerateTextResult, JSONValue, StreamTextResult } from 'ai';
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from '../types/result';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
 import { RequiredPromptType } from '../types/types';
 
 export type LLMCallSignature<
-	TConfig extends configs.OptionalPromptConfig,
+	TConfig extends configs.OptionalPromptConfig<string, INPUT, OUTPUT>,
 	TResult,
-	PType extends RequiredPromptType = RequiredPromptType
+	PType extends RequiredPromptType = RequiredPromptType,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never
 > = PType extends 'text' | 'text-name'
 	? (
 		// TConfig has no template, no context argument is needed
@@ -239,7 +241,7 @@ export function _createLLMRenderer<
 			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
 		} else {
 			// the script may render a string or messages; set a matching schema
-			const textScriptConfig: configs.ScriptConfig<string | ModelMessage[]> = {
+			const textScriptConfig: configs.ScriptConfig<any, any> = {
 				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
 				schema: PromptStringOrMessagesSchema as z.ZodType<string | ModelMessage[]>, //the script may render a string or messages
 				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead

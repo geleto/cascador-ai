@@ -1,4 +1,4 @@
-import { generateText, LanguageModel, ToolSet } from "ai";
+import { generateText, LanguageModel, ToolSet, Schema } from "ai";
 
 import * as results from '../types/result';
 import * as configs from '../types/config';
@@ -138,12 +138,21 @@ function loadsText(config: configs.GenerateTextConfig, parent?: ConfigProvider<c
 function withTemplate<
 	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig,
 	TOOLS extends ToolSet = ToolSet,
-	OUTPUT = never
+	OUTPUT = never /* @todo - string? */
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template'>;
 
-function withTemplate<
+function withTemplateAsTool<
+	const TConfig extends configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig,
+	TOOLS extends ToolSet = ToolSet,
+	OUTPUT = string
+>(
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, OUTPUT, TOOLS, OUTPUT, configs.CascadaConfig>
+): GenerateTextReturnWithPrompt<TConfig, TOOLS, OUTPUT, 'async-template'>
+	& { description?: string, inputSchema: Schema<OUTPUT>, outputSchema: Schema<string> };
+
+function withTemplateAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, OUTPUT> & configs.CascadaConfig>,
 	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_OUTPUT> & configs.CascadaConfig>,
 	TOOLS extends ToolSet, OUTPUT, PARENT_TOOLS extends ToolSet, PARENT_OUTPUT,
@@ -153,7 +162,7 @@ function withTemplate<
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_OUTPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, OUTPUT, PARENT_TOOLS, PARENT_OUTPUT, 'async-template'>;
 
-function withTemplate(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
+function withTemplateAsTool(config: configs.GenerateTextConfig, parent?: ConfigProvider<configs.GenerateTextConfig>): any {
 	return _createTextGenerator(config, 'async-template', parent);
 }
 

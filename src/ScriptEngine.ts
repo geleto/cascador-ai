@@ -15,7 +15,11 @@ class ScriptError extends Error {
 	}
 }
 
-export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT> {
+export class ScriptEngine<
+	TConfig extends Partial<ScriptConfig<INPUT, OUTPUT>>,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never
+> {
 	protected env: cascada.Environment | cascada.AsyncEnvironment;
 	protected scriptPromise?: Promise<cascada.Script | cascada.AsyncScript>;
 	protected script?: cascada.Script | cascada.AsyncScript;
@@ -101,7 +105,7 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 	async run(
 		scriptOverride?: string,
 		contextOverride?: Context
-	): Promise<TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult> {
+	): Promise<TConfig extends { schema: SchemaType<OUTPUT> } ? OUTPUT : results.ScriptResult> {
 		// Debug output if config.debug is true
 		if ('debug' in this.config && this.config.debug) {
 			console.log('[DEBUG] ScriptEngine.run called with:', { scriptOverride, contextOverride });
@@ -203,17 +207,17 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 			throw new ScriptError('Script render failed due to an unknown error');
 		}
 
-		const schema: SchemaType<OBJECT> | undefined = 'schema' in this.config ? this.config.schema : undefined;
+		const schema: SchemaType<OUTPUT> | undefined = 'schema' in this.config ? this.config.schema : undefined;
 
 		if (schema) {
 			// Check if it's a Zod schema (has parse method)
 			if ('parse' in schema && typeof schema.parse === 'function') {
 				try {
-					const validatedResult = (schema as z.Schema<OBJECT>).parse(rawResult);
+					const validatedResult = (schema as z.Schema<OUTPUT>).parse(rawResult);
 					if ('debug' in this.config && this.config.debug) {
 						console.log('[DEBUG] ScriptEngine.run - Zod validation successful:', validatedResult);
 					}
-					return validatedResult as (TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : JSONValue);
+					return validatedResult as (TConfig extends { schema: SchemaType<OUTPUT> } ? OUTPUT : JSONValue);
 				} catch (error) {
 					if (error instanceof z.ZodError) {
 						throw new ScriptError(`Script output validation failed: ${error.message}`, error);
@@ -226,13 +230,13 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 			else if ('validate' in schema && typeof schema.validate === 'function') {
 				try {
 					// Type assertion to access the validate method safely
-					const vercelSchema = schema as { validate: (value: unknown) => { success: true; value: OBJECT } | { success: false; error: Error } };
+					const vercelSchema = schema as { validate: (value: unknown) => { success: true; value: OUTPUT } | { success: false; error: Error } };
 					const validationResult = vercelSchema.validate(rawResult);
 					if (validationResult.success) {
 						if ('debug' in this.config && this.config.debug) {
 							console.log('[DEBUG] ScriptEngine.run - Vercel Schema validation successful:', validationResult.value);
 						}
-						return validationResult.value as TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult;
+						return validationResult.value as TConfig extends { schema: SchemaType<OUTPUT> } ? OUTPUT : results.ScriptResult;
 					} else {
 						throw new ScriptError(`Script output validation failed: ${validationResult.error.message}`, validationResult.error);
 					}
@@ -248,6 +252,6 @@ export class ScriptEngine<TConfig extends Partial<ScriptConfig<OBJECT>>, OBJECT>
 			}
 		}
 
-		return rawResult as TConfig extends { schema: SchemaType<OBJECT> } ? OBJECT : results.ScriptResult;
+		return rawResult as TConfig extends { schema: SchemaType<OUTPUT> } ? OUTPUT : results.ScriptResult;
 	}
 }

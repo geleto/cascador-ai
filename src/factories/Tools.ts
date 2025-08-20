@@ -1,5 +1,6 @@
 import { JSONValue, ToolCallOptions, ToolSet } from 'ai';
 import { ConfigError } from '../validate';
+import * as types from '../types/types';
 import * as configs from '../types/config';
 import * as results from '../types/result';
 
@@ -9,6 +10,7 @@ import { TemplateInstance } from './Template';
 import { ScriptInstance } from './Script';
 import * as utils from '../types/utils';
 import { RequiredPromptType } from '../types/types';
+import { ConfigProvider } from '../ConfigData';
 
 //@todo - a tool shall either have description or inputSchema with a description, maybe validate at runtime
 
@@ -16,12 +18,48 @@ import { RequiredPromptType } from '../types/types';
 // The result of the tool's `execute` function is the `.object` property of the generator's full result.
 type ToolResultFromObjectGenerator<T extends (...args: any) => any> = Awaited<ReturnType<T>>['object'];
 
-// Overload for TextGenerator and Template
+// Script call signature type for call usage (not LLM Tool)
+export type ToolCallSignature<
+	TConfig,
+	RESULT extends JSONValue,
+	PARAMETERS extends types.SchemaType<any>,
+	TParentCallSignature
+> =
+	TConfig extends { execute: any }
+	? (//caller // a tool but also a caller:
+		((context: PARAMETERS) => PromiseLike<RESULT>)// a callable
+		& configs.FunctionTool<PARAMETERS, RESULT> // but also a tool
+	)
+	: configs.FunctionTool<PARAMETERS, RESULT>//a tool
+	& TParentCallSignature;//but also whatever the parent call signature is
+
+// Overload for FunctionTool, no parent
+// Similar to just making an execute method tool, but can be called as a calleer
 export function Tool<
-	TConfig extends configs.ToolConfig<PARAMETERS>,
-	PARAMETERS extends configs.ToolParameters
+	PARAMETERS extends types.SchemaType<any>,
+	RESULT extends JSONValue
 >(
-	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
+	config: configs.FunctionTool<PARAMETERS, RESULT>,
+): configs.FunctionTool<PARAMETERS, RESULT>;
+
+// Overload for FunctionTool with parent
+export function Tool<
+	PARAMETERS extends types.SchemaType<any>,
+	RESULT extends JSONValue,
+	TConfig extends Partial<configs.ToolConfig<PARAMETERS, RESULT>>,
+	TParentConfig extends Partial<configs.ToolConfig<PARAMETERS, RESULT>>,
+>(
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS, RESULT>>,
+	parent?: ConfigProvider<TParentConfig>
+): configs.FunctionTool<PARAMETERS, RESULT>;
+
+
+// Overload for TextGenerator and Template (tool result is string)
+export function Tool<
+	TConfig extends configs.ToolConfig<PARAMETERS, string>,
+	PARAMETERS extends types.SchemaType<any>
+>(
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS, string>>,
 	parent: TemplateInstance<configs.OptionalTemplatePromptConfig> | TextGeneratorInstance<any, any, RequiredPromptType>
 ): configs.FunctionTool<PARAMETERS, string>;
 
@@ -29,30 +67,29 @@ export function Tool<
 export function Tool<
 	TParent extends ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>, RequiredPromptType>,
 	TResult extends ToolResultFromObjectGenerator<TParent>,
-	TConfig extends configs.ToolConfig<PARAMETERS>,
-	PARAMETERS extends configs.ToolParameters,
+	TConfig extends configs.ToolConfig<PARAMETERS, TResult>,
+	PARAMETERS extends types.SchemaType<any>,
 	OBJECT, ELEMENT, ENUM extends string
 >(
-	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS, TResult>>,
 	parent: TParent
 ): configs.FunctionTool<PARAMETERS, TResult>;
 
 // Overload for Script
 export function Tool<
-	TConfig extends configs.ToolConfig<PARAMETERS>,
-	PARAMETERS extends configs.ToolParameters,
+	TConfig extends configs.ToolConfig<PARAMETERS, results.ScriptResult>,
+	PARAMETERS extends types.SchemaType<any>,
 	OBJECT
 >(
-	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS>>,
+	config: utils.StrictType<TConfig, configs.ToolConfig<PARAMETERS, results.ScriptResult>>,
 	parent: ScriptInstance<configs.ScriptConfig<OBJECT>>
 ): configs.FunctionTool<PARAMETERS, results.ScriptResult>;
 
-
 // --- Implementation ---
 export function Tool<
-	PARAMETERS extends configs.ToolParameters,
+	PARAMETERS extends types.SchemaType<any>,
 	OBJECT, ELEMENT, ENUM extends string,
-	CONFIG extends configs.ToolConfig<PARAMETERS>,
+	CONFIG extends configs.ToolConfig<PARAMETERS, RESULT>,
 	PARENT_TYPE extends
 	| TextGeneratorInstance<TOOLS, OUTPUT, RequiredPromptType>
 	| ObjectGeneratorInstance<OBJECT, ELEMENT, ENUM, LLMGeneratorConfig<OBJECT, ELEMENT, ENUM>, RequiredPromptType>
@@ -63,13 +100,16 @@ export function Tool<
 	RESULT extends JSONValue = JSONValue
 >(
 	config: CONFIG,
-	parent: PARENT_TYPE
+	parent?: PARENT_TYPE
 ): configs.FunctionTool<PARAMETERS, RESULT> { // Return the corrected FunctionTool
 
 	if ('debug' in config && config.debug) {
 		console.log('[DEBUG] Tool created with config:', JSON.stringify(config, null, 2));
 	}
 
+	if (!parent) {
+		return config as configs.FunctionTool<PARAMETERS, RESULT>;
+	}
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (!config.inputSchema) {
 		throw new ConfigError('Tool config requires inputSchema schema');

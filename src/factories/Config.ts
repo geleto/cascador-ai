@@ -3,22 +3,26 @@ import { validateBaseConfig } from '../validate';
 import { ConfigProvider } from '../ConfigData';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
-import { ToolSet } from 'ai';
+import { JSONValue, ToolSet } from 'ai';
 
 // Single config overload
 export function Config<
 	TConfig, // extends configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TOOLS extends ToolSet,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+	ELEMENT extends JSONValue = never,
+	ENUM extends string = string
 >(
-	config: utils.StrictUnionSubtype<TConfig, Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>>,
+	config: utils.StrictUnionSubtype<TConfig, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>>,
 ): ConfigProvider<TConfig>;
 
 // Config with parent overload
 export function Config<
-	TConfig extends Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
-	TParentConfig extends Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string,
-	TCombined = utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>>
+	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>,
+	TParentConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>,
+	TOOLS extends ToolSet, INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never, ELEMENT extends JSONValue = never, ENUM extends string = string,
+	TCombined = utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>>
 >(
 	config: TConfig,
 	parent: ConfigProvider<
@@ -28,13 +32,19 @@ export function Config<
 
 // Implementation
 export function Config<
-	TConfig extends Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
-	TParentConfig extends Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>,
-	TOOLS extends ToolSet, OUTPUT, OBJECT, ELEMENT, ENUM extends string
+	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>,
+	TParentConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>,
+	TOOLS extends ToolSet,
+	INPUT extends Record<string, any> = never,
+	OUTPUT extends JSONValue = never,
+	ELEMENT extends JSONValue = never,
+	ENUM extends string = string
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): ConfigData<TConfig> | ConfigData<utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, OUTPUT, OBJECT, ELEMENT, ENUM>>>> {
+):
+	| ConfigData<TConfig>
+	| ConfigData<utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ELEMENT, ENUM>>>> {
 
 	//validateBaseConfig(config);
 
