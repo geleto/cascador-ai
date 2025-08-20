@@ -11,6 +11,12 @@ import { validateBaseConfig, validateObjectConfig } from "../validate";
 
 import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./ObjectGenerator";
 
+// Allow additional callback properties in config - why is this needed?
+/*interface StreamCallbacks {
+	onFinish?: StreamObjectOnFinishCallback<any>;
+	onError?: (event: { error: unknown }) => Promise<void> | void;
+}*/
+
 export type LLMStreamerConfig<
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never
@@ -26,12 +32,6 @@ export type ObjectStreamerInstance<
 	INPUT extends Record<string, any> = never,
 	OUTPUT extends JSONValue = never,
 > = LLMCallSignature<TConfig, Promise<results.StreamObjectResultAll<OUTPUT>>, PType, INPUT, OUTPUT>;
-
-// Allow additional callback properties in config
-interface StreamCallbacks {
-	onFinish?: StreamObjectOnFinishCallback<any>;
-	onError?: (event: { error: unknown }) => Promise<void> | void;
-}
 
 type StreamObjectConfig<
 	INPUT extends Record<string, any> = never,

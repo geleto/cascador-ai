@@ -12,7 +12,7 @@ import { PromptStringOrMessagesSchema } from '../types/schemas';
 import { RequiredPromptType } from '../types/types';
 
 export type LLMCallSignature<
-	TConfig extends configs.OptionalPromptConfig<string, INPUT, OUTPUT>,
+	TConfig extends configs.BaseConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig,
 	TResult,
 	PType extends RequiredPromptType = RequiredPromptType,
 	INPUT extends Record<string, any> = never,
@@ -241,7 +241,7 @@ export function _createLLMRenderer<
 			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
 		} else {
 			// the script may render a string or messages; set a matching schema
-			const textScriptConfig: configs.ScriptConfig<any, any> = {
+			const textScriptConfig: configs.BaseConfig<any, any> & configs.ScriptConfig = {
 				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
 				schema: PromptStringOrMessagesSchema as z.ZodType<string | ModelMessage[]>, //the script may render a string or messages
 				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead
