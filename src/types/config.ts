@@ -122,9 +122,9 @@ export interface FunctionTool<INPUT extends Record<string, any> = never, OUTPUT 
 
 // The first argument of generateText
 export type GenerateTextConfig<
-	TOOLS extends ToolSet = Record<string, never>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	TOOLS extends ToolSet,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	PROMPT = string,
 	PARTIAL_OUTPUT = never//@todo - check this
 > = Omit<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'>
@@ -135,7 +135,7 @@ export type GenerateTextConfig<
 export type StreamTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	OUTPUT, //is this always string?
+	OUTPUT, //@out
 	PROMPT = string,
 	PARTIAL_OUTPUT = never
 > = Omit<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'>
@@ -152,7 +152,7 @@ export type GenerateObjectBaseConfig<
 
 export type GenerateObjectObjectConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT,
+	OUTPUT, //@out
 	PROMPT = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output?: 'object' | undefined;
@@ -164,7 +164,7 @@ export type GenerateObjectObjectConfig<
 
 export type GenerateObjectArrayConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT, //@out
 	PROMPT = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'array';
@@ -206,8 +206,8 @@ export type StreamObjectBaseConfig<
 	};
 
 export type StreamObjectObjectConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	PROMPT = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output?: 'object' | undefined;
@@ -218,8 +218,8 @@ export type StreamObjectObjectConfig<
 }
 
 export type StreamObjectArrayConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	PROMPT = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'array';
@@ -239,8 +239,8 @@ export type StreamObjectNoSchemaConfig<
 
 export type AnyNoTemplateConfig<
 	TOOLS extends ToolSet,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	ENUM extends string = never,
 	PROMPT = string
 > =
@@ -256,10 +256,11 @@ export type AnyNoTemplateConfig<
 
 export type AnyConfig<
 	TOOLS extends ToolSet,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	ENUM extends string = string,
 	PROMPT = string
 > =
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & { promptType: 'text' }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & TemplatePromptConfig); // template modes including undefined
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & { promptType: 'text' | undefined }) // text mode - no template props
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & TemplatePromptConfig & { promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' })
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & ScriptPromptConfig & { promptType: 'script' | 'async-script' | 'script-name' | 'async-script-name' });

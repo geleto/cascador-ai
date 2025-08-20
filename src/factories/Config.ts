@@ -7,10 +7,10 @@ import { JSONValue, ToolSet } from 'ai';
 
 // Single config overload
 export function Config<
-	TConfig extends configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>,
+	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
 	TOOLS extends ToolSet,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
 	ENUM extends string = string
 >(
 	config: utils.StrictUnionSubtype<TConfig, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>>,

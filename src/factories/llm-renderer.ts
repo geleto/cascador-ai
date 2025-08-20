@@ -12,11 +12,9 @@ import { PromptStringOrMessagesSchema } from '../types/schemas';
 import { RequiredPromptType } from '../types/types';
 
 export type LLMCallSignature<
-	TConfig extends configs.BaseConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig,
+	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig,
 	TResult,
-	PType extends RequiredPromptType = RequiredPromptType,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	PType extends RequiredPromptType = RequiredPromptType
 > = PType extends 'text' | 'text-name'
 	? (
 		// TConfig has no template, no context argument is needed

@@ -31,7 +31,7 @@ export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL =
 
 //these are returned in a Promise
 export type GenerateObjectResultAll<
-	OUTPUT extends JSONValue = never,
+	OUTPUT, //@out
 	ENUM extends string = string
 > =
 	| GenerateObjectObjectResult<OUTPUT>
