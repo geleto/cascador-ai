@@ -150,18 +150,22 @@ function withTemplate<
 ): GenerateTextReturnWithPrompt<TConfig, TOOLS, 'async-template'>
 
 function withTemplate<
-	const TConfig extends configs.GenerateTextConfig<TOOLS, INPUT> & configs.CascadaConfig,
-	const TParentConfig extends configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.CascadaConfig,
+	const TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT>> & configs.CascadaConfig,
+	const TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT>> & configs.CascadaConfig,
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT, configs.CascadaConfig>
+	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT, configs.CascadaConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.CascadaConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template'>
 
-function withTemplate(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
+function withTemplate(
+	config: configs.GenerateTextConfig<any, any, any>,
+	parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>,
+) {
 	return _createTextGenerator(config, 'async-template', parent) as GenerateTextWithParentReturn<any, any, any, any, 'async-template'>;
 }
 
