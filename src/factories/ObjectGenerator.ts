@@ -304,20 +304,20 @@ function loadsText<
 }
 
 function withTemplate<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM,
-		configs.TemplatePromptConfig>,
+		configs.CascadaConfig>,
 ): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 function withTemplate<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.TemplatePromptConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.TemplatePromptConfig,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -329,17 +329,17 @@ function withTemplate<
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.TemplatePromptConfig>,
+		configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.TemplatePromptConfig>>
+		configs.CascadaConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 function withTemplate<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig,
+	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -354,21 +354,21 @@ function withTemplate<
 }
 
 function loadsTemplate<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM,
-		configs.TemplatePromptConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 // @todo - does this check for loader?
 function loadsTemplate<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & Partial<configs.LoaderConfig>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & Partial<configs.LoaderConfig>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -380,17 +380,17 @@ function loadsTemplate<
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.TemplatePromptConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.TemplatePromptConfig & configs.LoaderConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 function loadsTemplate<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig,
+	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -417,8 +417,8 @@ function withScript<
 
 // Overload 2: With parent parameter
 function withScript<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.OptionalScriptPromptConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.OptionalScriptPromptConfig,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.CascadaConfig,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -430,17 +430,17 @@ function withScript<
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.OptionalScriptPromptConfig>,
+		configs.CascadaConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.OptionalScriptPromptConfig>>
+		configs.CascadaConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
 // Implementation signature that handles both cases
 function withScript<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalScriptPromptConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.OptionalScriptPromptConfig,
+	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
+	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -455,20 +455,20 @@ function withScript<
 }
 
 function loadsScript<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalScriptPromptConfig & configs.LoaderConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
 		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM,
-		configs.OptionalScriptPromptConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 function loadsScript<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalScriptPromptConfig & Partial<configs.LoaderConfig>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.OptionalScriptPromptConfig & Partial<configs.LoaderConfig>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	INPUT extends Record<string, any>,
 	OUTPUT extends JSONValue,
 	ENUM extends string,
@@ -480,10 +480,10 @@ function loadsScript<
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
 		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.OptionalScriptPromptConfig & configs.LoaderConfig>,
+		configs.CascadaConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
 		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
-		configs.OptionalScriptPromptConfig & configs.LoaderConfig>>
+		configs.CascadaConfig & configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
