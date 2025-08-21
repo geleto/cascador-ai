@@ -837,4 +837,5 @@ export const ObjectGenerator = Object.assign(withText, { // default is withText
 	loadsText: Object.assign(loadsText, {
 		asTool: loadsTextAsTool,
 	}),
+	asTool: withTextAsTool
 });
