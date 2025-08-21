@@ -1,6 +1,5 @@
 import {
 	generateText, generateObject, streamText, streamObject,
-	JSONValue,
 	ToolSet,
 	ToolCallOptions,
 	StreamObjectOnFinishCallback,
@@ -129,10 +128,8 @@ export interface FunctionTool<INPUT extends Record<string, any>, OUTPUT> {
 export type GenerateTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	OUTPUT, //@out
 	PROMPT = string,
-	PARTIAL_OUTPUT = never//@todo - check this
-> = Omit<Parameters<typeof generateText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'>
+> = Omit<Parameters<typeof generateText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
 
@@ -140,10 +137,8 @@ export type GenerateTextConfig<
 export type StreamTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	OUTPUT, //@out
 	PROMPT = string,
-	PARTIAL_OUTPUT = never
-> = Omit<Parameters<typeof streamText<TOOLS, OUTPUT, PARTIAL_OUTPUT>>[0], 'prompt'>
+> = Omit<Parameters<typeof streamText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
 
@@ -249,8 +244,8 @@ export type AnyNoTemplateConfig<
 	ENUM extends string = never,
 	PROMPT = string
 > =
-	| GenerateTextConfig<TOOLS, INPUT, OUTPUT, PROMPT>
-	| StreamTextConfig<TOOLS, INPUT, OUTPUT, PROMPT>
+	| GenerateTextConfig<TOOLS, INPUT, PROMPT>
+	| StreamTextConfig<TOOLS, INPUT, PROMPT>
 	| GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT>
 	| GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT>
 	| GenerateObjectEnumConfig<INPUT, ENUM, PROMPT>
