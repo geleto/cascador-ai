@@ -199,132 +199,120 @@ type ValidateObjectGeneratorParentConfig<
 	{ output?: ConfigOutput; }, //
 	MoreConfig>
 
+// A text-only prompt has no inputs
 function withText<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM>,
-	INPUT extends Record<string, any>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
 	OUTPUT, //@out
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM>,
+		never, OUTPUT, ENUM, never, OUTPUT, ENUM>,
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 function withText<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>,
-	INPUT extends Record<string, any>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>,
+		never, OUTPUT, ENUM, never, PARENT_OUTPUT, PARENT_ENUM>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>
+		never, PARENT_OUTPUT, PARENT_ENUM>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>
 
 // Implementation signature that handles both cases
 function withText<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM>,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>,
-	INPUT extends Record<string, any>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> {
-	return _createObjectGenerator(config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig, 'text',
-		parent as ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig>
+	return _createObjectGenerator(config as GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig, 'text',
+		parent as ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
 	) as unknown as GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM>
 }
 
 function withTextAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM>,
-	INPUT extends Record<string, any>,
+	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM>,
+		never, OUTPUT, ENUM, never, OUTPUT, ENUM>,
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 
 function withTextAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>,
-	INPUT extends Record<string, any>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>,
+		never, OUTPUT, ENUM, never, PARENT_OUTPUT, PARENT_ENUM>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>
+		never, PARENT_OUTPUT, PARENT_ENUM>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 
 function withTextAsTool<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM>,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>,
-	INPUT extends Record<string, any>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT> {
-	return _createObjectGeneratorAsTool(config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig, 'text',
-		parent as ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig>
+	return _createObjectGeneratorAsTool(config as GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig, 'text',
+		parent as ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
 	) as unknown as GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 }
 
 function loadsText<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
+	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM,
+		never, OUTPUT, ENUM, never, OUTPUT, ENUM,
 		configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 // @todo - does this check for loader?
 function loadsText<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
-	INPUT extends Record<string, any>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
+	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, never, OUTPUT, ENUM, never, PARENT_OUTPUT, PARENT_ENUM,
 		configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
+	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, never, PARENT_OUTPUT, PARENT_ENUM,
 		configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
@@ -332,12 +320,10 @@ function loadsText<
 
 // Implementation signature that handles both cases
 function loadsText<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
@@ -347,47 +333,42 @@ function loadsText<
 	return _createObjectGenerator(
 		config,
 		'text-name',
-		parent as ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
 	) as unknown as GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM>;
 }
 
 function loadsTextAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
+	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, ENUM, INPUT, OUTPUT, ENUM,
+		never, OUTPUT, ENUM, never, OUTPUT, ENUM,
 		configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 
 function loadsTextAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
-	INPUT extends Record<string, any>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, INPUT, OUTPUT, ENUM, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
+	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TParentConfig, TFinalConfig, never, OUTPUT, ENUM, never, PARENT_OUTPUT, PARENT_ENUM,
 		configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM,
+	parent: ConfigProvider<TParentConfig & ValidateObjectGeneratorParentConfig<TParentConfig, TFinalConfig, never, PARENT_OUTPUT, PARENT_ENUM,
 		configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 
 function loadsTextAsTool<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
 	OUTPUT,
 	ENUM extends string,
-	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
@@ -397,7 +378,7 @@ function loadsTextAsTool<
 	return _createObjectGeneratorAsTool(
 		config,
 		'text-name',
-		parent as ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
 	) as unknown as GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM> & results.RendererToolResult<Record<string, never>, OUTPUT>;
 }
 
