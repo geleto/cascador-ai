@@ -4,7 +4,6 @@ export { TextGenerator, TextGeneratorInstance, TextGeneratorConfig } from './fac
 export { TextStreamer } from './factories/TextStreamer';
 export { ObjectGenerator, ObjectGeneratorInstance, LLMGeneratorConfig } from './factories/ObjectGenerator';
 export { ObjectStreamer, ObjectStreamerInstance, LLMStreamerConfig } from './factories/ObjectStreamer';
-export { Tool } from './factories/Tools';
 export { Config } from './factories/Config';
 
 export { ConfigProvider, ConfigData } from './ConfigData';
