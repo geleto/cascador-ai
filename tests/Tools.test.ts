@@ -8,6 +8,8 @@ import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { ModelMessage, stepCountIs } from 'ai';
 
+
+
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
 
@@ -509,6 +511,35 @@ describe.only('create.Tool', function () {
 				expect(result).to.have.property('messagesCount', 1);
 				expect(result).to.have.property('hasAbortSignal', false); // abortSignal is optional
 			});
+
+			it('should work with ObjectGenerator.withScript parent', async () => {
+				// This parent renderer uses a script to process input before calling the LLM
+				const objectGenerator = create.ObjectGenerator.withScript({
+					model,
+					temperature,
+					schema: z.object({ characterName: z.string(), summary: z.string() }),
+					prompt: `
+						:data
+						// The script constructs the final prompt for the LLM
+						@data = "Generate a character profile for a " + role + " from the " + genre + " genre."
+					`
+				});
+
+				const tool = create.Tool({
+					description: 'A character generator tool',
+					inputSchema: z.object({
+						role: z.string(),
+						genre: z.string()
+					})
+				}, objectGenerator);
+
+				const result = await tool.execute({ role: 'wizard', genre: 'fantasy' }, toolCallOptions);
+
+				// We just need to verify it returns the expected object shape
+				expect(result).to.be.an('object');
+				expect(result).to.have.property('characterName');
+				expect(result).to.have.property('summary');
+			});
 		});
 	});
 
@@ -772,6 +803,184 @@ describe.only('create.Tool', function () {
 					}
 				}
 			});
+		});
+	});
+
+	describe('Suite 5: Advanced Tool Usage & Integration', () => {
+		// --- Test Setup for Suite 5 ---
+		const errorThrowingScript = create.Script({
+			script: `:data throw("Custom API Error")`
+		});
+
+		const errorTool = create.Tool({
+			description: 'A tool that always throws an error',
+			inputSchema: z.object({}),
+		}, errorThrowingScript);
+
+		const loggingTemplate = create.Template({
+			prompt: `ToolCallId: {{ _toolCallOptions.toolCallId }}, Step Messages Count: {{ _toolCallOptions.messages.length }}`
+		});
+
+		const loggingTool = create.Tool({
+			description: 'A tool that logs its call options',
+			inputSchema: z.object({}),
+		}, loggingTemplate);
+
+		const weatherTool = create.Tool({
+			description: 'Get the weather',
+			inputSchema: z.object({ city: z.string() })
+		}, create.Template({ prompt: 'Weather in {{ city }} is good.' }));
+		// --- End Test Setup ---
+
+		describe('Tool Use with TextStreamer', () => {
+			it('should allow an LLM to call a tool from a TextStreamer', async () => {
+				const agent = create.TextStreamer({
+					model,
+					temperature,
+					tools: { getWeather: weatherTool },
+				});
+
+				const result = await agent('What is the weather in San Francisco?');
+
+				// Await the toolCalls promise from the stream result
+				const toolCalls = await result.toolCalls;
+
+				expect(toolCalls).to.have.lengthOf(1);
+				expect(toolCalls[0].toolName).to.equal('getWeather');
+				expect(toolCalls[0].input).to.deep.equal({ city: 'San Francisco' });
+
+				// Ensure the stream finishes
+				await streamToPromise(result.fullStream);
+			});
+		});
+
+		describe('Tool Choice Validation', () => {
+			it('should force a tool call when toolChoice is "required"', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: weatherTool },
+					toolChoice: 'required',
+				});
+
+				const result = await agent('Hello.'); // A prompt that wouldn't normally trigger a tool
+
+				expect(result.finishReason).to.equal('tool-calls');
+				expect(result.toolCalls).to.have.lengthOf(1);
+				expect(result.toolCalls[0].toolName).to.equal('getWeather');
+			});
+
+			it('should force a specific tool call when toolChoice specifies a tool name', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { getWeather: weatherTool, log: loggingTool },
+					toolChoice: { type: 'tool', toolName: 'log' },
+				});
+
+				// This prompt clearly asks for the *other* tool, but toolChoice should override it.
+				const result = await agent('What is the weather in SF?');
+
+				expect(result.finishReason).to.equal('tool-calls');
+				expect(result.toolCalls).to.have.lengthOf(1);
+				expect(result.toolCalls[0].toolName).to.equal('log'); // Verifies the override worked
+			});
+		});
+
+		describe('Error Propagation in LLM Loops', () => {
+			it('should handle tool execution errors and report them back to the LLM', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { errorTool: errorTool },
+					stopWhen: stepCountIs(2),
+				});
+
+				const result = await agent('Use the error tool.');
+
+				// The loop should stop because the final response is text (the error summary)
+				expect(result.finishReason).to.equal('stop');
+
+				// The first step should contain the tool call and the resulting error
+				const step1 = result.steps[0];
+				expect(step1.finishReason).to.equal('tool-calls');
+				expect(step1.toolResults).to.have.lengthOf(1);
+				expect(step1.toolResults[0].isError).to.equal(true);
+				expect(String(step1.toolResults[0].output)).to.include('Custom API Error');
+
+				// The LLM's final text should acknowledge the error
+				expect(result.text.toLowerCase()).to.include('error');
+			});
+		});
+
+		describe('Accessing _toolCallOptions in LLM Loops', () => {
+			it('should correctly inject _toolCallOptions into a tool called by an LLM', async () => {
+				const agent = create.TextGenerator({
+					model,
+					temperature,
+					tools: { loggingTool: loggingTool },
+					stopWhen: stepCountIs(2),
+				});
+
+				const result = await agent('Use the logging tool.');
+
+				const step1 = result.steps[0];
+				const toolCallId = step1.toolCalls[0].toolCallId;
+				const toolResultOutput = step1.toolResults[0].output as string;
+
+				// The rendered output from the tool's template should contain the correct toolCallId
+				expect(toolResultOutput).to.include(`ToolCallId: ${toolCallId}`);
+				// In a non-streaming, single-prompt call, the message history for the step is just the user prompt
+				expect(toolResultOutput).to.include('Step Messages Count: 1');
+			});
+		});
+	});
+
+	describe('Suite 6: Tool with `execute` Function', () => {
+		// --- Test Setup for Suite 6 ---
+		const calculatorTool = create.Tool({
+			description: 'A simple calculator that can add or subtract.',
+			inputSchema: z.object({
+				a: z.number(),
+				b: z.number(),
+				operation: z.enum(['add', 'subtract'])
+			}),
+			execute: async ({ a, b, operation }: { a: number, b: number, operation: 'add' | 'subtract' }) => {
+				await new Promise(resolve => setTimeout(resolve, 100));
+				if (operation === 'add') {
+					return { result: a + b };
+				}
+				return { result: a - b };
+			}
+		});
+		// --- End Test Setup ---
+
+		it('should correctly execute the provided function with given arguments', async () => {
+			const resultAdd = await calculatorTool.execute({ a: 10, b: 5, operation: 'add' }, toolCallOptions);
+			expect(resultAdd).to.deep.equal({ result: 15 });
+
+			const resultSubtract = await calculatorTool.execute({ a: 10, b: 5, operation: 'subtract' }, toolCallOptions);
+			expect(resultSubtract).to.deep.equal({ result: 5 });
+		});
+
+		it('should be callable by an LLM in an automated loop', async () => {
+			const agent = create.TextGenerator({
+				model,
+				temperature,
+				tools: { calculate: calculatorTool },
+				stopWhen: stepCountIs(2),
+			});
+
+			const result = await agent('What is 17 minus 8?');
+
+			expect(result.finishReason).to.equal('stop');
+			expect(result.text).to.include('9');
+
+			// Verify the intermediate tool call was parsed and executed correctly
+			const step1 = result.steps[0];
+			expect(step1.toolCalls[0].toolName).to.equal('calculate');
+			expect(step1.toolCalls[0].input).to.deep.equal({ a: 17, b: 8, operation: 'subtract' });
+			expect(step1.toolResults[0].output).to.deep.equal({ result: 9 });
 		});
 	});
 });
