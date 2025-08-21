@@ -232,12 +232,17 @@ export function _createLLMRenderer<
 	if (config.promptType !== 'text' && config.promptType !== undefined) {
 		// We have to run the prompt through a template or script first
 		//see if we can pre-compile the template/script
-		let renderer: TemplateCallSignature<any> | ScriptCallSignature<any, any, any>;
+		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any>;
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		if (isTemplatePrompt) {
 			// The prompt always renders a string
-			type PromptType = Exclude<TemplatePromptType, undefined>;
-			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
+			type PromptType = TemplatePromptType;
+			const promptType = config.promptType as PromptType;
+
+			//create a copy of the config without the promptType to avoid triggering the validation
+			const configWithoutPromptType = { ...config };
+			delete configWithoutPromptType.promptType;
+			renderer = _createTemplate(configWithoutPromptType as unknown as configs.TemplateConfig<any>, promptType);
 		} else {
 			// The script may render a string or messages; set a matching schema
 			type ScriptOutput = string | ModelMessage[];
@@ -247,7 +252,7 @@ export function _createLLMRenderer<
 				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead
 			} as configs.ScriptConfig<never, ScriptOutput>;
 			delete (textScriptConfig as configs.PromptConfig).prompt;
-			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
+			renderer = _createScript(textScriptConfig, config.promptType as ScriptPromptType);
 		}
 		call = async (
 			promptOrMessageOrContext?: string | ModelMessage[] | Context,

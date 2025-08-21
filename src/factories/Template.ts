@@ -6,9 +6,15 @@ import * as utils from '../types/utils';
 import { Context, TemplatePromptType } from '../types/types';
 
 //@todo Simplify, may not need extends
-export type TemplateInstance<CONFIG extends configs.OptionalTemplatePromptConfig> = TemplateCallSignature<CONFIG>;
+export type TemplateInstance<
+	TConfig extends configs.TemplateConfig<INPUT>,
+	INPUT extends Record<string, any>
+> = TemplateCallSignature<TConfig, INPUT>;
 
-export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePromptConfig> =
+export type TemplateCallSignature<
+	TConfig extends configs.TemplateConfig<INPUT>,
+	INPUT extends Record<string, any>
+> =
 	TConfig extends { prompt: string }//@todo - rename to template
 	? {
 		//TConfig has prompt, no prompt argument is needed
@@ -26,17 +32,16 @@ export type TemplateCallSignature<TConfig extends configs.OptionalTemplatePrompt
 
 // Internal common creator for template renderer
 export function _createTemplate(
-	config: configs.TemplatePromptConfig,
-	promptType: Exclude<TemplatePromptType, undefined>,
-	parent?: ConfigProvider<configs.TemplatePromptConfig>
-): TemplateCallSignature<any> {
-	// Merge configs if parent exists, otherwise use provided config
-	const merged = parent
-		? mergeConfigs(parent.config, config)
-		: config;
+	config: configs.TemplateConfig<any>,
+	promptType: TemplatePromptType,
+	parent?: ConfigProvider<configs.TemplateConfig<any>>
+): TemplateCallSignature<any, any> {
 
-	// Force intended promptType based on entry point
-	merged.promptType = promptType;
+	// Merge configs if parent exists, otherwise use provided config
+	//, add promptType to the config
+	const merged = parent
+		? { ...mergeConfigs(parent.config, config), promptType: promptType }
+		: { ...config, promptType: promptType };
 
 	validateBaseConfig(merged);
 
@@ -86,49 +91,53 @@ export function _createTemplate(
 
 	const callSignature = Object.assign(call, { config: merged, type: 'Template' });
 
-	return callSignature as TemplateCallSignature<any>;
+	return callSignature as TemplateCallSignature<any, any>;
 }
 
 // Default behavior: inline/embedded template
 function baseTemplate<
-	const TConfig extends configs.TemplatePromptConfig
+	const TConfig extends configs.TemplateConfig<INPUT>,
+	INPUT extends Record<string, any>
 >(
-	config: utils.StrictType<TConfig, configs.TemplatePromptConfig>
-): TemplateCallSignature<TConfig>;
+	config: utils.StrictType<TConfig, configs.TemplateConfig<INPUT>>
+): TemplateCallSignature<TConfig, INPUT>;
 
 function baseTemplate<
-	TConfig extends configs.TemplatePromptConfig,
-	TParentConfig extends configs.TemplatePromptConfig
+	TConfig extends configs.TemplateConfig<INPUT>,
+	TParentConfig extends configs.TemplateConfig<INPUT>,
+	INPUT extends Record<string, any>
 >(
-	config: utils.StrictType<TConfig, configs.TemplatePromptConfig>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplatePromptConfig>>
-): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
+	config: utils.StrictType<TConfig, configs.TemplateConfig<INPUT>>,
+	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplateConfig<INPUT>>>
+): TemplateCallSignature<utils.Override<TParentConfig, TConfig>, INPUT>;
 
 function baseTemplate(
-	config: configs.TemplatePromptConfig,
-	parent?: ConfigProvider<configs.TemplatePromptConfig>
+	config: configs.TemplateConfig<any>,
+	parent?: ConfigProvider<configs.TemplateConfig<any>>
 ): any {
 	return _createTemplate(config, 'async-template', parent);
 }
 
 // loadsTemplate: load by name via provided loader
 function loadsTemplate<
-	const TConfig extends configs.TemplatePromptConfig & configs.LoaderConfig
+	const TConfig extends configs.TemplateConfig<INPUT> & configs.LoaderConfig,
+	INPUT extends Record<string, any>
 >(
 	config: TConfig
-): TemplateCallSignature<TConfig>;
+): TemplateCallSignature<TConfig, INPUT>;
 
 function loadsTemplate<
-	TConfig extends configs.TemplatePromptConfig & configs.LoaderConfig,
-	TParentConfig extends configs.TemplatePromptConfig & configs.LoaderConfig
+	TConfig extends configs.TemplateConfig<INPUT> & configs.LoaderConfig,
+	TParentConfig extends configs.TemplateConfig<INPUT> & configs.LoaderConfig,
+	INPUT extends Record<string, any>
 >(
 	config: TConfig,
 	parent: ConfigProvider<TParentConfig>
-): TemplateCallSignature<utils.Override<TParentConfig, TConfig>>;
+): TemplateCallSignature<utils.Override<TParentConfig, TConfig>, INPUT>;
 
 function loadsTemplate(
-	config: configs.TemplatePromptConfig & configs.LoaderConfig,
-	parent?: ConfigProvider<configs.TemplatePromptConfig & configs.LoaderConfig>
+	config: configs.TemplateConfig<any> & configs.LoaderConfig,
+	parent?: ConfigProvider<configs.TemplateConfig<any> & configs.LoaderConfig>
 ): any {
 	return _createTemplate(config, 'async-template-name', parent);
 }

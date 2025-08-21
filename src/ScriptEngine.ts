@@ -1,6 +1,6 @@
 import * as cascada from 'cascada-engine';
 import { z } from 'zod';
-import { Context, SchemaType } from './types/types';
+import { Context, SchemaType, ScriptPromptType } from './types/types';
 import { ScriptConfig } from './types/config';
 import * as results from './types/result';
 import { JSONValue } from 'ai';
@@ -16,7 +16,7 @@ class ScriptError extends Error {
 }
 
 export class ScriptEngine<
-	TConfig extends Partial<ScriptConfig<INPUT, OUTPUT>>,
+	TConfig extends Partial<ScriptConfig<INPUT, OUTPUT>> & { promptType?: ScriptPromptType },
 	INPUT extends Record<string, any>,
 	OUTPUT
 > {

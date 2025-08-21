@@ -38,14 +38,14 @@ export interface LoaderConfig {
 	loader: ILoaderAny | ILoaderAny[];
 }
 
-/*export interface LoaderConfig<
+export interface TemplateConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT,
-> extends BaseConfig<INPUT, OUTPUT> {
-	loader: ILoaderAny | ILoaderAny[];
-}*/
+> extends CascadaConfig {
+	template: string;
+	inputSchema?: SchemaType<INPUT>;
+}
 
-// Config for the template engine with type safety for loader requirement
+// Config for the Template engine, output is always a string
 export interface TemplatePromptConfig<
 	PROMPT = string,
 > extends CascadaConfig {
@@ -54,13 +54,23 @@ export interface TemplatePromptConfig<
 	promptType?: TemplatePromptType;
 }
 
+// For use in the Script engine
+export interface ScriptConfig<
+	INPUT extends Record<string, any>,
+	OUTPUT = ModelMessage[]
+> extends CascadaConfig {
+	script?: string;
+	schema?: SchemaType<OUTPUT>;
+	inputSchema?: SchemaType<INPUT>;
+};
+
 export type OptionalTemplatePromptConfig<
 	PROMPT = string
 > = TemplatePromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
 
 export interface ScriptPromptConfig<
 	PROMPT = string
-> extends ScriptConfig {
+> extends CascadaConfig {
 	prompt?: PROMPT;
 	messages?: ModelMessage[];
 	promptType?: ScriptPromptType;
@@ -76,22 +86,6 @@ export type OptionalPromptConfig<
 > = OptionalTemplatePromptConfig<PROMPT> | OptionalScriptPromptConfig<PROMPT>;
 
 export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
-
-// For use in Script (where the script property is used instead of prompt)
-export interface ScriptConfig<
-	INPUT extends Record<string, any>,
-	OUTPUT = ModelMessage[]
-> extends CascadaConfig {
-	script?: string;
-	promptType?: ScriptPromptType;
-	schema?: SchemaType<OUTPUT>;
-	inputSchema?: SchemaType<INPUT>;
-};
-
-export interface TemplateConfig extends CascadaConfig {
-	prompt?: string;//@todo - rename to template
-	promptType?: ScriptPromptType;
-}
 
 /**
  * The configuration object passed to the `create.Tool` factory.

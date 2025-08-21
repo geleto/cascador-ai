@@ -10,8 +10,8 @@ export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 export type SchemaType<T> = z.ZodType<T, z.ZodTypeDef, any> | Schema<T>;
 
 // Define the possible prompt types
-export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name' | undefined;
-export type ScriptPromptType = 'script' | 'async-script' | 'script-name' | 'async-script-name' | undefined;
+export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';// | undefined;
+export type ScriptPromptType = 'script' | 'async-script' | 'script-name' | 'async-script-name';// | undefined;
 
 export type PromptType = TemplatePromptType | ScriptPromptType | 'text' | 'text-name';
 export type RequiredPromptType = Exclude<PromptType, undefined>;

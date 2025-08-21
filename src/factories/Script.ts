@@ -44,16 +44,14 @@ export type ScriptCallSignature<
 // Internal common creator
 export function _createScript(
 	config: configs.ScriptConfig<any, any>,
-	scriptType: Exclude<ScriptPromptType, undefined>,
+	scriptType: ScriptPromptType,
 	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
 ): ScriptCallSignature<any, any, any> {
 	// Merge configs if parent exists, otherwise use provided config
+	//, add promptType to the config
 	const merged = parent
-		? mergeConfigs(parent.config, config)
-		: config;
-
-	// Force intended scriptType based on entry point
-	merged.promptType = scriptType;
+		? { ...mergeConfigs(parent.config, config), promptType: scriptType }
+		: { ...config, promptType: scriptType };
 
 	validateBaseConfig(merged);
 
@@ -125,7 +123,7 @@ function baseScript<
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
 
 function baseScript(
-	config: configs.ScriptConfig<any>,
+	config: configs.ScriptConfig<any, any>,
 	parent?: ConfigProvider<configs.ScriptConfig<any>>
 ): any {
 	return _createScript(config, 'async-script', parent);
@@ -153,7 +151,7 @@ function loadsScript<
 ): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
 
 function loadsScript(
-	config: configs.ScriptConfig<any> & configs.LoaderConfig,
+	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
 ): any {
 	return _createScript(config, 'async-script-name', parent);
