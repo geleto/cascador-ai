@@ -280,10 +280,9 @@ describe('create.ObjectStreamer', function () {
 				resolveFinish = resolve;
 			});
 
-
+			//@ts-expect-error A TypeScript bug: https://github.com/microsoft/TypeScript/issues/62204
 			const streamer = create.ObjectStreamer({
 				model, temperature,
-				//@ts-expect-error A TypeScript bug: https://github.com/microsoft/TypeScript/issues/62204
 				schema: simpleSchema,
 				prompt: 'Generate a JSON object for "FinishCallback" with value 123.',
 				onFinish(result: StreamObjectOnFinishEvent<typeof simpleSchema>) {
