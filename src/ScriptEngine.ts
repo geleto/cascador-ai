@@ -17,8 +17,8 @@ class ScriptError extends Error {
 
 export class ScriptEngine<
 	TConfig extends Partial<ScriptConfig<INPUT, OUTPUT>>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > {
 	protected env: cascada.Environment | cascada.AsyncEnvironment;
 	protected scriptPromise?: Promise<cascada.Script | cascada.AsyncScript>;

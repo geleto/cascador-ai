@@ -40,8 +40,8 @@ export interface LoaderConfig {
 }
 
 /*export interface LoaderConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
 > extends BaseConfig<INPUT, OUTPUT> {
 	loader: ILoaderAny | ILoaderAny[];
 }*/
@@ -80,11 +80,13 @@ export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | Scrip
 
 // For use in Script (where the script property is used instead of prompt)
 export interface ScriptConfig<
-	OUTPUT extends string | ModelMessage[]
+	INPUT extends Record<string, any>,
+	OUTPUT = ModelMessage[]
 > extends CascadaConfig {
 	script?: string;
 	promptType?: ScriptPromptType;
 	schema?: SchemaType<OUTPUT>;
+	inputSchema?: SchemaType<INPUT>;
 };
 
 export interface TemplateConfig extends CascadaConfig {
@@ -97,7 +99,7 @@ export interface TemplateConfig extends CascadaConfig {
  * It is the vercel function tool without the execute function.
  * @deprecated
  */
-export type ToolConfig<INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never> = BaseConfig & {
+export type ToolConfig<INPUT extends Record<string, any>, OUTPUT> = BaseConfig & {
 	type?: 'function';
 	description?: string;
 	inputSchema: SchemaType<INPUT>;
@@ -109,7 +111,7 @@ export type ToolConfig<INPUT extends Record<string, any> = never, OUTPUT extends
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  * @deprecated
  */
-export interface FunctionTool<INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never> {
+export interface FunctionTool<INPUT extends Record<string, any>, OUTPUT> {
 	description?: string;
 	inputSchema: SchemaType<INPUT>;
 	execute: (args: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>;
@@ -197,7 +199,7 @@ export type GenerateObjectNoSchemaConfig<
 
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type StreamObjectBaseConfig<
-	INPUT extends Record<string, any> = never,
+	INPUT extends Record<string, any>,
 	PROMPT = string
 > = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt' | 'onFinish'>
 	& BaseConfig
@@ -233,7 +235,7 @@ export type StreamObjectArrayConfig<
 }
 
 export type StreamObjectNoSchemaConfig<
-	INPUT extends Record<string, any> = never,
+	INPUT extends Record<string, any>,
 	PROMPT = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'no-schema';

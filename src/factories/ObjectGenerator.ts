@@ -1,4 +1,4 @@
-import { generateObject, JSONValue, LanguageModel } from "ai";
+import { generateObject, LanguageModel } from "ai";
 
 import * as results from '../types/result'
 import * as configs from '../types/config';
@@ -11,7 +11,7 @@ import { validateBaseConfig, validateObjectConfig } from "../validate";
 
 export type LLMGeneratorConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string
 > = (
 	| configs.GenerateObjectObjectConfig<INPUT, OUTPUT>
@@ -24,7 +24,7 @@ export type ObjectGeneratorInstance<
 	TConfig extends LLMGeneratorConfig<INPUT, OUTPUT, ENUM>,
 	PType extends RequiredPromptType,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 
 > = LLMCallSignature<TConfig, Promise<results.GenerateObjectResultAll<OUTPUT, ENUM>>, PType>;
@@ -190,7 +190,7 @@ type ValidateObjectGeneratorParentConfig<
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 	MoreConfig = object
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
@@ -214,10 +214,10 @@ function withText<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
@@ -235,10 +235,10 @@ function withText<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM>,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
@@ -252,7 +252,7 @@ function withText<
 function loadsText<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
@@ -266,10 +266,10 @@ function loadsText<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
@@ -287,10 +287,10 @@ function loadsText<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
@@ -306,7 +306,7 @@ function loadsText<
 function withTemplate<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
@@ -319,10 +319,10 @@ function withTemplate<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.CascadaConfig,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
@@ -341,10 +341,10 @@ function withTemplate<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
@@ -356,7 +356,7 @@ function withTemplate<
 function loadsTemplate<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
@@ -370,10 +370,10 @@ function loadsTemplate<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
@@ -392,10 +392,10 @@ function loadsTemplate<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
@@ -407,7 +407,7 @@ function loadsTemplate<
 function withScript<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
@@ -420,10 +420,10 @@ function withScript<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.CascadaConfig,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
@@ -442,10 +442,10 @@ function withScript<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,
@@ -457,7 +457,7 @@ function withScript<
 function loadsScript<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectGeneratorConfig<TConfig, TConfig, TConfig,
@@ -470,10 +470,10 @@ function loadsScript<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & Partial<configs.LoaderConfig>>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
@@ -492,10 +492,10 @@ function loadsScript<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.CascadaConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue,
+	OUTPUT,
 	ENUM extends string,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT extends JSONValue,
+	PARENT_OUTPUT,
 	PARENT_ENUM extends string,
 >(
 	config: TConfig,

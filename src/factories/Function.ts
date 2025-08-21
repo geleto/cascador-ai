@@ -1,28 +1,28 @@
-import { JSONValue, Tool, ToolCallOptions } from 'ai';
+import { Tool, ToolCallOptions } from 'ai';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { ConfigError } from "../validate";
 
-type FunctionConfig<INPUT extends Record<string, any>, OUTPUT extends JSONValue = never> =
-	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & configs.BaseConfig<INPUT, OUTPUT>
+type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
+	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & configs.BaseConfig
 
-type ToolConfig<INPUT extends Record<string, any>, OUTPUT extends JSONValue = never> =
-	Tool<INPUT, OUTPUT> & configs.BaseConfig<INPUT, OUTPUT>
+type ToolConfig<INPUT extends Record<string, any>, OUTPUT> =
+	Tool<INPUT, OUTPUT> & configs.BaseConfig
 
-type ToolOrFunctionConfig<INPUT extends Record<string, any>, OUTPUT extends JSONValue = never> =
+type ToolOrFunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
 	ToolConfig<INPUT, OUTPUT> | FunctionConfig<INPUT, OUTPUT>
 
 export type FunctionCallSignature<
 	TConfig extends FunctionConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
+	OUTPUT,
 > = ((context: INPUT) => PromiseLike<OUTPUT>) & TConfig;
 
 export type ToolCallSignature<
 	TConfig extends ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
+	OUTPUT,
 > = ((context: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig;
 
 type ValidateConfig<
@@ -32,9 +32,9 @@ type ValidateConfig<
 	TBaseConfig extends ToolOrFunctionConfig<INPUT, OUTPUT>,
 	TParentBaseConfig extends ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 > =
 	TConfig extends Partial<TBaseConfig>
 	? (
@@ -60,8 +60,8 @@ type ValidateConfig<
 type ValidateParentConfig<
 	TParentConfig extends Partial<TBaseConfig>,
 	TBaseConfig extends ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 > =
 	TParentConfig extends Partial<ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>>
 	? (
@@ -77,7 +77,7 @@ type ValidateParentConfig<
 function asFunction<
 	TConfig extends FunctionConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
+	OUTPUT,
 >(
 	config: TConfig & ValidateConfig<TConfig, TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
 ): FunctionCallSignature<TConfig, INPUT, OUTPUT>;
@@ -87,9 +87,9 @@ function asFunction<
 	TConfig extends Partial<FunctionConfig<INPUT, OUTPUT>>,
 	TParentConfig extends Partial<FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 	TFinalConfig extends Partial<FunctionConfig<INPUT, OUTPUT>> = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateConfig<TConfig, TParentConfig, TFinalConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
@@ -98,7 +98,7 @@ function asFunction<
 ): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 
 function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): any {
-	return _createFunction(config, parent) as FunctionCallSignature<FunctionConfig<any, any>, any, any>;
+	return _createFunction(config, parent);
 }
 
 //the default is withFunction
@@ -106,7 +106,7 @@ function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<Fu
 function asTool<
 	TConfig extends ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
+	OUTPUT,
 >(
 	config: TConfig & ValidateConfig<TConfig, TConfig, TConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
 ): ToolCallSignature<TConfig, INPUT, OUTPUT>;
@@ -116,9 +116,9 @@ function asTool<
 	TConfig extends Partial<ToolConfig<INPUT, OUTPUT>>,
 	TParentConfig extends Partial<ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 	TFinalConfig extends Partial<ToolConfig<INPUT, OUTPUT>> = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateConfig<TConfig, TParentConfig, TFinalConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
@@ -136,7 +136,7 @@ function _createFunction(
 	parent?: ConfigProvider<ToolOrFunctionConfig<any, any>> |
 		FunctionCallSignature<FunctionConfig<any, any>, any, any> |
 		ToolCallSignature<ToolConfig<any, any>, any, any>
-): any {
+): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
 
 	let merged;
 	if (parent) {
@@ -156,7 +156,7 @@ function _createFunction(
 	}
 
 	const type = 'Function';
-	return Object.assign(merged.execute, { config: merged, type });
+	return Object.assign(merged.execute as FunctionCallSignature<FunctionConfig<any, any>, any, any>, { config: merged, type });
 }
 
 export const Function = Object.assign(asFunction, {

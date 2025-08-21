@@ -3,7 +3,7 @@ import { validateBaseConfig } from '../validate';
 import { ConfigProvider } from '../ConfigData';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
-import { JSONValue, ToolSet } from 'ai';
+import { ToolSet } from 'ai';
 
 // Single config overload
 export function Config<
@@ -20,7 +20,7 @@ export function Config<
 export function Config<
 	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
 	TParentConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
-	TOOLS extends ToolSet, INPUT extends Record<string, any> = never, OUTPUT extends JSONValue = never, ENUM extends string = string,
+	TOOLS extends ToolSet, INPUT extends Record<string, any>, OUTPUT, ENUM extends string = string,
 	TCombined = utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>>
 >(
 	config: TConfig,
@@ -34,8 +34,8 @@ export function Config<
 	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
 	TParentConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
 	TOOLS extends ToolSet,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
 	ENUM extends string = string
 >(
 	config: TConfig,

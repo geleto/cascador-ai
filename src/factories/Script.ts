@@ -5,27 +5,26 @@ import * as configs from '../types/config';
 import * as results from '../types/result';
 import * as utils from '../types/utils';
 import { Context, SchemaType, ScriptPromptType } from '../types/types';
-import { JSONValue } from 'ai';
 
 export type ScriptInstance<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > = ScriptCallSignature<TConfig, INPUT, OUTPUT>;
 
 //@todo - move to result
 type ScriptResultPromise<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > =
 	Promise<TConfig extends { schema: SchemaType<infer OBJECT> } ? OBJECT : results.ScriptResult>;
 
 // Script call signature type
 export type ScriptCallSignature<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > =
 	TConfig extends { script: string }
 	? {
@@ -74,7 +73,7 @@ export function _createScript(
 		throw new Error('A loader is required when scriptType is "script-name" or "async-script-name".');
 	}
 
-	const runner = new ScriptEngine(merged as configs.ScriptConfig);
+	const runner = new ScriptEngine(merged);
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {
@@ -101,14 +100,14 @@ export function _createScript(
 
 	const callSignature = Object.assign(call, { config: merged, type: 'Script' });
 
-	return callSignature as ScriptCallSignature<any>;
+	return callSignature as ScriptCallSignature<any, any, any>;
 }
 
 // Default behavior: inline/embedded script
 function baseScript<
 	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 >(
 	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>
 ): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
@@ -116,10 +115,10 @@ function baseScript<
 function baseScript<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
 	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
 >(
 	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>,
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
@@ -135,8 +134,8 @@ function baseScript(
 // loadsScript: load by name via provided loader
 function loadsScript<
 	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 >(
 	config: TConfig
 ): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
@@ -144,14 +143,14 @@ function loadsScript<
 function loadsScript<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
 	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
 >(
 	config: TConfig,
 	parent: ConfigProvider<TParentConfig>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>>;
+): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
 
 function loadsScript(
 	config: configs.ScriptConfig<any> & configs.LoaderConfig,

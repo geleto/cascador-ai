@@ -18,8 +18,8 @@ import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from ".
 }*/
 
 export type LLMStreamerConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > = (
 	| configs.StreamObjectObjectConfig<INPUT, OUTPUT>
 	| configs.StreamObjectArrayConfig<INPUT, OUTPUT>
@@ -29,13 +29,13 @@ export type LLMStreamerConfig<
 export type ObjectStreamerInstance<
 	TConfig extends LLMStreamerConfig<INPUT, OUTPUT>,
 	PType extends RequiredPromptType,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
 > = LLMCallSignature<TConfig, Promise<results.StreamObjectResultAll<OUTPUT>>, PType, INPUT, OUTPUT>;
 
 type StreamObjectConfig<
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never
+	INPUT extends Record<string, any>,
+	OUTPUT
 > =
 	configs.StreamObjectObjectConfig<INPUT, OUTPUT> |
 	configs.StreamObjectArrayConfig<INPUT, OUTPUT> |
@@ -44,8 +44,8 @@ type StreamObjectConfig<
 type StreamObjectReturn<
 	TConfig extends configs.OptionalPromptConfig<PType, INPUT, OUTPUT>,
 	PType extends RequiredPromptType,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
 > =
 	TConfig extends { output: 'array', schema: SchemaType<OUTPUT> }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<OUTPUT>>, PType, INPUT, OUTPUT>
@@ -63,8 +63,8 @@ type StreamObjectWithParentReturn<
 	TParentConfig extends configs.OptionalPromptConfig<string, never, PARENT_OUTPUT>,
 	PType extends RequiredPromptType,
 
-	OUTPUT extends JSONValue = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	OUTPUT,
+	PARENT_OUTPUT,
 
 	TFinalConfig extends configs.OptionalPromptConfig<string, never, any> = utils.Override<TParentConfig, TConfig>,
 > =
@@ -86,10 +86,10 @@ type ValidateObjectStreamerConfig<
 	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 	MoreConfig = object
 > = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
 	Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>, //TConfig Shape
@@ -101,8 +101,8 @@ type ValidateObjectStreamerConfig<
 type ValidateObjectStreamerParentConfig<
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
 	TFinalConfig extends AllSpecializedProperties,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 	MoreConfig = object
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
 	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>, //TParentConfig Shape
@@ -112,8 +112,8 @@ type ValidateObjectStreamerParentConfig<
 
 function withText<
 	TConfig extends StreamObjectConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
 
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
@@ -125,10 +125,10 @@ function withText<
 function withText<
 	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT>> & StreamCallbacks & configs.OptionalPromptConfig<string, INPUT, OUTPUT>,
 	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>> & StreamCallbacks & configs.OptionalPromptConfig<string, PARENT_INPUT, PARENT_OUTPUT>,
-	INPUT extends Record<string, any> = never,
-	OUTPUT extends JSONValue = never,
-	PARENT_INPUT extends Record<string, any> = never,
-	PARENT_OUTPUT extends JSONValue = never,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
