@@ -4,15 +4,17 @@ import {
 import type {
 	GenerateTextResult as BaseGenerateTextResult,
 	StreamTextResult as BaseStreamTextResult,
+	ToolCallOptions,
 	ToolSet,
 } from 'ai';
+import { SchemaType } from './types';
 
 // Result types
 export type {
 	// Keep object-related exports as-is
 } from 'ai';
 
-export type ScriptResult = JSONValue;//Record<string, any> | string | null;
+export type ScriptResult = JSONValue;//@todo - remove, RESULT can be any type (union, etc...)
 
 // Augmented text result types with lazy messageHistory
 export type GenerateTextResultAugmented<TOOLS extends ToolSet = ToolSet, OUTPUT = never> =
@@ -56,3 +58,10 @@ export type StreamObjectArrayResult<OUTPUT> = StreamObjectResult<OUTPUT[], OUTPU
 export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue, never>;
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
+
+export interface RendererToolResult<INPUT, OUTPUT> {
+	description?: string;
+	inputSchema: SchemaType<INPUT>;
+	execute: (args: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>;
+	//type: 'function';
+}
