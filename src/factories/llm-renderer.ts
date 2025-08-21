@@ -5,7 +5,7 @@ import * as utils from '../types/utils';
 import { _createTemplate, TemplateCallSignature } from './Template';
 import { _createScript, ScriptCallSignature } from './Script';
 import { LanguageModel, ModelMessage, ToolSet, generateText, streamText } from 'ai';
-import type { GenerateTextResult, JSONValue, StreamTextResult } from 'ai';
+import type { GenerateTextResult, StreamTextResult } from 'ai';
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from '../types/result';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
@@ -235,15 +235,17 @@ export function _createLLMRenderer<
 		let renderer: TemplateCallSignature<any> | ScriptCallSignature<any>;
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		if (isTemplatePrompt) {
+			// The prompt always renders a string
 			type PromptType = Exclude<TemplatePromptType, undefined>;
 			renderer = _createTemplate(config as { prompt: string, promptType: PromptType }, config.promptType as PromptType);
 		} else {
-			// the script may render a string or messages; set a matching schema
-			const textScriptConfig: configs.BaseConfig<any, any> & configs.ScriptConfig = {
+			// The script may render a string or messages; set a matching schema
+			type ScriptOutput = string | ModelMessage[];
+			const textScriptConfig: configs.BaseConfig & configs.ScriptConfig<ScriptOutput> = {
 				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
-				schema: PromptStringOrMessagesSchema as z.ZodType<string | ModelMessage[]>, //the script may render a string or messages
+				schema: PromptStringOrMessagesSchema as z.ZodType<ScriptOutput>, //the script may render a string or messages
 				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead
-			};
+			} as configs.ScriptConfig<ScriptOutput>;
 			delete (textScriptConfig as configs.PromptConfig).prompt;
 			renderer = _createScript(textScriptConfig, config.promptType as Exclude<ScriptPromptType, undefined>);
 		}

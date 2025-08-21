@@ -79,9 +79,12 @@ export type OptionalPromptConfig<
 export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
 // For use in Script (where the script property is used instead of prompt)
-export interface ScriptConfig extends CascadaConfig {
+export interface ScriptConfig<
+	OUTPUT extends string | ModelMessage[]
+> extends CascadaConfig {
 	script?: string;
 	promptType?: ScriptPromptType;
+	schema?: SchemaType<OUTPUT>;
 };
 
 export interface TemplateConfig extends CascadaConfig {
