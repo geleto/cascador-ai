@@ -191,14 +191,7 @@ function withTemplateAsTool<
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template'> & results.RendererToolResult<INPUT, string>;
 
 function withTemplateAsTool(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
-	const result = _createTextGenerator(config, 'async-template', parent) as results.RendererToolResult<any, string>;
-	result.description = config.description;
-	if (config.inputSchema) {
-		result.inputSchema = config.inputSchema;
-	}
-	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
-	result.execute = result as unknown as (args: any, options: ToolCallOptions) => PromiseLike<string>;
-	return result as GenerateTextWithParentReturn<any, any, any, any, 'async-template'> & results.RendererToolResult<any, string>;
+	return _createTextGeneratorAsTool(config, 'async-template', parent) as GenerateTextWithParentReturn<any, any, any, any, 'async-template'> & results.RendererToolResult<any, string>;
 }
 
 function loadsTemplate<
@@ -248,14 +241,7 @@ function loadsTemplateAsTool<
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name'> & results.RendererToolResult<INPUT, string>;
 
 function loadsTemplateAsTool(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
-	const result = _createTextGenerator(config, 'async-template-name', parent) as results.RendererToolResult<any, string>;
-	result.description = config.description;
-	if (config.inputSchema) {
-		result.inputSchema = config.inputSchema;
-	}
-	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
-	result.execute = result as unknown as (args: any, options: ToolCallOptions) => PromiseLike<string>;
-	return result as GenerateTextWithParentReturn<any, any, any, any, 'async-template-name'> & results.RendererToolResult<any, string>;
+	return _createTextGeneratorAsTool(config, 'async-template-name', parent) as GenerateTextWithParentReturn<any, any, any, any, 'async-template-name'> & results.RendererToolResult<any, string>;
 }
 
 function withScript<
@@ -305,14 +291,7 @@ function withScriptAsTool<
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script'> & results.RendererToolResult<INPUT, string>;
 
 function withScriptAsTool(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
-	const result = _createTextGenerator(config, 'async-script', parent) as results.RendererToolResult<any, string>;
-	result.description = config.description;
-	if (config.inputSchema) {
-		result.inputSchema = config.inputSchema;
-	}
-	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
-	result.execute = result as unknown as (args: any, options: ToolCallOptions) => PromiseLike<string>;
-	return result as GenerateTextWithParentReturn<any, any, any, any, 'async-script'> & results.RendererToolResult<any, string>;
+	return _createTextGeneratorAsTool(config, 'async-script', parent) as GenerateTextWithParentReturn<any, any, any, any, 'async-script'> & results.RendererToolResult<any, string>;
 }
 
 function loadsScript<
@@ -362,14 +341,7 @@ function loadsScriptAsTool<
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name'> & results.RendererToolResult<INPUT, string>;
 
 function loadsScriptAsTool(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
-	const result = _createTextGenerator(config, 'async-script-name', parent) as results.RendererToolResult<any, string>;
-	result.description = config.description;
-	if (config.inputSchema) {
-		result.inputSchema = config.inputSchema;
-	}
-	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
-	result.execute = result as unknown as (args: any, options: ToolCallOptions) => PromiseLike<string>;
-	return result as GenerateTextWithParentReturn<any, any, any, any, 'async-script-name'> & results.RendererToolResult<any, string>;
+	return _createTextGeneratorAsTool(config, 'async-script-name', parent) as GenerateTextWithParentReturn<any, any, any, any, 'async-script-name'> & results.RendererToolResult<any, string>;
 }
 
 function _createTextGenerator(
@@ -393,6 +365,21 @@ function _createTextGenerator(
 		merged as configs.PromptConfig & { model: LanguageModel, prompt: string, promptType: 'text' },
 		generateText
 	);
+}
+
+function _createTextGeneratorAsTool(
+	config: Partial<configs.GenerateTextConfig<any, any, any>>,
+	promptType: RequiredPromptType,
+	parent?: ConfigProvider<Partial<configs.GenerateTextConfig<any, any, any>>>
+): any {
+	const result = _createTextGenerator(config, promptType, parent) as results.RendererToolResult<any, string>;
+	result.description = config.description;
+	if (config.inputSchema) {
+		result.inputSchema = config.inputSchema;
+	}
+	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
+	result.execute = result as unknown as (args: any, options: ToolCallOptions) => PromiseLike<string>;
+	return result;
 }
 
 export const TextGenerator = Object.assign(withText, { // default is withText
