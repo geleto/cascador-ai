@@ -28,13 +28,13 @@ export type ToolCallSignature<
 type ValidateConfig<
 	TConfig extends Partial<TBaseConfig>,
 	TParentConfig extends Partial<TParentBaseConfig>,
-	TFinalConfig extends Partial<TBaseConfig | TParentBaseConfig>,
 	TBaseConfig extends ToolOrFunctionConfig<INPUT, OUTPUT>,
 	TParentBaseConfig extends ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
+	TFinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	TConfig extends Partial<TBaseConfig>
 	? (
@@ -79,7 +79,7 @@ function asFunction<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
 ): FunctionCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Functionparent config
@@ -90,9 +90,9 @@ function asFunction<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	TFinalConfig extends Partial<FunctionConfig<INPUT, OUTPUT>> = utils.Override<TParentConfig, TConfig>
+	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateConfig<TConfig, TParentConfig, TFinalConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
+	config: TConfig & ValidateConfig<TConfig, TParentConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>> |
 		TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>
 ): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
@@ -108,7 +108,7 @@ function asTool<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, TConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
 ): ToolCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Toolparent config
@@ -119,9 +119,9 @@ function asTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	TFinalConfig extends Partial<ToolConfig<INPUT, OUTPUT>> = utils.Override<TParentConfig, TConfig>
+	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateConfig<TConfig, TParentConfig, TFinalConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
+	config: TConfig & ValidateConfig<TConfig, TParentConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>> |
 		TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>
 ): ToolCallSignature<TFinalConfig & ToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;

@@ -133,7 +133,7 @@ function asTool<
 >(
 	config: TConfig,
 	parent: ConfigProvider<TParentConfig>
-): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, never>;
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
 function asTool<
 	const TConfig extends Partial<configs.TemplateToolConfig<INPUT>>,
@@ -145,7 +145,7 @@ function asTool<
 	config: Partial<TConfig>,
 	parent?: ConfigProvider<TParentConfig>,
 
-): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, never> {
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string> {
 	const renderer = _createTemplate(config, 'async-template', parent) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 	console.log('renderer config', renderer.config);
 
@@ -155,7 +155,7 @@ function asTool<
 	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
 	toolRenderer.execute = renderer as unknown as (args: FINAL_INPUT, options: ToolCallOptions) => PromiseLike<string>;
 
-	return renderer as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, never>;
+	return renderer as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 }
 
 // Internal common creator for template renderer
@@ -223,8 +223,7 @@ export function _createTemplate<
 	};
 
 	const callSignature = Object.assign(call, { config: merged, type: 'Template' });
-
-	return callSignature as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
+	return callSignature as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 }
 
 export const Template = Object.assign(baseTemplate, {

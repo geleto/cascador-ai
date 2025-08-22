@@ -21,6 +21,17 @@ type ScriptResultPromise<
 > =
 	Promise<TConfig extends { schema: SchemaType<infer OBJECT> } ? OBJECT : results.ScriptResult>;
 
+type ScriptResultPromiseWithParent<
+	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
+	FinalConfig = utils.Override<TParentConfig, TConfig>
+> =
+	Promise<FinalConfig extends { schema: SchemaType<infer OBJECT> } ? OBJECT : results.ScriptResult>;
+
 // Script call signature type
 export type ScriptCallSignature<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
@@ -42,6 +53,32 @@ export type ScriptCallSignature<
 		type: string;
 	};
 
+export type ScriptCallSignatureWithParent<
+	TConfig extends Partial<configs.ScriptConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
+	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FinalConfig = utils.Override<TParentConfig, TConfig>
+> =
+	FinalConfig extends { script: string }
+	? {
+		// FinalConfig has a script, so the script argument is optional.
+		(scriptOrContext?: FINAL_INPUT | string): ScriptResultPromiseWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
+		(script?: string, context?: FINAL_INPUT): ScriptResultPromiseWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
+		config: FinalConfig;
+		type: string;
+	}
+	: {
+		// FinalConfig has no script, so the script argument is required.
+		(script: string, context?: FINAL_INPUT): ScriptResultPromiseWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
+		config: FinalConfig;
+		type: string;
+	};
+
+
 // Default behavior: inline/embedded script
 function baseScript<
 	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
@@ -61,7 +98,7 @@ function baseScript<
 >(
 	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>,
 	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
+): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
 
 function baseScript(
 	config: configs.ScriptConfig<any, any>,
@@ -89,7 +126,7 @@ function asTool<
 >(
 	config: TConfig & { description?: string; inputSchema: any },
 	parent: ConfigProvider<TParentConfig>
-): ScriptCallSignature<TConfig, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
+): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function asTool<
 	INPUT extends Record<string, any>,
@@ -120,7 +157,7 @@ function loadsScript<
 >(
 	config: TConfig,
 	parent: ConfigProvider<TParentConfig>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
+): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
 
 function loadsScript(
 	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
@@ -142,11 +179,13 @@ function loadsScriptAsTool<
 	OUTPUT,
 	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT
+	PARENT_OUTPUT,
+	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> },
 	parent: ConfigProvider<TParentConfig>
-): results.RendererTool<INPUT, OUTPUT>;
+): results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsScriptAsTool<
 	INPUT extends Record<string, any>,

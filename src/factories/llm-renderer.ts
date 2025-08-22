@@ -144,7 +144,7 @@ function augmentResponseObject(
 	});
 }
 
-function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
+function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = string>(
 	result: GenerateTextResult<TOOLS, OUTPUT>,
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,
@@ -161,7 +161,7 @@ function augmentGenerateText<TOOLS extends ToolSet = ToolSet, OUTPUT = never>(
 	return result as GenerateTextResultAugmented<TOOLS, OUTPUT>;
 }
 
-function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = never>(
+function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = string>(
 	result: StreamTextResult<TOOLS, PARTIAL>,
 	prefixForMessages: ModelMessage[] | undefined,
 	historyPrefix: ModelMessage[] | undefined,

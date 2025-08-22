@@ -25,13 +25,14 @@ type StreamTextReturnWithPrompt<
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
 type StreamTextWithParentReturn<
-	TConfig extends configs.OptionalPromptConfig,
-	TParentConfig extends configs.OptionalPromptConfig,
+	TConfig extends configs.OptionalPromptConfig & configs.BaseConfig,
+	TParentConfig extends configs.OptionalPromptConfig & configs.BaseConfig,
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
 	PType extends RequiredPromptType,
-	TFinalConfig extends configs.OptionalPromptConfig = utils.Override<TParentConfig, TConfig>
-> = StreamTextReturnWithPrompt<TFinalConfig, TOOLS extends ToolSet ? PARENT_TOOLS : TOOLS, PType>;
+	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
+	TFinalConfig extends configs.BaseConfig = utils.Override<TParentConfig, TConfig>
+> = LLMCallSignature<TFinalConfig, Promise<results.StreamTextResultAugmented<FINAL_TOOLS>>, PType>;
 
 // The full shape of a final, merged config object, including required properties.
 type FinalTextConfigShape = Partial<configs.StreamTextConfig<any, any, any> & { model: LanguageModel }>;

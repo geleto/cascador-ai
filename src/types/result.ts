@@ -17,14 +17,14 @@ export type {
 export type ScriptResult = JSONValue;//@todo - remove, RESULT can be any type (union, etc...)
 
 // Augmented text result types with lazy messageHistory
-export type GenerateTextResultAugmented<TOOLS extends ToolSet = ToolSet, OUTPUT = never> =
+export type GenerateTextResultAugmented<TOOLS extends ToolSet = ToolSet, OUTPUT = string> =
 	BaseGenerateTextResult<TOOLS, OUTPUT> & {
 		response: BaseGenerateTextResult<TOOLS, OUTPUT>['response'] & {
 			messageHistory: BaseGenerateTextResult<TOOLS, OUTPUT>['response']['messages'];
 		};
 	};
 
-export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL = never> =
+export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL = string> =
 	BaseStreamTextResult<TOOLS, PARTIAL> & {
 		response: BaseStreamTextResult<TOOLS, PARTIAL>['response'] extends Promise<infer R extends { messages: readonly unknown[] }>
 		? Promise<R & { messageHistory: R['messages'] }>
