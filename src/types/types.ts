@@ -29,3 +29,5 @@ export type StreamObjectOnFinishEvent<SCHEMA extends z.ZodTypeAny | Schema<any>>
 export type StreamTextOnFinishEvent<TOOLS extends ToolSet = Record<string, never>> =
 	Parameters<StreamTextOnFinishCallback<TOOLS>>[0];
 
+export type EmptyObject = Record<string, never>;
+

@@ -8,7 +8,7 @@ import { ToolSet } from 'ai';
 // Single config overload
 export function Config<
 	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
-	TOOLS extends ToolSet,
+	TOOLS extends ToolSet, //@todo - handle TOOLS similarly elsewhere
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
 	ENUM extends string = string
@@ -32,17 +32,30 @@ export function Config<
 // Implementation
 export function Config<
 	TConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
-	TParentConfig extends Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>,
+	TParentConfig extends Partial<configs.AnyConfig<PARENT_TOOLS, PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>>,
+
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 	OUTPUT,
-	ENUM extends string = string
+	ENUM extends string,
+
+	PARENT_TOOLS extends ToolSet,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT,
+	PARENT_ENUM extends string,
+
+	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
+	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
+	FINAL_ENUM extends string = ENUM extends never ? PARENT_ENUM : ENUM,
+
+	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ):
-	| ConfigData<TConfig>
-	| ConfigData<utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>>> {
+	| ConfigData<TFinalConfig>
+	| ConfigData<utils.StrictUnionSubtype<TFinalConfig, Partial<configs.AnyConfig<FINAL_TOOLS, FINAL_INPUT, FINAL_OUTPUT, FINAL_ENUM>>>> {
 
 	//validateBaseConfig(config);
 
@@ -55,9 +68,9 @@ export function Config<
 		const merged = mergeConfigs(parent.config, config);
 		// Runtime check would go here if needed
 		validateBaseConfig(merged);
-		return new ConfigData(merged);
+		return new ConfigData(merged) as ConfigData<TFinalConfig>;
 	}
 
 	validateBaseConfig(config);
-	return new ConfigData(config);
+	return new ConfigData(config) as unknown as ConfigData<TFinalConfig>;
 }

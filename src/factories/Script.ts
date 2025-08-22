@@ -5,6 +5,7 @@ import * as configs from '../types/config';
 import * as results from '../types/result';
 import * as utils from '../types/utils';
 import { Context, SchemaType, ScriptPromptType } from '../types/types';
+import { ToolCallOptions } from 'ai';
 
 export type ScriptInstance<
 	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
@@ -40,6 +41,122 @@ export type ScriptCallSignature<
 		config: TConfig;
 		type: string;
 	};
+
+// Default behavior: inline/embedded script
+function baseScript<
+	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>
+): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
+
+function baseScript<
+	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
+>(
+	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
+): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
+
+function baseScript(
+	config: configs.ScriptConfig<any, any>,
+	parent?: ConfigProvider<configs.ScriptConfig<any>>
+): any {
+	return _createScript(config, 'async-script', parent);
+}
+
+// asTool method for Script
+function asTool<
+	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: TConfig & { description?: string; inputSchema: any }
+): ScriptCallSignature<TConfig, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
+
+function asTool<
+	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
+>(
+	config: TConfig & { description?: string; inputSchema: any },
+	parent: ConfigProvider<TParentConfig>
+): ScriptCallSignature<TConfig, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
+
+function asTool<
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: configs.ScriptConfig<INPUT, OUTPUT> & { description?: string; inputSchema: SchemaType<INPUT> },
+	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>
+): results.RendererTool<INPUT, OUTPUT> {
+	return _createScriptAsTool(config, 'async-script', parent);
+}
+
+// loadsScript: load by name via provided loader
+function loadsScript<
+	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: TConfig
+): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
+
+function loadsScript<
+	TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
+	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
+>(
+	config: TConfig,
+	parent: ConfigProvider<TParentConfig>
+): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
+
+function loadsScript(
+	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
+	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
+): any {
+	return _createScript(config, 'async-script-name', parent);
+}
+
+// loadsScriptAsTool: load by name via provided loader and return as tool
+function loadsScriptAsTool<
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> }
+): results.RendererTool<INPUT, OUTPUT>;
+
+function loadsScriptAsTool<
+	INPUT extends Record<string, any>,
+	OUTPUT,
+	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
+	PARENT_INPUT extends Record<string, any>,
+	PARENT_OUTPUT
+>(
+	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> },
+	parent: ConfigProvider<TParentConfig>
+): results.RendererTool<INPUT, OUTPUT>;
+
+function loadsScriptAsTool<
+	INPUT extends Record<string, any>,
+	OUTPUT
+>(
+	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> },
+	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig>
+): results.RendererTool<INPUT, OUTPUT> {
+	return _createScriptAsTool(config, 'async-script-name', parent);
+}
 
 // Internal common creator
 export function _createScript(
@@ -101,62 +218,37 @@ export function _createScript(
 	return callSignature as ScriptCallSignature<any, any, any>;
 }
 
-// Default behavior: inline/embedded script
-function baseScript<
-	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
+// Internal common creator for tools
+export function _createScriptAsTool<
 	INPUT extends Record<string, any>,
 	OUTPUT
 >(
-	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>
-): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
+	config: configs.ScriptConfig<INPUT, OUTPUT> & { description?: string; inputSchema: SchemaType<INPUT> },
+	scriptType: ScriptPromptType,
+	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>
+): results.RendererTool<INPUT, OUTPUT> {
+	const renderer = _createScript(config, scriptType, parent) as (args: INPUT) => Promise<OUTPUT>;
 
-function baseScript<
-	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>,
-	INPUT extends Record<string, any>,
-	OUTPUT,
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT
->(
-	config: utils.StrictType<TConfig, configs.ScriptConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
+	// Create a proper Tool object that matches the Vercel AI SDK's Tool interface
+	const tool: results.RendererTool<INPUT, OUTPUT> = {
+		description: config.description,
+		inputSchema: config.inputSchema,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		execute: async (args: INPUT, _options: ToolCallOptions) => {
+			// Call the renderer with the args as context
+			const result = await renderer(args);
+			return result;
+		},
+		type: 'function' as const
+	};
 
-function baseScript(
-	config: configs.ScriptConfig<any, any>,
-	parent?: ConfigProvider<configs.ScriptConfig<any>>
-): any {
-	return _createScript(config, 'async-script', parent);
-}
-
-// loadsScript: load by name via provided loader
-function loadsScript<
-	const TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
-	OUTPUT
->(
-	config: TConfig
-): ScriptCallSignature<TConfig, INPUT, OUTPUT>;
-
-function loadsScript<
-	TConfig extends configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig,
-	TParentConfig extends configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
-	INPUT extends Record<string, any>,
-	OUTPUT,
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT
->(
-	config: TConfig,
-	parent: ConfigProvider<TParentConfig>
-): ScriptCallSignature<utils.Override<TParentConfig, TConfig>, INPUT, OUTPUT>;
-
-function loadsScript(
-	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
-	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
-): any {
-	return _createScript(config, 'async-script-name', parent);
+	return tool;
 }
 
 export const Script = Object.assign(baseScript, {
-	loadsScript,
+	loadsScript: Object.assign(loadsScript, {
+		asTool
+	}),
+	asTool,
+	loadsScriptAsTool
 });

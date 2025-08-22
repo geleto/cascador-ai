@@ -59,9 +59,9 @@ export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
-export interface RendererToolResult<INPUT, OUTPUT> {
+export interface RendererTool<INPUT, OUTPUT> {
 	description?: string;
 	inputSchema: SchemaType<INPUT>;
 	execute: (args: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>;
-	//type: 'function';
+	type?: 'function';
 }

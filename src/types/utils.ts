@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { SchemaType } from './types';
 
-export type Override<A, B> = Omit<A, keyof B> & B;
+//export type Override<A, B> = Omit<A, keyof B> & B;
+export type Override<A, B> = {
+	[K in keyof A | keyof B]: K extends keyof B
+	? B[K] extends never
+	? K extends keyof A ? A[K] : never
+	: B[K]
+	: K extends keyof A ? A[K] : never;
+};
 
 // Ensures T is an exact match of one of the union members in U
 // Prevents extra properties and mixing properties from different union types

@@ -45,6 +45,13 @@ export interface TemplateConfig<
 	inputSchema?: SchemaType<INPUT>;
 }
 
+export interface TemplateToolConfig<
+	INPUT extends Record<string, any>,
+> extends TemplateConfig<INPUT> {
+	inputSchema: SchemaType<INPUT>;//required
+	description?: string;
+}
+
 // Config for the Template engine, output is always a string
 export interface TemplatePromptConfig<
 	PROMPT = string,
@@ -88,14 +95,13 @@ export type OptionalPromptConfig<
 export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
 /**
- * The configuration object passed to the `create.Tool` factory.
+ * The basic configuration required for a vercel function tool derived from a renderer
  * It is the vercel function tool without the execute function.
- * @deprecated
  */
-export type ToolConfig<INPUT extends Record<string, any>, OUTPUT> = BaseConfig & {
+export interface ToolConfig<INPUT extends Record<string, any>, OUTPUT> {
 	type?: 'function';
 	description?: string;
-	inputSchema: SchemaType<INPUT>;
+	inputSchema: SchemaType<INPUT>;//the only required property
 	execute?: (args: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>;
 }
 
