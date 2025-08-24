@@ -114,7 +114,7 @@ describe('create.ObjectStreamer', function () {
 				schema: simpleSchema,
 			});
 
-			const result = await streamer('Generate an object for "RuntimeStream" with value 555.');
+			const result = await streamer('Generate an object named "RuntimeStream" with value 555.');
 			const partials = await collectPartials(result.partialObjectStream);
 			const finalObject = mergePartials(partials);
 			expect(finalObject).to.deep.equal({ name: 'RuntimeStream', value: 555 });
@@ -154,11 +154,11 @@ describe('create.ObjectStreamer', function () {
 		const parentConfig = create.Config({
 			model, temperature,
 			context: {
-				entity: 'streamed_user',
+				entity: 'john',
 				defaultId: 456,
 			},
 			filters: {
-				upper: (s: string) => s.toUpperCase(),
+				capitalize: (s: string) => s.charAt(0).toUpperCase() + s.slice(1),
 			},
 		});
 
@@ -166,7 +166,7 @@ describe('create.ObjectStreamer', function () {
 			const streamer = create.ObjectStreamer.withTemplate(
 				{
 					schema: simpleSchema,
-					prompt: 'Generate an object with name set to "{{ entity | upper }}" and value set to {{ defaultId }}.',
+					prompt: 'Generate an object with name set to "{{ entity | capitalize }}" and value set to {{ defaultId }}.',
 				},
 				parentConfig,
 			);
@@ -174,10 +174,10 @@ describe('create.ObjectStreamer', function () {
 			const result = await streamer();
 			const partials = await collectPartials(result.partialObjectStream);
 			const finalObject = mergePartials(partials);
-			expect(finalObject).to.deep.equal({ name: 'STREAMED_USER', value: 456 });
+			expect(finalObject).to.deep.equal({ name: 'John', value: 456 });
 		});
 
-		/*it('should inherit output type and schema from a parent streamer', async () => {
+		it('should inherit output type and schema from a parent streamer', async () => {
 			const parentStreamer = create.ObjectStreamer.withTemplate({
 				model, temperature,
 				output: 'array',
@@ -190,9 +190,9 @@ describe('create.ObjectStreamer', function () {
 
 			expect(childStreamer.config.output).to.equal('array');
 			const { object: finalArray } = await childStreamer();
-			expect(finalArray).to.be.an('array').with.lengthOf(1);
-			expect(finalArray).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
-		});*/
+			expect(await finalArray).to.be.an('array').with.lengthOf(1);
+			expect(await finalArray).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
+		});
 
 		it('should override parent properties (context, temperature)', async () => {
 			const streamer = create.ObjectStreamer.withTemplate({

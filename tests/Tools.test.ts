@@ -1,5 +1,6 @@
 
 import 'dotenv/config';
+
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
@@ -7,6 +8,8 @@ import { model, temperature, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { ModelMessage, stepCountIs } from 'ai';
+
+
 
 // Helper function to consume a stream
 async function streamToPromise(stream: any) {
@@ -23,7 +26,7 @@ chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe.only('create.Tool', function () {
+describe('create.Tool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
@@ -155,9 +158,9 @@ describe.only('create.Tool', function () {
 						input: 'test'
 					},
 					script: `
-						:data
-						@data.result = "Processed: " + input
-					`,
+							:data
+							@data.result = "Processed: " + input
+						`,
 					description: 'A script tool',
 					inputSchema: z.object({
 						input: z.string()
@@ -236,9 +239,9 @@ describe.only('create.Tool', function () {
 						}
 					},
 					script: `
-						:data
-						@data.result = failingFunction()
-					`,
+							:data
+							@data.result = failingFunction()
+						`,
 					description: 'A test tool',
 					inputSchema: z.object({})
 				});
@@ -332,10 +335,10 @@ describe.only('create.Tool', function () {
 						}
 					},
 					script: `
-						:data
-						var rawData = fetchData(input)
-						@data.result = processData(rawData)
-					`,
+							:data
+							var rawData = fetchData(input)
+							@data.result = processData(rawData)
+						`,
 					description: 'A data processing tool',
 					inputSchema: z.object({
 						input: z.string()
@@ -367,11 +370,11 @@ describe.only('create.Tool', function () {
 			it('should inject _toolCallOptions into script context', async () => {
 				const tool = create.Script.asTool({
 					script: `
-						:data
-						@data.toolCallId = _toolCallOptions.toolCallId
-						@data.messagesCount = _toolCallOptions.messages.length
-						@data.hasAbortSignal = _toolCallOptions.abortSignal !== undefined
-					`,
+							:data
+							@data.toolCallId = _toolCallOptions.toolCallId
+							@data.messagesCount = _toolCallOptions.messages.length
+							@data.hasAbortSignal = _toolCallOptions.abortSignal !== undefined
+						`,
 					description: 'A test tool that accesses _toolCallOptions in script',
 					inputSchema: z.object({
 						testParam: z.string()
@@ -393,10 +396,10 @@ describe.only('create.Tool', function () {
 					temperature,
 					schema: z.object({ characterName: z.string(), summary: z.string() }),
 					prompt: `
-						:data
-						// The script constructs the final prompt for the LLM
-						@data = "Generate a character profile for a " + role + " from the " + genre + " genre."
-					`,
+							:data
+							// The script constructs the final prompt for the LLM
+							@data = "Generate a character profile for a " + role + " from the " + genre + " genre."
+						`,
 					description: 'A character generator tool',
 					inputSchema: z.object({
 						role: z.string(),
@@ -691,7 +694,7 @@ describe.only('create.Tool', function () {
 		// --- Test Setup for Suite 5 ---
 		const errorTool = create.Script.asTool({
 			script: `:data
-			throw("Custom API Error")`,
+				throw("Custom API Error")`,
 			description: 'A tool that always throws an error',
 			inputSchema: z.object({}),
 		});

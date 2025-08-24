@@ -356,7 +356,7 @@ describe('create.Script', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate an array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, do not create an array with just one item in it',
+				prompt: 'Generate an array with length 2 having these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, make sure NOT to create an array with just one item in it',
 			});
 			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },
@@ -364,12 +364,12 @@ describe('create.Script', function () {
 					`:data
 					var stream = (streamer()).elementStream
 					for item in stream
-						@text(item.id)
+						@data.ids.push(item.id | int)
 					endfor
 					var text = capture:text
 						var str = (streamer()).elementStream
 						for item in str
-						@text(item.id)
+						    @text(item.id)
 						endfor
 					endcapture
 					// Split, parse as numbers and push to ids array
@@ -378,7 +378,7 @@ describe('create.Script', function () {
 					endfor`,
 			});
 			const result = await scriptRunner();
-			expect(result).to.deep.equal({ ids: [1, 2] });
+			expect(result).to.deep.equal({ ids: [1, 2, 1, 2] });
 		});
 	});
 

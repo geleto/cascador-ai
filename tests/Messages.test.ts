@@ -441,7 +441,7 @@ describe('Messages, Conversation & Integration', function () {
 
 		describe('Messaging with Tool Calls', () => {
 
-			const weatherGenerator = create.ObjectGenerator.withTemplate({
+			const getWeatherTool = create.ObjectGenerator.withTemplate.asTool({
 				model,
 				temperature,
 				schema: z.object({
@@ -449,21 +449,18 @@ describe('Messages, Conversation & Integration', function () {
 					tempF: z.number(),
 					conditions: z.string(),
 				}),
-				prompt: 'Return the weather for {{ city }}. If the city is San Francisco, return temp 75 and conditions "Sunny". Otherwise, return an error in the conditions field.'
-			});
-
-			const getWeatherTool = create.Tool({
 				description: 'Get the weather for a city',
 				inputSchema: z.object({ city: z.string() }),
-			}, weatherGenerator);
+				prompt: 'Return the weather for {{ city }}. If the city is San Francisco, return temp 75 and conditions "Sunny". Otherwise, return an error in the conditions field.'
+			});
 
 			it('should allow manual continuation of a conversation after a tool call', async () => {
 				const agent = create.TextGenerator({
 					model,
 					temperature,
-					tools: { getWeather: getWeatherTool },
+					tools: { getWeather: getWeatherTool } as const,
 					// NO stopWhen - we are doing this manually
-				});
+				} as const);
 
 				const initialPrompt = 'What is the weather in San Francisco?';
 				const messages: ModelMessage[] = [{ role: 'user', content: initialPrompt }];
