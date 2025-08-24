@@ -54,7 +54,7 @@ export interface TemplateToolConfig<
 
 export interface ScriptToolConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT = ModelMessage[]
+	OUTPUT
 > extends ScriptConfig<INPUT, OUTPUT> {
 	inputSchema: SchemaType<INPUT>;//required
 	description?: string;
@@ -72,7 +72,7 @@ export interface TemplatePromptConfig<
 // For use in the Script engine
 export interface ScriptConfig<
 	INPUT extends Record<string, any>,
-	OUTPUT = ModelMessage[]
+	OUTPUT
 > extends CascadaConfig {
 	script?: string;
 	schema?: SchemaType<OUTPUT>;

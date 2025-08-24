@@ -102,7 +102,7 @@ function baseScript<
 
 function baseScript(
 	config: configs.ScriptConfig<any, any>,
-	parent?: ConfigProvider<configs.ScriptConfig<any>>
+	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
 ): any {
 	return _createScript(config, 'async-script', parent);
 }
@@ -161,7 +161,7 @@ function loadsScript<
 
 function loadsScript(
 	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
-	parent?: ConfigProvider<configs.ScriptConfig<any> & configs.LoaderConfig>
+	parent?: ConfigProvider<configs.ScriptConfig<any, any> & configs.LoaderConfig>
 ): any {
 	return _createScript(config, 'async-script-name', parent);
 }
