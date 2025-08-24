@@ -52,6 +52,14 @@ export interface TemplateToolConfig<
 	description?: string;
 }
 
+export interface ScriptToolConfig<
+	INPUT extends Record<string, any>,
+	OUTPUT = ModelMessage[]
+> extends ScriptConfig<INPUT, OUTPUT> {
+	inputSchema: SchemaType<INPUT>;//required
+	description?: string;
+}
+
 // Config for the Template engine, output is always a string
 export interface TemplatePromptConfig<
 	PROMPT = string,
