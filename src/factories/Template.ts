@@ -152,6 +152,8 @@ function asTool<
 	const toolRenderer = renderer as unknown as results.RendererTool<FINAL_INPUT, string> & { inputSchema: SchemaType<FINAL_INPUT> };
 	toolRenderer.description = renderer.config.description;
 	toolRenderer.inputSchema = renderer.config.inputSchema as unknown as SchemaType<FINAL_INPUT>;
+	toolRenderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
+
 	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
 	toolRenderer.execute = renderer as unknown as (args: FINAL_INPUT, options: ToolCallOptions) => PromiseLike<string>;
 

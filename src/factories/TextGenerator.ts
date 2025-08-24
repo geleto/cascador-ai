@@ -425,6 +425,7 @@ function _createTextGeneratorAsTool<
 	const renderer = _createTextGenerator(config as any, promptType, parent) as unknown as results.RendererTool<INPUT, string>;
 	renderer.description = config.description;
 	renderer.inputSchema = config.inputSchema;
+	renderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
 
 	//result is a caller, assign the execute function to it. Args is the context object, options is not used
 	renderer.execute = renderer as unknown as (args: any, options: ToolCallOptions) => PromiseLike<any>;

@@ -4,7 +4,7 @@ import { ScriptEngine } from '../ScriptEngine';
 import * as configs from '../types/config';
 import * as results from '../types/result';
 import * as utils from '../types/utils';
-import { Context, SchemaType, ScriptPromptType } from '../types/types';
+import { SchemaType, ScriptPromptType } from '../types/types';
 import { ToolCallOptions } from 'ai';
 
 export type ScriptInstance<
@@ -41,14 +41,14 @@ export type ScriptCallSignature<
 	TConfig extends { script: string }
 	? {
 		// TConfig has a script, so the script argument is optional.
-		(scriptOrContext?: Context | string): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
-		(script?: string, context?: Context): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
+		(scriptOrContext?: INPUT | string): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
+		(script?: string, context?: INPUT): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
 		config: TConfig;
 		type: string;
 	}
 	: {
 		// TConfig has no script, so the script argument is required.
-		(script: string, context?: Context): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
+		(script: string, context?: INPUT): ScriptResultPromise<TConfig, INPUT, OUTPUT>;
 		config: TConfig;
 		type: string;
 	};
@@ -172,7 +172,7 @@ function loadsScriptAsTool<
 	OUTPUT
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> }
-): results.RendererTool<INPUT, OUTPUT>;
+): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
 	INPUT extends Record<string, any>,
@@ -185,7 +185,7 @@ function loadsScriptAsTool<
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> },
 	parent: ConfigProvider<TParentConfig>
-): results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): ScriptCallSignatureWithParent<configs.ScriptConfig<INPUT, OUTPUT>, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsScriptAsTool<
 	INPUT extends Record<string, any>,
@@ -193,16 +193,19 @@ function loadsScriptAsTool<
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig & { description?: string; inputSchema: SchemaType<INPUT> },
 	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig>
-): results.RendererTool<INPUT, OUTPUT> {
-	return _createScriptAsTool(config, 'async-script-name', parent);
+): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT> {
+	return _createScriptAsTool(config, 'async-script-name', parent) as unknown as ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 }
 
 // Internal common creator
-export function _createScript(
-	config: configs.ScriptConfig<any, any>,
+export function _createScript<
+	INPUT extends Record<string, any>,
+	OUTPUT,
+>(
+	config: configs.ScriptConfig<INPUT, OUTPUT>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
-): ScriptCallSignature<any, any, any> {
+	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>
+): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> {
 	// Merge configs if parent exists, otherwise use provided config
 	//, add promptType to the config
 	const merged = parent
@@ -230,7 +233,7 @@ export function _createScript(
 	const runner = new ScriptEngine(merged);
 
 	// Define the call function that handles both cases
-	const call = async (scriptOrContext?: Context | string, maybeContext?: Context): Promise<any> => {
+	const call = async (scriptOrContext?: INPUT | string, maybeContext?: INPUT): Promise<any> => {
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] Script - call function called with:', { scriptOrContext, maybeContext });
 		}
@@ -254,7 +257,7 @@ export function _createScript(
 
 	const callSignature = Object.assign(call, { config: merged, type: 'Script' });
 
-	return callSignature as ScriptCallSignature<any, any, any>;
+	return callSignature as ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 }
 
 // Internal common creator for tools
@@ -265,23 +268,17 @@ export function _createScriptAsTool<
 	config: configs.ScriptConfig<INPUT, OUTPUT> & { description?: string; inputSchema: SchemaType<INPUT> },
 	scriptType: ScriptPromptType,
 	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>
-): results.RendererTool<INPUT, OUTPUT> {
-	const renderer = _createScript(config, scriptType, parent) as (args: INPUT) => Promise<OUTPUT>;
+): ScriptCallSignatureWithParent<configs.ScriptConfig<INPUT, OUTPUT>, configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
+	& results.RendererTool<INPUT, OUTPUT> {
 
-	// Create a proper Tool object that matches the Vercel AI SDK's Tool interface
-	const tool: results.RendererTool<INPUT, OUTPUT> = {
-		description: config.description,
-		inputSchema: config.inputSchema,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		execute: async (args: INPUT, _options: ToolCallOptions) => {
-			// Call the renderer with the args as context
-			const result = await renderer(args);
-			return result;
-		},
-		type: 'function' as const
-	};
+	const renderer = _createScript(config, scriptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT>;
+	renderer.description = config.description;
+	renderer.inputSchema = config.inputSchema;
+	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
-	return tool;
+	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
+	renderer.execute = renderer as unknown as (args: any, options: ToolCallOptions) => PromiseLike<any>;
+	return renderer as (typeof renderer & ScriptCallSignatureWithParent<configs.ScriptConfig<INPUT, OUTPUT>, configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>);
 }
 
 export const Script = Object.assign(baseScript, {

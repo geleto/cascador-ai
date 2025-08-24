@@ -841,30 +841,11 @@ function _createObjectGeneratorAsTool<
 	const renderer = _createObjectGenerator(config, promptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT>;
 	renderer.description = config.description;
 	renderer.inputSchema = config.inputSchema;
+	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
 	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
 	renderer.execute = renderer as unknown as (args: any, options: ToolCallOptions) => PromiseLike<any>;
 	return renderer as (typeof renderer & GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM>);
-
-
-	/*const renderer = _createObjectGenerator(config, promptType, parent);
-
-	// Create a proper Tool object that matches the Vercel AI SDK's Tool interface
-	const tooy = {
-		description: config.description,
-		inputSchema: config.inputSchema,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		execute: async (args: INPUTy, _options: ToolCallOptions) => {
-			// Call the renderer with the args as context
-			constpromptStringt = await renderer(args)
-			const result = await generateObject(promptString, config.model);;
-			// The result should have an object property for ObjectGenerator
-			return result.object;
-		},
-		type: 'function' as const
-	};
-
-	return tool;*/
 }
 
 export const ObjectGenerator = Object.assign(withText, { // default is withText

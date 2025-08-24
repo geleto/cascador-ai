@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
 import { RequiredPromptType } from '../types/types';
 
+//@todo - INPUT like in template
 export type LLMCallSignature<
 	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig,
 	TResult,
