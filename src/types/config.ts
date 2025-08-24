@@ -38,6 +38,7 @@ export interface LoaderConfig {
 	loader: ILoaderAny | ILoaderAny[];
 }
 
+// Only for use in Template
 export interface TemplateConfig<
 	INPUT extends Record<string, any>,
 > extends CascadaConfig {
@@ -45,22 +46,9 @@ export interface TemplateConfig<
 	inputSchema?: SchemaType<INPUT>;
 }
 
-export interface TemplateToolConfig<
-	INPUT extends Record<string, any>,
-> extends TemplateConfig<INPUT> {
-	inputSchema: SchemaType<INPUT>;//required
-	description?: string;
-}
 
-export interface ScriptToolConfig<
-	INPUT extends Record<string, any>,
-	OUTPUT
-> extends ScriptConfig<INPUT, OUTPUT> {
-	inputSchema: SchemaType<INPUT>;//required
-	description?: string;
-}
 
-// Config for the Template engine, output is always a string
+// Config for prompts that are rendered with templates
 export interface TemplatePromptConfig<
 	PROMPT = string,
 > extends CascadaConfig {
@@ -69,7 +57,7 @@ export interface TemplatePromptConfig<
 	promptType?: TemplatePromptType;
 }
 
-// For use in the Script engine
+// Only for use in Script
 export interface ScriptConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT

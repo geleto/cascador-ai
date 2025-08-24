@@ -13,6 +13,14 @@ export type TemplateInstance<
 	INPUT extends Record<string, any>
 > = TemplateCallSignature<TConfig, INPUT>;
 
+// Config for a Tool that uses the Template engine
+export interface TemplateToolConfig<
+	INPUT extends Record<string, any>,
+> extends configs.TemplateConfig<INPUT> {
+	inputSchema: SchemaType<INPUT>;//required
+	description?: string;
+}
+
 export type TemplateCallSignature<
 	TConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>//only INPUT, the output is string
@@ -82,15 +90,15 @@ function baseTemplate(
 
 // loadsTemplate: load by name via provided loader
 function loadsTemplate<
-	const TConfig extends configs.TemplateConfig<INPUT> & configs.LoaderConfig,
+	const TConfig extends TemplateToolConfig<INPUT> & configs.LoaderConfig,
 	INPUT extends Record<string, any>
 >(
 	config: TConfig
 ): TemplateCallSignature<TConfig, INPUT>;
 
 function loadsTemplate<
-	TConfig extends Partial<configs.TemplateConfig<INPUT>> & configs.LoaderConfig,
-	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT>> & configs.LoaderConfig,
+	TConfig extends Partial<TemplateToolConfig<INPUT>> & configs.LoaderConfig,
+	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>> & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>
 >(
@@ -99,15 +107,15 @@ function loadsTemplate<
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 function loadsTemplate(
-	config: configs.TemplateConfig<any> & configs.LoaderConfig,
-	parent?: ConfigProvider<configs.TemplateConfig<any> & configs.LoaderConfig>
+	config: Partial<TemplateToolConfig<any> & configs.LoaderConfig>,
+	parent?: ConfigProvider<Partial<TemplateToolConfig<any> & configs.LoaderConfig>>
 ): any {
 	return _createTemplate(config, 'async-template-name', parent);
 }
 
 // asTool method for Template
 function asTool<
-	const TConfig extends configs.TemplateToolConfig<INPUT>,
+	const TConfig extends TemplateToolConfig<INPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT
 >(
@@ -125,8 +133,8 @@ function asTool<
 ): TemplateCallSignature<utils.Override<TParentConfig, TConfig>, INPUT>{};*/
 
 function asTool<
-	TConfig extends Partial<configs.TemplateToolConfig<INPUT>>,
-	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
+	TConfig extends Partial<TemplateToolConfig<INPUT>>,
+	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
 	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
@@ -136,8 +144,8 @@ function asTool<
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
 function asTool<
-	const TConfig extends Partial<configs.TemplateToolConfig<INPUT>>,
-	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
+	const TConfig extends Partial<TemplateToolConfig<INPUT>>,
+	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
 	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
