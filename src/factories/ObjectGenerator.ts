@@ -246,7 +246,7 @@ function withText<
 }
 
 function withTextAsTool<
-	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
+	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.ToolConfig<Record<string, never>, OUTPUT>,
 	OUTPUT,
 	ENUM extends string,
 >(
@@ -255,8 +255,8 @@ function withTextAsTool<
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererTool<Record<string, never>, OUTPUT>;
 
 function withTextAsTool<
-	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>>,
-	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.ToolConfig<Record<string, never>, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<Record<string, never>, PARENT_OUTPUT>>,
 	OUTPUT,
 	ENUM extends string,
 	PARENT_OUTPUT,
@@ -273,8 +273,8 @@ function withTextAsTool<
 	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<Record<string, never>, OUTPUT>;
 
 function withTextAsTool<
-	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM>,
-	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.ToolConfig<Record<string, never>, OUTPUT>,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<Record<string, never>, PARENT_OUTPUT>,
 	OUTPUT,
 	ENUM extends string,
 	PARENT_OUTPUT,
@@ -303,8 +303,8 @@ function loadsText<
 // Overload 2: With parent parameter
 // @todo - does this check for loader?
 function loadsText<
-	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig>,
 	OUTPUT,
 	ENUM extends string,
 	PARENT_OUTPUT,
@@ -340,7 +340,7 @@ function loadsText<
 }
 
 function loadsTextAsTool<
-	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
+	const TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, OUTPUT>,
 	OUTPUT,
 	ENUM extends string,
 >(
@@ -351,8 +351,8 @@ function loadsTextAsTool<
 	& results.RendererTool<Record<string, never>, OUTPUT>;
 
 function loadsTextAsTool<
-	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM>> & Partial<configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM>> & Partial<configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, PARENT_OUTPUT>>,
 	OUTPUT,
 	ENUM extends string,
 	PARENT_OUTPUT,
@@ -368,8 +368,8 @@ function loadsTextAsTool<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<Record<string, never>, OUTPUT>;
 
 function loadsTextAsTool<
-	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig,
+	TConfig extends GenerateObjectConfig<never, OUTPUT, ENUM> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, OUTPUT>,
+	TParentConfig extends GenerateObjectConfig<never, PARENT_OUTPUT, PARENT_ENUM> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, PARENT_OUTPUT>,
 	OUTPUT,
 	ENUM extends string,
 	PARENT_OUTPUT,
@@ -549,8 +549,8 @@ function loadsTemplateAsTool<
 ): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & Partial<configs.LoaderConfig>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & Partial<configs.LoaderConfig>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -570,8 +570,8 @@ function loadsTemplateAsTool<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT> & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -602,8 +602,8 @@ function withScript<
 
 // Overload 2: With parent parameter
 function withScript<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.ScriptPromptConfig,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM>> & configs.ScriptPromptConfig,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -856,7 +856,7 @@ export const ObjectGenerator = Object.assign(withText, { // default is withText
 		asTool: withScriptAsTool,
 	}),
 	withText: Object.assign(withText, {
-		asool: withTextAsTool,
+		asTool: withTextAsTool,
 	}),
 	loadsTemplate: Object.assign(loadsTemplate, {
 		asTool: loadsTemplateAsTool,
