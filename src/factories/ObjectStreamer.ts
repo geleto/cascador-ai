@@ -86,32 +86,28 @@ type ConfigOutput = keyof ConfigShapeMap | undefined;
 //type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
 
 type ValidateObjectStreamerConfig<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	TFinalConfig extends AllSpecializedProperties,
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT, //@out
-	MoreConfig = object
+	PARENT_OUTPUT //@out
 > = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<INPUT, OUTPUT> & MoreConfig>, //TConfig Shape
-	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>, //TParentConfig Shape
-	AllSpecializedProperties, //TFinalConfig Shape
-	MoreConfig>
+	Partial<StreamObjectConfig<INPUT, OUTPUT>>, //TConfig Shape
+	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>, //TParentConfig Shape
+	AllSpecializedProperties> //TFinalConfig Shape
 
 // Validator for the `parent` config's GENERIC type
 type ValidateObjectStreamerParentConfig<
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	TFinalConfig extends AllSpecializedProperties,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT,
-	MoreConfig = object
+	PARENT_OUTPUT
 > = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & MoreConfig>, //TParentConfig Shape
+	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>, //TParentConfig Shape
 	AllSpecializedProperties, //TFinalConfig Shape
-	{ output?: ConfigOutput; }, //
-	MoreConfig>
+	{ output?: ConfigOutput; }> //
 
 // A text-only prompt has no inputs
 function withText<
@@ -240,8 +236,7 @@ function loadsTextAsTool<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		never, OUTPUT, never, OUTPUT,
-		configs.LoaderConfig>,
+		never, OUTPUT, never, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'text-name', OUTPUT>
 	& results.RendererTool<Record<string, never>, OUTPUT>;
 
@@ -270,7 +265,7 @@ function loadsTextAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<Record<string, never>, OUTPUT>,
 		'text-name',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
+		parent
 	) as unknown as StreamObjectReturn<TConfig, 'text-name', OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 }
 
@@ -280,8 +275,7 @@ function withTemplate<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -296,11 +290,9 @@ function withTemplate<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, PARENT_OUTPUT>;
 
@@ -325,8 +317,7 @@ function withTemplateAsTool<
 	OUTPUT
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function withTemplateAsTool<
@@ -340,11 +331,9 @@ function withTemplateAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -372,8 +361,7 @@ function loadsTemplate<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-template-name', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -388,11 +376,9 @@ function loadsTemplate<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, PARENT_OUTPUT>;
 
@@ -417,8 +403,7 @@ function loadsTemplateAsTool<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-template-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
@@ -432,11 +417,9 @@ function loadsTemplateAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -464,8 +447,7 @@ function withScript<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-script', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -480,11 +462,9 @@ function withScript<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT>;
 
@@ -509,8 +489,7 @@ function withScriptAsTool<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-script', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
@@ -524,11 +503,9 @@ function withScriptAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -556,8 +533,7 @@ function loadsScript<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-script-name', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -572,11 +548,9 @@ function loadsScript<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, PARENT_OUTPUT>;
 
@@ -601,8 +575,7 @@ function loadsScriptAsTool<
 	OUTPUT,
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, INPUT, OUTPUT>,
 ): StreamObjectReturn<TConfig, 'async-script-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
@@ -616,11 +589,9 @@ function loadsScriptAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>,
+		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT,
-		configs.CascadaConfig & configs.LoaderConfig>>
+		PARENT_INPUT, PARENT_OUTPUT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
