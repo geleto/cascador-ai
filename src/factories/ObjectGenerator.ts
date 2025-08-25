@@ -549,8 +549,8 @@ function loadsTemplateAsTool<
 ): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -570,8 +570,8 @@ function loadsTemplateAsTool<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -640,7 +640,7 @@ function withScript<
 }
 
 function withScriptAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -651,8 +651,8 @@ function withScriptAsTool<
 ): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -672,8 +672,8 @@ function withScriptAsTool<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig,
+	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
+	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -742,7 +742,7 @@ function loadsScript<
 }
 
 function loadsScriptAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -753,8 +753,8 @@ function loadsScriptAsTool<
 ): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ToolConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -774,8 +774,8 @@ function loadsScriptAsTool<
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
-	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT> & configs.LoaderConfig,
-	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig,
+	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
+	TParentConfig extends GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
