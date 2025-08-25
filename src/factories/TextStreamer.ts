@@ -3,7 +3,7 @@ import { streamText, LanguageModel, ToolSet, ToolCallOptions } from "ai";
 import * as results from '../types/result';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
-import * as types from '../types/types'
+import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
@@ -38,60 +38,50 @@ type FinalTextConfigShape = Partial<configs.StreamTextConfig<any, any, any> & { 
 
 // TextStreamer only requires a model
 interface TextStreamerRequiredShape { model: LanguageModel }
+interface TextStreamerToolRequiredShape<INPUT> { model: LanguageModel, inputSchema: types.SchemaType<INPUT>; }
 
 // Generic validator for the `config` object passed to a factory function.
 type ValidateTextConfig<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, INPUT>>,
-	TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>>,
 	TFinalConfig extends FinalTextConfigShape,
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	PARENT_TOOLS extends ToolSet,
-	PARENT_INPUT extends Record<string, any>
+	TShape extends configs.StreamTextConfig<any, any>,
+	TRequired = TFinalConfig extends configs.ToolConfig<any, any>
+	? TextStreamerToolRequiredShape<any>
+	: TextStreamerRequiredShape
 > =
-	// GATEKEEPER: Is the config a valid shape?
-	TConfig extends Partial<configs.StreamTextConfig<TOOLS, INPUT>>
+	// GATEKEEPER: Check for excess or missing properties
+	// 1. Check for excess properties in TConfig that are not in TShape
+	keyof Omit<TConfig, keyof TShape> extends never
 	? (
-		TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>>
-		? (
-			// 1. Check for excess properties in TConfig
-			keyof Omit<TConfig, keyof (configs.StreamTextConfig<TOOLS, INPUT>)> extends never
-			? (
-				// 2. If no excess, check for required properties missing from the FINAL merged config.
-				keyof Omit<TextStreamerRequiredShape, keyof TFinalConfig> extends never
-				? TConfig // All checks passed.
-				: `Config Error: Missing required property 'model' in the final configuration.`
-			)
-			: `Config Error: Unknown properties for this streamer type: '${keyof Omit<TConfig, keyof (configs.StreamTextConfig<TOOLS, INPUT>)> & string}'`
-		) : (
-			// Parent Shape is invalid - let TypeScript produce its standard error.
-			// @todo - check for excess properties in TConfig
-			TConfig
-		)
-	) : TConfig; // Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
+		// 2. If no excess, check for required properties missing from the FINAL merged config.
+		keyof Omit<TRequired, keyof TFinalConfig> extends never
+		? TConfig // All checks passed.
+		: `Config Error: Missing required property 'model' in the final configuration.`
+	)
+	: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof TShape> & string}'`;
 
 
 // Generic validator for the `parent` config object.
 type ValidateTextParentConfig<
 	TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>>,
 	PARENT_TOOLS extends ToolSet,
-	PARENT_INPUT extends Record<string, any>
+	PARENT_INPUT extends Record<string, any>,
+	TShape extends configs.StreamTextConfig<any, any>
 > =
-	// GATEKEEPER: Is the parent config a valid shape?
-	TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>>
-	? (
-		// Check for excess properties in the parent, validated against the CHILD's factory type (PType).
-		// This prevents a 'template' parent from being used with a 'text' child if the parent has template-only properties.
-		keyof Omit<TParentConfig, keyof (configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>)> extends never
-		? TParentConfig // The check has passed.
-		: `Parent Config Error: Parent has properties not allowed for the final streamer type: '${keyof Omit<TParentConfig, keyof (configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT>)> & string}'`
-	) : TParentConfig; // Shape is invalid.
+	// Check for excess properties in the parent validated against TShape
+	keyof Omit<TParentConfig, keyof TShape> extends never
+	? TParentConfig // The check has passed.
+	: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
 
 function withText<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never>,
 	TOOLS extends ToolSet = ToolSet,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, never, TOOLS, never>
+	config: TConfig & ValidateTextConfig<
+		TConfig, TConfig, TOOLS, never, configs.StreamTextConfig<TOOLS, never>
+	>
 ): StreamTextReturn<TConfig, TOOLS, 'text'>;
 
 function withText<
@@ -101,8 +91,8 @@ function withText<
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, never, PARENT_TOOLS, never>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, never, configs.StreamTextConfig<any, never>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never, configs.StreamTextConfig<any, never>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text'>;
 
 function withText(
@@ -116,7 +106,7 @@ function withTextAsTool<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never> & configs.ToolConfig<Record<string, never>, string>,
 	TOOLS extends ToolSet = ToolSet,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, never, TOOLS, never>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, never, configs.StreamTextConfig<TOOLS, never> & configs.ToolConfig<Record<string, never>, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'text'> & results.RendererTool<Record<string, never>, string>;
 
 function withTextAsTool<
@@ -126,8 +116,8 @@ function withTextAsTool<
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, never, PARENT_TOOLS, never>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, never, configs.StreamTextConfig<any, never> & configs.ToolConfig<Record<string, never>, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never, configs.StreamTextConfig<any, never> & configs.ToolConfig<Record<string, never>, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text'> & results.RendererTool<Record<string, never>, string>;
 
 function withTextAsTool(config: configs.StreamTextConfig<any, any, any> & { inputSchema: types.SchemaType<never> }, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -138,7 +128,7 @@ function loadsText<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never> & configs.LoaderConfig,
 	TOOLS extends ToolSet,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, never, TOOLS, never>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, never, configs.StreamTextConfig<TOOLS, never> & configs.LoaderConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'text-name'>;
 
 function loadsText<
@@ -148,8 +138,8 @@ function loadsText<
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, never, PARENT_TOOLS, never>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, never, configs.StreamTextConfig<any, never> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never, configs.StreamTextConfig<any, never> & configs.LoaderConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name'>;
 
 function loadsText(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -160,7 +150,7 @@ function loadsTextAsTool<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>,
 	TOOLS extends ToolSet,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, never, TOOLS, never>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, never, configs.StreamTextConfig<TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'text-name'> & results.RendererTool<Record<string, never>, string>;
 
 function loadsTextAsTool<
@@ -170,8 +160,8 @@ function loadsTextAsTool<
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, never, PARENT_TOOLS, never>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, never, configs.StreamTextConfig<any, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, never, configs.StreamTextConfig<any, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name'> & results.RendererTool<Record<string, never>, string>;
 
 function loadsTextAsTool(config: configs.StreamTextConfig<any, any, any> & { inputSchema: types.SchemaType<never> }, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -183,7 +173,7 @@ function withTemplate<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'async-template'>
 
 function withTemplate<
@@ -195,8 +185,8 @@ function withTemplate<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template'>
 
 function withTemplate(
@@ -211,7 +201,7 @@ function withTemplateAsTool<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'async-template'> & results.RendererTool<INPUT, string>;
 
 function withTemplateAsTool<
@@ -223,8 +213,8 @@ function withTemplateAsTool<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.ToolConfig<any, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.ToolConfig<any, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template'> & results.RendererTool<INPUT, string>;
 
 function withTemplateAsTool(
@@ -238,7 +228,7 @@ function loadsTemplate<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'async-template-name'>;
 
 function loadsTemplate<
@@ -250,8 +240,8 @@ function loadsTemplate<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.LoaderConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name'>;
 
 function loadsTemplate(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -263,20 +253,20 @@ function loadsTemplateAsTool<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'async-template-name'> & results.RendererTool<INPUT, string>;
 
 function loadsTemplateAsTool<
 	TConfig extends Partial<configs.StreamTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>,
-	TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<configs.StreamTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, string>>,
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 	PARENT_TOOLS extends ToolSet,
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name'> & results.RendererTool<INPUT, string>;
 
 function loadsTemplateAsTool(
@@ -290,7 +280,7 @@ function withScript<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'async-script'>;
 
 function withScript<
@@ -302,8 +292,8 @@ function withScript<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script'>;
 
 function withScript(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -315,7 +305,7 @@ function withScriptAsTool<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'async-script'> & results.RendererTool<INPUT, string>;
 
 function withScriptAsTool<
@@ -327,8 +317,8 @@ function withScriptAsTool<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.ToolConfig<any, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.ToolConfig<any, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script'> & results.RendererTool<INPUT, string>;
 
 function withScriptAsTool(config: configs.StreamTextConfig<any, any, any> & { inputSchema: types.SchemaType<any> }, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -340,7 +330,7 @@ function loadsScript<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'async-script-name'>;
 
 function loadsScript<
@@ -352,8 +342,8 @@ function loadsScript<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.LoaderConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name'>;
 
 function loadsScript(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -365,7 +355,7 @@ function loadsScriptAsTool<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, TConfig, TOOLS, INPUT, TOOLS, INPUT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, TOOLS, INPUT, configs.StreamTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>
 ): StreamTextReturn<TConfig, TOOLS, 'async-script-name'> & results.RendererTool<INPUT, string>;
 
 function loadsScriptAsTool<
@@ -377,8 +367,8 @@ function loadsScriptAsTool<
 	PARENT_INPUT extends Record<string, any>,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TParentConfig, TFinalConfig, TOOLS, INPUT, PARENT_TOOLS, PARENT_INPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, TOOLS, INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, PARENT_TOOLS, PARENT_INPUT, configs.StreamTextConfig<any, any> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name'> & results.RendererTool<INPUT, string>;
 
 function loadsScriptAsTool(config: configs.StreamTextConfig<any, any, any> & { inputSchema: types.SchemaType<any> }, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
