@@ -9,13 +9,14 @@ import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateBaseConfig, validateObjectConfig } from "../validate";
 
-import type { ValidateObjectConfigBase, ValidateObjectParentConfigBase } from "./ObjectGenerator";
+import type { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
 // Allow additional callback properties in config - why is this needed?
 /*interface StreamCallbacks {
 	onFinish?: StreamObjectOnFinishCallback<any>;
 	onError?: (event: { error: unknown }) => Promise<void> | void;
 }*/
+
 export type LLMStreamerConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT
@@ -70,7 +71,7 @@ type StreamObjectWithParentReturn<
 	StreamObjectReturn<
 		TFinalConfig & configs.OptionalPromptConfig,
 		PType,
-		OUTPUT extends never ? PARENT_OUTPUT : OUTPUT //@out
+		OUTPUT extends never ? PARENT_OUTPUT : OUTPUT
 	>
 
 // A mapping from the 'output' literal to its full, correct config type.
@@ -85,37 +86,13 @@ interface AllSpecializedProperties { output?: ConfigOutput, schema?: types.Schem
 type ConfigOutput = keyof ConfigShapeMap | undefined;
 //type ConfigOutput = 'array' | 'enum' | 'no-schema' | 'object' | undefined;
 
-type ValidateObjectStreamerConfig<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>,
-	TFinalConfig extends AllSpecializedProperties,
-	INPUT extends Record<string, any>,
-	OUTPUT, //@out
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT //@out
-> = ValidateObjectConfigBase<TConfig, TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<INPUT, OUTPUT>>, //TConfig Shape
-	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>, //TParentConfig Shape
-	AllSpecializedProperties> //TFinalConfig Shape
-
-// Validator for the `parent` config's GENERIC type
-type ValidateObjectStreamerParentConfig<
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>,
-	TFinalConfig extends AllSpecializedProperties,
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT
-> = ValidateObjectParentConfigBase<TParentConfig, TFinalConfig,
-	Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT>>, //TParentConfig Shape
-	AllSpecializedProperties, //TFinalConfig Shape
-	{ output?: ConfigOutput; }> //
 
 // A text-only prompt has no inputs
 function withText<
 	TConfig extends StreamObjectConfig<never, OUTPUT>,
 	OUTPUT, //@out
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		never, OUTPUT, never, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig>,
 ): StreamObjectReturn<TConfig, 'text', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -127,10 +104,8 @@ function withText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		never, OUTPUT, never, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		never, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig>>,
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, PARENT_OUTPUT>
@@ -147,15 +122,15 @@ function withText<
 ): StreamObjectReturn<TConfig, 'text', OUTPUT> {
 	return _createObjectStreamer(config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig, 'text',
 		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
-	) as unknown as StreamObjectReturn<TConfig, 'text', OUTPUT>
+	) as unknown as StreamObjectReturn<TConfig, 'text', OUTPUT>;
 }
 
 function withTextAsTool<
 	const TConfig extends StreamObjectConfig<never, OUTPUT> & configs.ToolConfig<Record<string, never>, OUTPUT>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		never, OUTPUT, never, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.ToolConfig<Record<string, never>, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'text', OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 
 function withTextAsTool<
@@ -166,10 +141,10 @@ function withTextAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		never, OUTPUT, never, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		never, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.ToolConfig<Record<string, never>, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.ToolConfig<Record<string, never>, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, PARENT_OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
@@ -194,8 +169,8 @@ function loadsText<
 	const TConfig extends StreamObjectConfig<never, OUTPUT> & configs.LoaderConfig,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		never, OUTPUT, never, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, 'text-name', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -208,8 +183,10 @@ function loadsText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, never, OUTPUT, never, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, never, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, PARENT_OUTPUT>;
 
@@ -235,8 +212,8 @@ function loadsTextAsTool<
 	const TConfig extends StreamObjectConfig<never, OUTPUT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, OUTPUT>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		never, OUTPUT, never, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'text-name', OUTPUT>
 	& results.RendererTool<Record<string, never>, OUTPUT>;
 
@@ -248,8 +225,10 @@ function loadsTextAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig, never, OUTPUT, never, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig, never, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, PARENT_OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 
@@ -265,7 +244,7 @@ function loadsTextAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<Record<string, never>, OUTPUT>,
 		'text-name',
-		parent
+		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
 	) as unknown as StreamObjectReturn<TConfig, 'text-name', OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 }
 
@@ -274,8 +253,7 @@ function withTemplate<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig, configs.TemplatePromptConfig>,
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -289,10 +267,10 @@ function withTemplate<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.TemplatePromptConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.TemplatePromptConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, PARENT_OUTPUT>;
 
@@ -303,7 +281,7 @@ function withTemplate<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT
+	PARENT_OUTPUT,
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
@@ -314,10 +292,10 @@ function withTemplate<
 function withTemplateAsTool<
 	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
-	OUTPUT
+	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function withTemplateAsTool<
@@ -330,10 +308,10 @@ function withTemplateAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.ToolConfig<any, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.ToolConfig<any, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -360,8 +338,8 @@ function loadsTemplate<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, 'async-template-name', OUTPUT>;
 
 // Overload 2: With parent parameter
@@ -375,10 +353,10 @@ function loadsTemplate<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, PARENT_OUTPUT>;
 
@@ -398,12 +376,12 @@ function loadsTemplate<
 }
 
 function loadsTemplateAsTool<
-	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig,
+	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'async-template-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
@@ -416,10 +394,10 @@ function loadsTemplateAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -446,14 +424,14 @@ function withScript<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.ScriptPromptConfig<INPUT>>,
 ): StreamObjectReturn<TConfig, 'async-script', OUTPUT>;
 
 // Overload 2: With parent parameter
 function withScript<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -461,10 +439,10 @@ function withScript<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT>;
 
@@ -484,17 +462,17 @@ function withScript<
 }
 
 function withScriptAsTool<
-	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
+	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'async-script', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -502,10 +480,10 @@ function withScriptAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.ToolConfig<any, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.ToolConfig<any, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -528,18 +506,18 @@ function withScriptAsTool<
 }
 
 function loadsScript<
-	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig,
+	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig>,
 ): StreamObjectReturn<TConfig, 'async-script-name', OUTPUT>;
 
 // Overload 2: With parent parameter
 function loadsScript<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -547,10 +525,10 @@ function loadsScript<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.LoaderConfig>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, PARENT_OUTPUT>;
 
@@ -570,17 +548,17 @@ function loadsScript<
 }
 
 function loadsScriptAsTool<
-	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
+	const TConfig extends StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TConfig, TConfig,
-		INPUT, OUTPUT, INPUT, OUTPUT>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): StreamObjectReturn<TConfig, 'async-script-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
-	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<StreamObjectConfig<INPUT, OUTPUT> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<StreamObjectConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -588,10 +566,10 @@ function loadsScriptAsTool<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectStreamerConfig<TConfig, TParentConfig, TFinalConfig,
-		INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectStreamerParentConfig<TParentConfig, TFinalConfig,
-		PARENT_INPUT, PARENT_OUTPUT>>
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.LoaderConfig & configs.ToolConfig<any, any>>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		configs.ScriptPromptConfig<any> & configs.LoaderConfig & configs.ToolConfig<any, any>>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, PARENT_OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
