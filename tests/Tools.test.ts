@@ -9,8 +9,6 @@ import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import { ModelMessage, stepCountIs } from 'ai';
 
-
-
 // Helper function to consume a stream
 async function streamToPromise(stream: any) {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -38,7 +36,7 @@ describe('create.Tool', function () {
 		describe('Error: Missing inputSchema Schema', () => {
 			it('should throw ConfigError when inputSchema schema is missing', () => {
 				//@ts-expect-error - missing inputSchema schema
-				expect(() => create.TextGenerator.asTool({
+				expect(() => create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
 					prompt: 'Hello world',
@@ -57,24 +55,28 @@ describe('create.Tool', function () {
 			it('should identify generator types correctly', () => {
 				// This test verifies our runtime validation works correctly
 				// These should not throw errors
-				expect(() => create.TextGenerator.asTool({
+				expect(() => create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello world',
+					prompt: 'Hello {{ name }}',
 					description: 'A test tool',
-					inputSchema: z.object({})
+					inputSchema: z.object({
+						name: z.string().describe('The name to greet')
+					})
 				})).to.not.throw();
 
-				expect(() => create.ObjectGenerator.asTool({
+				expect(() => create.ObjectGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Generate a person',
+					prompt: 'Generate a person for {{ user }}',
 					schema: z.object({
 						name: z.string(),
 						age: z.number()
 					}),
 					description: 'A test tool',
-					inputSchema: z.object({})
+					inputSchema: z.object({
+						user: z.string().describe('The user requesting the person')
+					})
 				})).to.not.throw();
 			});
 
@@ -116,10 +118,10 @@ describe('create.Tool', function () {
 
 		describe('Structure: Vercel SDK Compatibility', () => {
 			it('should return a valid Vercel AI FunctionTool', () => {
-				const tool = create.TextGenerator.asTool({
+				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello world',
+					prompt: 'Hello {{ name }}',
 					description: 'A test tool',
 					inputSchema: z.object({
 						name: z.string().describe('The name to greet')
@@ -141,6 +143,7 @@ describe('create.Tool', function () {
 					temperature,
 					prompt: 'Hello world',
 					description: 'A test tool',
+					//@ts-expect-error - inputSchema is not a z.object
 					inputSchema: z.string() // Not z.object
 				})).to.throw(
 					ConfigError,
@@ -243,10 +246,12 @@ describe('create.Tool', function () {
 							@data.result = failingFunction()
 						`,
 					description: 'A test tool',
-					inputSchema: z.object({})
+					inputSchema: z.object({
+						trigger: z.string().describe('Trigger to cause the error')
+					})
 				});
 
-				await expect(tool.execute({}, toolCallOptions)).to.be.rejectedWith('API Error');
+				await expect(tool.execute({ trigger: 'test' }, toolCallOptions)).to.be.rejectedWith('API Error');
 			});
 		});
 
@@ -541,18 +546,6 @@ describe('create.Tool', function () {
 	});
 
 	describe('Suite 4: End-to-End Tool Use Conversation Loop', () => {
-		// A robust, object-based tool for consistent test results
-		const weatherGenerator = create.ObjectGenerator.withTemplate({
-			model,
-			temperature,
-			schema: z.object({
-				city: z.string(),
-				tempF: z.number(),
-				conditions: z.string(),
-			}),
-			prompt: 'Return weather for {{ city }}. For San Francisco, return temp 75 and "Sunny".'
-		});
-
 		const getWeatherTool = create.ObjectGenerator.withTemplate.asTool({
 			model,
 			temperature,
@@ -696,15 +689,19 @@ describe('create.Tool', function () {
 			script: `:data
 				throw("Custom API Error")`,
 			description: 'A tool that always throws an error',
-			inputSchema: z.object({}),
+			inputSchema: z.object({
+				reason: z.string().describe('Reason for the error')
+			}),
 		});
 
 		const loggingTool = create.TextGenerator.withTemplate.asTool({
 			model,
 			temperature,
-			prompt: `ToolCallId: {{ _toolCallOptions.toolCallId }}, Step Messages Count: {{ _toolCallOptions.messages.length }}`,
+			prompt: `ToolCallId: {{ _toolCallOptions.toolCallId }}, Step Messages Count: {{ _toolCallOptions.messages.length }}, Log Level: {{ level }}`,
 			description: 'A tool that logs its call options',
-			inputSchema: z.object({}),
+			inputSchema: z.object({
+				level: z.string().describe('Log level for the message')
+			}),
 		});
 
 		const weatherTool = create.TextGenerator.withTemplate.asTool({
@@ -768,6 +765,7 @@ describe('create.Tool', function () {
 				expect(result.finishReason).to.equal('tool-calls');
 				expect(result.toolCalls).to.have.lengthOf(1);
 				expect(result.toolCalls[0].toolName).to.equal('log'); // Verifies the override worked
+				expect(result.toolCalls[0].input).to.deep.equal({ level: 'info' });
 			});
 		});
 
@@ -822,7 +820,7 @@ describe('create.Tool', function () {
 
 	describe('Suite 6: Tool with `execute` Function', () => {
 		// --- Test Setup for Suite 6 ---
-		const calculatorTool = create.Tool({
+		const calculatorTool = create.Function.asTool({
 			description: 'A simple calculator that can add or subtract.',
 			inputSchema: z.object({
 				a: z.number(),
