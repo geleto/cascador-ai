@@ -527,19 +527,19 @@ function loadsTemplateAsTool<
 }
 
 function withScript<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT>,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
-		configs.ScriptPromptConfig<INPUT>>,
+		configs.ScriptPromptConfig>,
 ): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 function withScript<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig<PARENT_INPUT>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -550,9 +550,9 @@ function withScript<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any>>,
+		configs.ScriptPromptConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any>>>
+		configs.ScriptPromptConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
@@ -574,18 +574,18 @@ function withScript<
 }
 
 function withScriptAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
-		configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>>,
+		configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.ToolConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -596,9 +596,9 @@ function withScriptAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.ToolConfig<any, any>>,
+		configs.ScriptPromptConfig & configs.ToolConfig<any, any>>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.ToolConfig<any, any>>>
+		configs.ScriptPromptConfig & configs.ToolConfig<any, any>>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
@@ -623,19 +623,19 @@ function withScriptAsTool<
 }
 
 function loadsScript<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
-		configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig>,
+		configs.ScriptPromptConfig & configs.LoaderConfig>,
 ): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM>;
 
 // Overload 2: With parent parameter
 function loadsScript<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.LoaderConfig>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -646,9 +646,9 @@ function loadsScript<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.LoaderConfig>,
+		configs.ScriptPromptConfig & configs.LoaderConfig>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.LoaderConfig>>
+		configs.ScriptPromptConfig & configs.LoaderConfig>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM>;
 
@@ -670,18 +670,18 @@ function loadsScript<
 }
 
 function loadsScriptAsTool<
-	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
+	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
-		configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+		configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
-	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig<INPUT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig<PARENT_INPUT> & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
@@ -692,9 +692,9 @@ function loadsScriptAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.LoaderConfig & configs.ToolConfig<any, any>>,
+		configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, any>>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.ScriptPromptConfig<any> & configs.LoaderConfig & configs.ToolConfig<any, any>>>
+		configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, any>>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<INPUT, OUTPUT>;
 
