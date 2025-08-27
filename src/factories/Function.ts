@@ -19,58 +19,42 @@ export type FunctionCallSignature<
 	OUTPUT,
 > = ((context: INPUT) => PromiseLike<OUTPUT>) & TConfig;
 
+type FinalTextConfigShape = Partial<ToolOrFunctionConfig<any, any>>;
+
 export type ToolCallSignature<
 	TConfig extends ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
-> = ((context: INPUT, options?: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig;
+> = ((context: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig;
 
 type ValidateConfig<
-	TConfig extends Partial<TBaseConfig>,
-	TParentConfig extends Partial<TParentBaseConfig>,
-	TBaseConfig extends ToolOrFunctionConfig<INPUT, OUTPUT>,
-	TParentBaseConfig extends ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>,
-	INPUT extends Record<string, any>,
-	OUTPUT,
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT,
-	TFinalConfig = utils.Override<TParentConfig, TConfig>
+	TConfig extends Partial<ToolOrFunctionConfig<any, any>>,
+	TFinalConfig extends FinalTextConfigShape,
+	TShape extends ToolOrFunctionConfig<any, any>,
+	TRequired =
+	& (TShape extends { inputSchema: any } ? { inputSchema: any, execute: any } : { execute: any })
+	& (TShape extends { loader: any } ? { loader: any, execute: any } : { execute: any })
 > =
-	TConfig extends Partial<TBaseConfig>
+	// 1. Check for excess properties in TConfig that are not in TShape
+	keyof Omit<TConfig, keyof TShape> extends never
 	? (
-		TParentConfig extends Partial<TParentBaseConfig>
-		? (
-			// 1. Check for excess properties in TConfig
-			keyof Omit<TConfig, keyof (TBaseConfig)> extends never
-			? (
-				// 2. If no excess, check for required properties missing from the FINAL merged config.
-				keyof Omit<TBaseConfig, keyof TFinalConfig> extends never //@todo - check for required properties missing from the FINAL merged config.
-				? TConfig // All checks passed.
-				: `Config Error: Missing required property 'execute' in the final configuration.`
-			)
-			: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof (TBaseConfig)> & string}'`
-		) : (
-			// Parent Shape is invalid - let TypeScript produce its standard error.
-			// @todo - check for excess properties in TConfig
-			TConfig
-		)
-	) : TConfig; // Shape is invalid - Resolve to TConfig and let TypeScript produce its standard error.
+		// 2. If no excess, check for required properties missing from the FINAL merged config.
+		keyof Omit<TRequired, keyof TFinalConfig> extends never
+		? TConfig // All checks passed.
+		: `Config Error: Missing required property '${keyof Omit<TRequired, keyof TFinalConfig> & string}' in the final configuration.`
+	)
+	: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof TShape> & string}'`
+
 
 
 type ValidateParentConfig<
-	TParentConfig extends Partial<TBaseConfig>,
-	TBaseConfig extends ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>,
-	PARENT_INPUT extends Record<string, any>,
-	PARENT_OUTPUT,
+	TParentConfig extends Partial<ToolOrFunctionConfig<any, any>>,
+	TShape extends ToolOrFunctionConfig<any, any>,
 > =
-	TParentConfig extends Partial<ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>>
-	? (
-		// Check for excess properties in the parent, validated against the CHILD's factory type (PType).
-		// This prevents a 'template' parent from being used with a 'text' child if the parent has template-only properties.
-		keyof Omit<TParentConfig, keyof (ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>)> extends never
-		? TParentConfig // The check has passed.
-		: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof (ToolOrFunctionConfig<PARENT_INPUT, PARENT_OUTPUT>)> & string}'`
-	) : TParentConfig; // Shape is invalid.
+	// Check for excess properties in the parent, validated against the CHILD's factory type (PType).
+	keyof Omit<TParentConfig, keyof TShape> extends never
+	? TParentConfig // The check has passed.
+	: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
 
 //the default is withFunction
 //no parent config
@@ -79,7 +63,7 @@ function asFunction<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>>
 ): FunctionCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Functionparent config
@@ -92,9 +76,9 @@ function asFunction<
 	PARENT_OUTPUT,
 	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateConfig<TConfig, TParentConfig, FunctionConfig<INPUT, OUTPUT>, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>> |
-		TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TParentConfig, FunctionConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<any, any>>> |
+		TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<any, any>>
 ): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 
 function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): any {
@@ -108,7 +92,7 @@ function asTool<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, ToolConfig<INPUT, OUTPUT>, ToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TConfig, ToolConfig<INPUT, OUTPUT>>
 ): ToolCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Toolparent config
@@ -119,14 +103,13 @@ function asTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	TFinalConfig = utils.Override<TParentConfig, TConfig>,
+	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TParentConfig, ToolConfig<INPUT, OUTPUT>,
-		ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>,
-	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>> |
-		TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<PARENT_INPUT, PARENT_OUTPUT>, PARENT_INPUT, PARENT_OUTPUT>
+	config: TConfig & ValidateConfig<TConfig, TFinalConfig, ToolConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<any, any>>> |
+		TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<any, any>>
 ): ToolCallSignature<TFinalConfig & ToolConfig<FINAL_INPUT, FINAL_OUTPUT>, FINAL_INPUT, FINAL_OUTPUT>;
 
 function asTool(config: ToolConfig<any, any>, parent?: ConfigProvider<ToolConfig<any, any>> | ToolCallSignature<ToolConfig<any, any>, any, any>): any {
