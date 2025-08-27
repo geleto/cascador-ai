@@ -391,7 +391,7 @@ function _createTextGenerator<
 	}
 
 	return _createLLMRenderer(
-		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string },
+		merged as configs.GenerateTextConfig<TOOLS, INPUT> & configs.OptionalPromptConfig,
 		generateText
 	) as unknown as GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType>;
 }
