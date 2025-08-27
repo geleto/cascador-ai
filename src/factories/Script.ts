@@ -281,9 +281,10 @@ export function _createScriptAsTool<
 ): ScriptCallSignatureWithParent<ScriptToolConfig<INPUT, OUTPUT>, ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>
 	& results.RendererTool<INPUT, OUTPUT> {
 
-	const renderer = _createScript(config, scriptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT>;
-	renderer.description = config.description;
-	renderer.inputSchema = config.inputSchema;
+	const renderer = _createScript(config, scriptType, parent) as unknown as
+		ScriptCallSignature<ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
+	renderer.description = renderer.config.description;
+	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
 	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used

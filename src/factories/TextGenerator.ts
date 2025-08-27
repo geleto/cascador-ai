@@ -414,9 +414,10 @@ function _createTextGeneratorAsTool<
 	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>
 ): GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType> & results.RendererTool<INPUT, string> {
 
-	const renderer = _createTextGenerator(config as any, promptType, parent) as unknown as results.RendererTool<INPUT, string>;
-	renderer.description = config.description;
-	renderer.inputSchema = config.inputSchema;
+	const renderer = _createTextGenerator(config as any, promptType, parent) as unknown as
+		GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType> & results.RendererTool<INPUT, string> & { config: TConfig };
+	renderer.description = renderer.config.description;
+	renderer.inputSchema = renderer.config.inputSchema;
 	renderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
 
 	//result is a caller, assign the execute function to it. Args is the context object, options is not used

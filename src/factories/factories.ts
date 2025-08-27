@@ -5,3 +5,4 @@ export { TextGenerator } from './TextGenerator';
 export { TextStreamer } from './TextStreamer';
 export { ObjectGenerator } from './ObjectGenerator';
 export { ObjectStreamer } from './ObjectStreamer';
+export { Function } from './Function';

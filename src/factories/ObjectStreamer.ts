@@ -634,9 +634,9 @@ function _createObjectStreamerAsTool<
 	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> & results.RendererTool<INPUT, OUTPUT> {
 
-	const renderer = _createObjectStreamer(config, promptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT>;
-	renderer.description = config.description;
-	renderer.inputSchema = config.inputSchema;
+	const renderer = _createObjectStreamer(config, promptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT> & { config: TConfig };
+	renderer.description = renderer.config.description;
+	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
 	//result is a caller, assign the execute function to it. Args is the context objectm optiions is not used
