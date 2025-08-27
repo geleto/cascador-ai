@@ -52,7 +52,7 @@ type ValidateTextConfig<
 		// 2. If no excess, check for required properties missing from the FINAL merged config.
 		keyof Omit<TRequired, keyof TFinalConfig> extends never
 		? TConfig // All checks passed.
-		: `Config Error: Missing required property 'model' in the final configuration.`
+		: `Config Error: Missing required property '${keyof Omit<TRequired, keyof TFinalConfig> & string}' in the final configuration.`
 	)
 	: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof TShape> & string}'`;
 
