@@ -2,8 +2,8 @@ import {
 	GenerateObjectResult, StreamObjectResult, JSONValue, DeepPartial,
 } from 'ai';
 import type {
-	GenerateTextResult as BaseGenerateTextResult,
-	StreamTextResult as BaseStreamTextResult,
+	GenerateTextResult,
+	StreamTextResult,
 	ToolCallOptions,
 	ToolSet,
 } from 'ai';
@@ -12,23 +12,25 @@ import { SchemaType } from './types';
 // Result types
 export type {
 	// Keep object-related exports as-is
+	GenerateTextResult,
+	StreamTextResult
 } from 'ai';
 
 export type ScriptResult = JSONValue;//@todo - remove, RESULT can be any type (union, etc...)
 
 // Augmented text result types with lazy messageHistory
 export type GenerateTextResultAugmented<TOOLS extends ToolSet = ToolSet, OUTPUT = string> =
-	BaseGenerateTextResult<TOOLS, OUTPUT> & {
-		response: BaseGenerateTextResult<TOOLS, OUTPUT>['response'] & {
-			messageHistory: BaseGenerateTextResult<TOOLS, OUTPUT>['response']['messages'];
+	GenerateTextResult<TOOLS, OUTPUT> & {
+		response: GenerateTextResult<TOOLS, OUTPUT>['response'] & {
+			messageHistory: GenerateTextResult<TOOLS, OUTPUT>['response']['messages'];
 		};
 	};
 
 export type StreamTextResultAugmented<TOOLS extends ToolSet = ToolSet, PARTIAL = string> =
-	BaseStreamTextResult<TOOLS, PARTIAL> & {
-		response: BaseStreamTextResult<TOOLS, PARTIAL>['response'] extends Promise<infer R extends { messages: readonly unknown[] }>
+	StreamTextResult<TOOLS, PARTIAL> & {
+		response: StreamTextResult<TOOLS, PARTIAL>['response'] extends Promise<infer R extends { messages: readonly unknown[] }>
 		? Promise<R & { messageHistory: R['messages'] }>
-		: BaseStreamTextResult<TOOLS, PARTIAL>['response'];
+		: StreamTextResult<TOOLS, PARTIAL>['response'];
 	};
 
 //these are returned in a Promise
