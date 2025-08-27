@@ -787,7 +787,8 @@ describe('create.Tool', function () {
 				const step1 = result.steps[0];
 				expect(step1.finishReason).to.equal('tool-calls');
 				expect(step1.toolResults).to.have.lengthOf(1);
-				expect(step1.toolResults[0].isError).to.equal(true);
+				// Note: The Vercel AI SDK doesn't have an isError property on tool results
+				// Error handling is done through separate error types
 				expect(String(step1.toolResults[0].output)).to.include('Custom API Error');
 
 				// The LLM's final text should acknowledge the error
@@ -827,7 +828,8 @@ describe('create.Tool', function () {
 				b: z.number(),
 				operation: z.enum(['add', 'subtract'])
 			}),
-			execute: async ({ a, b, operation }: { a: number, b: number, operation: 'add' | 'subtract' }) => {
+			execute: async (input: { a: number, b: number, operation: 'add' | 'subtract' }) => {
+				const { a, b, operation } = input as { a: number, b: number, operation: 'add' | 'subtract' };
 				await new Promise(resolve => setTimeout(resolve, 100));
 				if (operation === 'add') {
 					return { result: a + b };
@@ -838,10 +840,10 @@ describe('create.Tool', function () {
 		// --- End Test Setup ---
 
 		it('should correctly execute the provided function with given arguments', async () => {
-			const resultAdd = await calculatorTool.execute({ a: 10, b: 5, operation: 'add' }, toolCallOptions);
+			const resultAdd = await calculatorTool.execute({ a: 10, b: 5, operation: 'add' });
 			expect(resultAdd).to.deep.equal({ result: 15 });
 
-			const resultSubtract = await calculatorTool.execute({ a: 10, b: 5, operation: 'subtract' }, toolCallOptions);
+			const resultSubtract = await calculatorTool.execute({ a: 10, b: 5, operation: 'subtract' });
 			expect(resultSubtract).to.deep.equal({ result: 5 });
 		});
 
