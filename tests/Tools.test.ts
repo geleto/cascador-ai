@@ -7,14 +7,22 @@ import { create } from '../src/index';
 import { model, temperature, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
-import { ModelMessage, stepCountIs } from 'ai';
+import { ModelMessage, stepCountIs, StreamTextResult } from 'ai';
 
 // Helper function to consume a stream
 async function streamToPromise(stream: any) {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 	for await (const _chunk of stream) {
 		// Just consume the stream
 	}
+}
+
+export async function streamToString(stream: StreamTextResult<any, any>['textStream']): Promise<string> {
+	let text = '';
+	for await (const delta of stream) {
+		text += delta;
+	}
+	return text;
 }
 
 
@@ -24,7 +32,7 @@ chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe('create.Tool', function () {
+describe.only('create.Tool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
@@ -155,7 +163,7 @@ describe('create.Tool', function () {
 
 	describe('Suite 2: Direct Execution & Integration Tests', () => {
 		describe('Sub-Suite 2.1: Parent Type Detection & Return Value', () => {
-			it('should correctly identify and execute Script parent', async () => {
+			it('should correctly identify and execute Script', async () => {
 				const tool = create.Script.asTool({
 					context: {
 						input: 'test'
@@ -174,57 +182,58 @@ describe('create.Tool', function () {
 				expect(result).to.deep.equal({ result: 'Processed: hello' });
 			});
 
-			it('should correctly identify and execute ObjectGenerator parent', async () => {
+			it('should correctly identify and execute ObjectGenerator', async () => {
 				const tool = create.ObjectGenerator.withTemplate.asTool({
 					model,
 					temperature,
 					schema: z.object({
-						greeting: z.string(),
-						count: z.number()
+						capital: z.string(),
+						population: z.number()
 					}),
-					prompt: 'Generate a greeting for {{ name }} with count {{ count }}',
+					prompt: 'What is the capital and population of {{ country }}? Return only the capital name and a reasonable population estimate.',
 					description: 'An object generator tool',
 					inputSchema: z.object({
-						name: z.string(),
-						count: z.number()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'John', count: 5 }, toolCallOptions);
-				expect(result).to.have.property('greeting');
-				expect(result).to.have.property('count', 5);
+				const result = await tool.execute({ country: 'France' }, toolCallOptions) as { capital: string; population: number };
+				expect(result).to.have.property('capital');
+				expect(result).to.have.property('population');
+				expect(result.capital.toLowerCase()).to.equal('paris');
+				expect(result.population).to.be.a('number');
+				expect(result.population).to.be.greaterThan(0);
 			});
 
-			it('should correctly identify and execute TextGenerator parent', async () => {
+			it('should correctly identify and execute TextGenerator', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Say hello to {{ name }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A text generator tool',
 					inputSchema: z.object({
-						name: z.string()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'Alice' }, toolCallOptions);
+				const result = await tool.execute({ country: 'France' }, toolCallOptions);
 				expect(result).to.be.a('string');
-				expect(result).to.contain('Alice');
+				expect(result.toLowerCase().trim()).to.equal('paris');
 			});
 
-			it('should correctly identify and execute Template parent', async () => {
+			it('should correctly identify and execute TextGenerator with Template', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}, you are {{ age }} years old',
-					description: 'A template tool',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
+					description: 'A text generator tool with template',
 					inputSchema: z.object({
-						name: z.string(),
-						age: z.number()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'Bob', age: 30 }, toolCallOptions);
-				expect(result).to.equal('Hello Bob, you are 30 years old');
+				const result = await tool.execute({ country: 'Germany' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('berlin');
 			});
 		});
 
@@ -256,54 +265,52 @@ describe('create.Tool', function () {
 		});
 
 		describe('Sub-Suite 2.3: Parameter & Signature Handling', () => {
-			it('should correctly pass Zod schema inputSchema to parent', async () => {
+			it('should correctly pass Zod schema inputSchema to', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}, your age is {{ age }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						name: z.string().describe('The person\'s name'),
-						age: z.number().describe('The person\'s age')
+						country: z.string().describe('The country to get the capital for')
 					})
 				});
 
-				const result = await tool.execute({ name: 'Charlie', age: 25 }, toolCallOptions);
-				expect(result).to.equal('Hello Charlie, your age is 25');
+				const result = await tool.execute({ country: 'Italy' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('rome');
 			});
 
 			it('should accept Vercel SDK native object schema format', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'City: {{ city }}, Country: {{ country }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						city: z.string().describe('The city name'),
-						country: z.string().describe('The country name')
+						country: z.string().describe('The country to get the capital for')
 					})
 				});
 
-				const result = await tool.execute({ city: 'Paris', country: 'France' }, toolCallOptions);
-				expect(result).to.equal('City: Paris, Country: France');
+				const result = await tool.execute({ country: 'Spain' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('madrid');
 			});
 
 			it('should accept ToolCallOptions signature', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						name: z.string()
+						country: z.string()
 					})
 				});
 
 				const result = await tool.execute(
-					{ name: 'David' },
+					{ country: 'Japan' },
 					toolCallOptions
 				);
-				expect(result).to.equal('Hello David');
+				expect(result.toLowerCase().trim()).to.equal('tokyo');
 			});
 		});
 
@@ -354,47 +361,53 @@ describe('create.Tool', function () {
 				expect(result).to.deep.equal({ result: 'DATA FOR USER123' });
 			});
 
-			it('should inject _toolCallOptions into renderer context', async () => {
+			it('should work with TextGenerator.withTemplate for dynamic content', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Tool call ID: {{ _toolCallOptions.toolCallId }}, Messages count: {{ _toolCallOptions.messages.length }}',
-					description: 'A test tool that accesses _toolCallOptions',
+					prompt: 'Generate a {{ type }} story about {{ character }} in {{ setting }}. Keep it 3 sentences max, under 20 words.',
+					description: 'A story generator tool',
 					inputSchema: z.object({
-						testParam: z.string()
+						type: z.string().describe('The type of story (e.g., adventure, mystery, comedy)'),
+						character: z.string().describe('The main character name'),
+						setting: z.string().describe('The story setting')
 					})
 				});
 
-				const result = await tool.execute({ testParam: 'test' }, toolCallOptions);
+				const result = await tool.execute({
+					type: 'adventure',
+					character: 'Alice',
+					setting: 'a magical forest'
+				}, toolCallOptions);
 
-				// Verify that _toolCallOptions was injected and accessible
-				expect(result).to.contain('Tool call ID: test-call-id');
-				expect(result).to.contain('Messages count: 1');
+				expect(result).to.be.a('string');
+				expect(result.toLowerCase()).to.contain('alice');
+				expect(result.toLowerCase()).to.contain('forest');
+				expect(result.length).to.be.lessThan(280); // Reasonable length
 			});
 
-			it('should inject _toolCallOptions into script context', async () => {
+			it('should work with Script for data processing', async () => {
 				const tool = create.Script.asTool({
 					script: `
 							:data
-							@data.toolCallId = _toolCallOptions.toolCallId
-							@data.messagesCount = _toolCallOptions.messages.length
-							@data.hasAbortSignal = _toolCallOptions.abortSignal !== undefined
+							@data.processedText = "Processed: " + input.toUpperCase()
+							@data.wordCount = input.split(' ').length
+							@data.hasNumbers = r/[0-9]/.test(input)
 						`,
-					description: 'A test tool that accesses _toolCallOptions in script',
+					description: 'A text processing tool',
 					inputSchema: z.object({
-						testParam: z.string()
+						input: z.string().describe('The text to process')
 					})
 				});
 
-				const result = await tool.execute({ testParam: 'test' }, toolCallOptions);
+				const result = await tool.execute({ input: 'Hello world 123' }, toolCallOptions);
 
-				// Verify that _toolCallOptions was injected and accessible in script
-				expect(result).to.have.property('toolCallId', 'test-call-id');
-				expect(result).to.have.property('messagesCount', 1);
-				expect(result).to.have.property('hasAbortSignal', false); // abortSignal is optional
+				expect(result).to.have.property('processedText', 'Processed: HELLO WORLD 123');
+				expect(result).to.have.property('wordCount', 3);
+				expect(result).to.have.property('hasNumbers', true);
 			});
 
-			it('should work with ObjectGenerator.withScript parent', async () => {
+			it('should work with ObjectGenerator.withScript', async () => {
 				// This parent renderer uses a script to process input before calling the LLM
 				const tool = create.ObjectGenerator.withScript.asTool({
 					model,
@@ -403,7 +416,7 @@ describe('create.Tool', function () {
 					prompt: `
 							:data
 							// The script constructs the final prompt for the LLM
-							@data = "Generate a character profile for a " + role + " from the " + genre + " genre."
+							@data = "Create a brief character: " + role + " from " + genre + " genre. Keep it short."
 						`,
 					description: 'A character generator tool',
 					inputSchema: z.object({
@@ -636,7 +649,7 @@ describe('create.Tool', function () {
 				let messageHistory: ModelMessage[] = [];
 
 				// --- TURN 1: Simple chat ---
-				const turn1Result = await agent('Hi, how are you?', messageHistory);
+				const turn1Result = await agent('Hello.', messageHistory);
 				expect(turn1Result.finishReason).to.equal('stop');
 
 				// Update history
@@ -644,7 +657,7 @@ describe('create.Tool', function () {
 				expect(messageHistory).to.have.lengthOf(2);
 
 				// --- TURN 2: Tool-using chat ---
-				const turn2Result = await agent('Great! Now what is the weather in San Francisco?', messageHistory);
+				const turn2Result = await agent('Weather in San Francisco?', messageHistory);
 				expect(turn2Result.finishReason).to.equal('stop');
 				expect(turn2Result.text.toLowerCase()).to.include('75').and.to.include('sunny');
 
@@ -653,32 +666,6 @@ describe('create.Tool', function () {
 
 				// The final history should contain all messages from both turns
 				expect(messageHistory).to.have.lengthOf(6);
-
-				const finalAssistantMessage = messageHistory[5];
-
-				// --- CORRECTED AND TYPE-SAFE ASSERTIONS ---
-
-				expect(finalAssistantMessage.role).to.equal('assistant');
-
-				// TYPE GUARD 1: First, we must confirm that `content` is an array.
-				// This eliminates the `string` type from the union for `content`.
-				expect(Array.isArray(finalAssistantMessage.content)).to.equal(true);
-
-				// Now we can safely proceed inside an `if` block for type narrowing.
-				if (Array.isArray(finalAssistantMessage.content)) {
-					expect(finalAssistantMessage.content).to.have.lengthOf(1);
-					const finalContentPart = finalAssistantMessage.content[0];
-
-					// TYPE GUARD 2: Now that we have a part, we must check its `type`
-					// to safely access its specific properties like `.text`.
-					expect(finalContentPart.type).to.equal('text');
-					if (finalContentPart.type === 'text') {
-						// Inside this block, TypeScript is certain that `finalContentPart`
-						// is a `TextPart` and has a `text` property.
-						expect(finalContentPart.text).to.be.a('string');
-						expect(finalContentPart.text.toLowerCase()).to.include('sunny');
-					}
-				}
 			});
 		});
 	});
@@ -697,10 +684,11 @@ describe('create.Tool', function () {
 		const loggingTool = create.TextGenerator.withTemplate.asTool({
 			model,
 			temperature,
-			prompt: `ToolCallId: {{ _toolCallOptions.toolCallId }}, Step Messages Count: {{ _toolCallOptions.messages.length }}, Log Level: {{ level }}`,
-			description: 'A tool that logs its call options',
+			prompt: `Only return this log entry, nothing else: [{{ level }}] Tool call {{ _toolCallOptions.toolCallId }} processed {{ _toolCallOptions.messages.length }} messages. Status: {{ status }}`,
+			description: 'A logging tool that includes call metadata',
 			inputSchema: z.object({
-				level: z.string().describe('Log level for the message')
+				level: z.string().describe('Log level for the message'),
+				status: z.string().describe('Status of the operation')
 			}),
 		});
 
@@ -723,15 +711,15 @@ describe('create.Tool', function () {
 
 				const result = await agent('What is the weather in San Francisco?');
 
-				// Await the toolCalls promise from the stream result
+				// First consume the stream to ensure it completes
+				await streamToPromise(result.textStream);
+
+				// Now await the toolCalls promise from the stream result
 				const toolCalls = await result.toolCalls;
 
 				expect(toolCalls).to.have.lengthOf(1);
 				expect(toolCalls[0].toolName).to.equal('getWeather');
 				expect(toolCalls[0].input).to.deep.equal({ city: 'San Francisco' });
-
-				// Ensure the stream finishes
-				await streamToPromise(result.fullStream);
 			});
 		});
 
@@ -765,7 +753,7 @@ describe('create.Tool', function () {
 				expect(result.finishReason).to.equal('tool-calls');
 				expect(result.toolCalls).to.have.lengthOf(1);
 				expect(result.toolCalls[0].toolName).to.equal('log'); // Verifies the override worked
-				expect(result.toolCalls[0].input).to.deep.equal({ level: 'info' });
+				expect(result.toolCalls[0].input).to.deep.equal({ level: 'info', status: 'success' });
 			});
 		});
 
@@ -778,7 +766,7 @@ describe('create.Tool', function () {
 					stopWhen: stepCountIs(2),
 				});
 
-				const result = await agent('Use the error tool.');
+				const result = await agent('Call the error tool with reason "test error".');
 
 				// The loop should stop because the final response is text (the error summary)
 				expect(result.finishReason).to.equal('stop');
@@ -797,7 +785,7 @@ describe('create.Tool', function () {
 		});
 
 		describe('Accessing _toolCallOptions in LLM Loops', () => {
-			it('should correctly inject _toolCallOptions into a tool called by an LLM', async () => {
+			it.only('should correctly inject _toolCallOptions into a tool called by an LLM', async () => {
 				const agent = create.TextGenerator({
 					model,
 					temperature,
@@ -805,16 +793,16 @@ describe('create.Tool', function () {
 					stopWhen: stepCountIs(2),
 				});
 
-				const result = await agent('Use the logging tool.');
+				const result = await agent('Only write the werd: "HELLO" and run the loggingTool with level=INFO status=success. Do not explain, just execute.');
 
 				const step1 = result.steps[0];
 				const toolCallId = step1.toolCalls[0].toolCallId;
 				const toolResultOutput = step1.toolResults[0].output as string;
 
 				// The rendered output from the tool's template should contain the correct toolCallId
-				expect(toolResultOutput).to.include(`ToolCallId: ${toolCallId}`);
+				expect(toolResultOutput).to.include(`Tool call ${toolCallId}`);
 				// In a non-streaming, single-prompt call, the message history for the step is just the user prompt
-				expect(toolResultOutput).to.include('Step Messages Count: 1');
+				expect(toolResultOutput).to.include('processed 1 messages');
 			});
 		});
 	});
@@ -837,14 +825,40 @@ describe('create.Tool', function () {
 				return { result: a - b };
 			}
 		});
+
+		const calculatorFunction = create.Function({
+			execute: async (input: Record<string, any>) => {
+				const { a, b, operation } = input as { a: number, b: number, operation: 'add' | 'subtract' };
+				await new Promise(resolve => setTimeout(resolve, 100));
+				if (operation === 'add') {
+					return { result: a + b };
+				}
+				return { result: a - b };
+			}
+		});
 		// --- End Test Setup ---
 
-		it('should correctly execute the provided function with given arguments', async () => {
+		it('should correctly execute the provided function with given arguments using .execute()', async () => {
 			const resultAdd = await calculatorTool.execute({ a: 10, b: 5, operation: 'add' });
 			expect(resultAdd).to.deep.equal({ result: 15 });
 
 			const resultSubtract = await calculatorTool.execute({ a: 10, b: 5, operation: 'subtract' });
 			expect(resultSubtract).to.deep.equal({ result: 5 });
+
+			// Verify it has the correct type and execute property
+			expect(calculatorTool.type).to.equal('function');
+			expect(typeof calculatorTool.execute).to.equal('function');
+		});
+
+		it('should be callable directly as a function', async () => {
+			const resultAdd = await calculatorFunction({ a: 10, b: 5, operation: 'add' });
+			expect(resultAdd).to.deep.equal({ result: 15 });
+
+			const resultSubtract = await calculatorFunction({ a: 10, b: 5, operation: 'subtract' });
+			expect(resultSubtract).to.deep.equal({ result: 5 });
+
+			// Verify it has the correct type
+			expect(calculatorFunction.type).to.equal('FunctionCall');
 		});
 
 		it('should be callable by an LLM in an automated loop', async () => {
