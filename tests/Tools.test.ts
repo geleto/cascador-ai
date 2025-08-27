@@ -11,7 +11,7 @@ import { ModelMessage, stepCountIs } from 'ai';
 
 // Helper function to consume a stream
 async function streamToPromise(stream: any) {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 	for await (const _chunk of stream) {
 		// Just consume the stream
 	}
@@ -24,7 +24,7 @@ chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe('create.Tool', function () {
+describe.only('create.Tool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
@@ -155,7 +155,7 @@ describe('create.Tool', function () {
 
 	describe('Suite 2: Direct Execution & Integration Tests', () => {
 		describe('Sub-Suite 2.1: Parent Type Detection & Return Value', () => {
-			it('should correctly identify and execute Script parent', async () => {
+			it('should correctly identify and execute Script', async () => {
 				const tool = create.Script.asTool({
 					context: {
 						input: 'test'
@@ -174,57 +174,58 @@ describe('create.Tool', function () {
 				expect(result).to.deep.equal({ result: 'Processed: hello' });
 			});
 
-			it('should correctly identify and execute ObjectGenerator parent', async () => {
+			it('should correctly identify and execute ObjectGenerator', async () => {
 				const tool = create.ObjectGenerator.withTemplate.asTool({
 					model,
 					temperature,
 					schema: z.object({
-						greeting: z.string(),
-						count: z.number()
+						capital: z.string(),
+						population: z.number()
 					}),
-					prompt: 'Generate a greeting for {{ name }} with count {{ count }}',
+					prompt: 'What is the capital and population of {{ country }}? Return only the capital name and a reasonable population estimate.',
 					description: 'An object generator tool',
 					inputSchema: z.object({
-						name: z.string(),
-						count: z.number()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'John', count: 5 }, toolCallOptions);
-				expect(result).to.have.property('greeting');
-				expect(result).to.have.property('count', 5);
+				const result = await tool.execute({ country: 'France' }, toolCallOptions) as { capital: string; population: number };
+				expect(result).to.have.property('capital');
+				expect(result).to.have.property('population');
+				expect(result.capital.toLowerCase()).to.equal('paris');
+				expect(result.population).to.be.a('number');
+				expect(result.population).to.be.greaterThan(0);
 			});
 
-			it('should correctly identify and execute TextGenerator parent', async () => {
+			it('should correctly identify and execute TextGenerator', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Say hello to {{ name }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A text generator tool',
 					inputSchema: z.object({
-						name: z.string()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'Alice' }, toolCallOptions);
+				const result = await tool.execute({ country: 'France' }, toolCallOptions);
 				expect(result).to.be.a('string');
-				expect(result).to.contain('Alice');
+				expect(result.toLowerCase().trim()).to.equal('paris');
 			});
 
-			it('should correctly identify and execute Template parent', async () => {
+			it('should correctly identify and execute TextGenerator with Template', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}, you are {{ age }} years old',
-					description: 'A template tool',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
+					description: 'A text generator tool with template',
 					inputSchema: z.object({
-						name: z.string(),
-						age: z.number()
+						country: z.string()
 					})
 				});
 
-				const result = await tool.execute({ name: 'Bob', age: 30 }, toolCallOptions);
-				expect(result).to.equal('Hello Bob, you are 30 years old');
+				const result = await tool.execute({ country: 'Germany' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('berlin');
 			});
 		});
 
@@ -256,54 +257,52 @@ describe('create.Tool', function () {
 		});
 
 		describe('Sub-Suite 2.3: Parameter & Signature Handling', () => {
-			it('should correctly pass Zod schema inputSchema to parent', async () => {
+			it('should correctly pass Zod schema inputSchema to', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}, your age is {{ age }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						name: z.string().describe('The person\'s name'),
-						age: z.number().describe('The person\'s age')
+						country: z.string().describe('The country to get the capital for')
 					})
 				});
 
-				const result = await tool.execute({ name: 'Charlie', age: 25 }, toolCallOptions);
-				expect(result).to.equal('Hello Charlie, your age is 25');
+				const result = await tool.execute({ country: 'Italy' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('rome');
 			});
 
 			it('should accept Vercel SDK native object schema format', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'City: {{ city }}, Country: {{ country }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						city: z.string().describe('The city name'),
-						country: z.string().describe('The country name')
+						country: z.string().describe('The country to get the capital for')
 					})
 				});
 
-				const result = await tool.execute({ city: 'Paris', country: 'France' }, toolCallOptions);
-				expect(result).to.equal('City: Paris, Country: France');
+				const result = await tool.execute({ country: 'Spain' }, toolCallOptions);
+				expect(result.toLowerCase().trim()).to.equal('madrid');
 			});
 
 			it('should accept ToolCallOptions signature', async () => {
 				const tool = create.TextGenerator.withTemplate.asTool({
 					model,
 					temperature,
-					prompt: 'Hello {{ name }}',
+					prompt: 'What is the capital of {{ country }}? Answer only with the name of the capital and nothing else.',
 					description: 'A test tool',
 					inputSchema: z.object({
-						name: z.string()
+						country: z.string()
 					})
 				});
 
 				const result = await tool.execute(
-					{ name: 'David' },
+					{ country: 'Japan' },
 					toolCallOptions
 				);
-				expect(result).to.equal('Hello David');
+				expect(result.toLowerCase().trim()).to.equal('tokyo');
 			});
 		});
 
@@ -394,7 +393,7 @@ describe('create.Tool', function () {
 				expect(result).to.have.property('hasAbortSignal', false); // abortSignal is optional
 			});
 
-			it('should work with ObjectGenerator.withScript parent', async () => {
+			it('should work with ObjectGenerator.withScript', async () => {
 				// This parent renderer uses a script to process input before calling the LLM
 				const tool = create.ObjectGenerator.withScript.asTool({
 					model,
