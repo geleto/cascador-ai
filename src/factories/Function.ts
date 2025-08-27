@@ -17,7 +17,7 @@ export type FunctionCallSignature<
 	TConfig extends FunctionConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
-> = ((context: INPUT) => PromiseLike<OUTPUT>) & TConfig;
+> = ((context: INPUT) => PromiseLike<OUTPUT>) & Omit<TConfig, 'execute'> & { type: 'FunctionCall' };
 
 type FinalTextConfigShape = Partial<ToolOrFunctionConfig<any, any>>;
 
@@ -25,7 +25,7 @@ export type ToolCallSignature<
 	TConfig extends ToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
-> = ((context: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig;
+> = ((context: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig & { type: 'function' };
 
 type ValidateConfig<
 	TConfig extends Partial<ToolOrFunctionConfig<any, any>>,
@@ -81,7 +81,7 @@ function asFunction<
 		TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<any, any>>
 ): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 
-function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): any {
+function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
 	return _createFunction(config, parent);
 }
 
@@ -140,8 +140,16 @@ function _createFunction(
 		console.log('[DEBUG] Function created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	const type = 'Function';
-	return Object.assign(merged.execute as FunctionCallSignature<FunctionConfig<any, any>, any, any>, { type });
+	// Create a callable function that delegates to the execute method
+	const callableFunction = async (context: Record<string, any>): Promise<any> => {
+		return await merged.execute(context);
+	};
+
+	// Merge all properties from merged config into the callable function, but exclude execute
+	const { execute: _execute, ...configWithoutExecute } = merged;
+	const result = Object.assign(callableFunction, configWithoutExecute, { type: 'FunctionCall' });
+
+	return result as FunctionCallSignature<FunctionConfig<any, any>, any, any>;
 }
 
 function _createFunctionAsTool(
@@ -153,6 +161,9 @@ function _createFunctionAsTool(
 	const renderer = _createFunction(config as FunctionConfig<any, any>, parent as FunctionCallSignature<FunctionConfig<any, any>, any, any>) as unknown as
 		ToolCallSignature<ToolConfig<any, any>, any, any>;
 	//the Tool properties are already in the renderer root (not in a config property)
+
+	// Add the execute property back for tools
+	renderer.execute = config.execute;
 	renderer.type = 'function';
 	return renderer;
 }

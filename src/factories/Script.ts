@@ -287,11 +287,11 @@ export function _createScriptAsTool<
 	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
-	//result is a caller, assign the execute function to it. Args is the context object, options is not used
-	renderer.execute = async (args: INPUT, _options: ToolCallOptions): Promise<OUTPUT> => {
-		// Call the script without the options parameter since renderers don't support it
-		// For tools, the script is already defined in the config, so we pass args as context
-		return await (renderer as unknown as (context: INPUT) => Promise<OUTPUT>)(args);
+	//result is a caller, assign the execute function to it. Args is the context object, options contains _toolCallOptions
+	renderer.execute = async (args: INPUT, options: ToolCallOptions): Promise<OUTPUT> => {
+		// Merge the _toolCallOptions into the context so scripts can access it
+		const contextWithToolOptions = { ...args, _toolCallOptions: options };
+		return await (renderer as unknown as (context: INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<OUTPUT>)(contextWithToolOptions);
 	};
 	return renderer as (typeof renderer & ScriptCallSignatureWithParent<ScriptToolConfig<INPUT, OUTPUT>, ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT, INPUT, OUTPUT>);
 }

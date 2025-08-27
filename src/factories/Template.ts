@@ -162,10 +162,11 @@ function asTool<
 	toolRenderer.inputSchema = renderer.config.inputSchema as unknown as SchemaType<FINAL_INPUT>;
 	toolRenderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
 
-	//result is a caller, assign the execute function to it. Args is the context object, options is not used
-	toolRenderer.execute = async (args: FINAL_INPUT, _options: ToolCallOptions): Promise<string> => {
-		// Call the renderer without the options parameter since renderers don't support it
-		return await (renderer as unknown as (context: FINAL_INPUT) => Promise<string>)(args);
+	//result is a caller, assign the execute function to it. Args is the context object, options contains _toolCallOptions
+	toolRenderer.execute = async (args: FINAL_INPUT, options: ToolCallOptions): Promise<string> => {
+		// Merge the _toolCallOptions into the context so templates can access it
+		const contextWithToolOptions = { ...args, _toolCallOptions: options };
+		return await (renderer as unknown as (context: FINAL_INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<string>)(contextWithToolOptions);
 	};
 
 	return renderer as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;

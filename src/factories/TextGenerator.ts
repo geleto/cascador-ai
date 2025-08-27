@@ -412,10 +412,11 @@ function _createTextGeneratorAsTool<
 	renderer.inputSchema = renderer.config.inputSchema;
 	renderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
 
-	//result is a caller, assign the execute function to it. Args is the context object, options is not used
-	renderer.execute = async (args: INPUT, _options: ToolCallOptions): Promise<string> => {
-		// Call the renderer without the options parameter since renderers don't support it
-		return (await (renderer as unknown as (context: INPUT) => Promise<results.GenerateTextResult<TOOLS, string>>)(args)).text;
+	//result is a caller, assign the execute function to it. Args is the context object, options contains _toolCallOptions
+	renderer.execute = async (args: INPUT, options: ToolCallOptions): Promise<string> => {
+		// Merge the _toolCallOptions into the context so templates can access it
+		const contextWithToolOptions = { ...args, _toolCallOptions: options };
+		return (await (renderer as unknown as (context: INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<results.GenerateTextResult<TOOLS, string>>)(contextWithToolOptions)).text;
 	};
 	return renderer as (typeof renderer & GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType>);
 }

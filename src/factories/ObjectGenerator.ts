@@ -769,10 +769,11 @@ function _createObjectGeneratorAsTool<
 	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
 
-	//result is a caller, assign the execute function to it. Args is the context object, options is not used
-	renderer.execute = async (args: INPUT, _options: ToolCallOptions): Promise<OUTPUT> => {
-		// Call the renderer without the options parameter since renderers don't support it
-		return (await (renderer as unknown as (context: INPUT) => Promise<results.GenerateObjectObjectResult<OUTPUT>>)(args)).object;
+	//result is a caller, assign the execute function to it. Args is the context object, options contains _toolCallOptions
+	renderer.execute = async (args: INPUT, options: ToolCallOptions): Promise<OUTPUT> => {
+		// Merge the _toolCallOptions into the context so templates can access it
+		const contextWithToolOptions = { ...args, _toolCallOptions: options };
+		return (await (renderer as unknown as (context: INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<results.GenerateObjectObjectResult<OUTPUT>>)(contextWithToolOptions)).object;
 	};
 	return renderer as (typeof renderer & GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM>);
 }
