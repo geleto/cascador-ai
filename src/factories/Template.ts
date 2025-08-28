@@ -63,22 +63,63 @@ export type TemplateCallSignatureWithParent<
 		type: string;
 	};
 
+// New type definitions for static validation
+
+// The full shape of a final, merged Template config object, including required properties.
+type FinalTemplateConfigShape = Partial<configs.TemplateConfig<any> & configs.ToolConfig<any, any> & { loader?: any }>;
+
+// Generic validator for the `config` object passed to a factory function.
+type ValidateTemplateConfig<
+	TConfig extends Partial<configs.TemplateConfig<any>>,
+	TFinalConfig extends FinalTemplateConfigShape,
+	TShape extends FinalTemplateConfigShape, // This TShape indicates the expected structure for the current factory (e.g., baseTemplate, loadsTemplate, asTool)
+	TRequired =
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	& (TShape extends configs.LoaderConfig ? { loader: any } : {}) // loader is required for loadsTemplate
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	& (TShape extends configs.ToolConfig<any, any> ? { inputSchema: SchemaType<any> } : {}) // inputSchema is required for asTool
+> =
+	// GATEKEEPER: Check for excess or missing properties
+	// 1. Check for excess properties in TConfig that are not in TShape
+	keyof Omit<TConfig, keyof TShape> extends never
+	? (
+		// 2. If no excess, check for required properties missing from the FINAL merged config.
+		keyof Omit<TRequired, keyof TFinalConfig> extends never
+		? TConfig // All checks passed.
+		: `Config Error: Missing required property '${keyof Omit<TRequired, keyof TFinalConfig> & string}' in the final configuration.`
+	)
+	: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof TShape> & string}'`;
+
+
+// Generic validator for the `parent` config object.
+type ValidateTemplateParentConfig<
+	TParentConfig extends Partial<configs.TemplateConfig<any>>,
+	TShape extends FinalTemplateConfigShape // TShape for parent also
+> =
+	// Check for excess properties in the parent validated against TShape
+	keyof Omit<TParentConfig, keyof TShape> extends never
+	? TParentConfig // The check has passed.
+	: `Parent Config Error: Parent has properties not allowed for the final template type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
+
 // Default behavior: inline/embedded template
 function baseTemplate<
 	const TConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>
 >(
-	config: utils.StrictType<TConfig, configs.TemplateConfig<INPUT>>
+	config: TConfig & ValidateTemplateConfig<
+		TConfig, TConfig, configs.TemplateConfig<INPUT>
+	>
 ): TemplateCallSignature<TConfig, INPUT>;
 
 function baseTemplate<
-	TConfig extends configs.TemplateConfig<INPUT>,
-	TParentConfig extends configs.TemplateConfig<PARENT_INPUT>,
+	TConfig extends Partial<configs.TemplateConfig<INPUT>>,
+	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
-	PARENT_INPUT extends Record<string, any>
+	PARENT_INPUT extends Record<string, any>,
+	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: utils.StrictType<TConfig, configs.TemplateConfig<INPUT>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplateConfig<PARENT_INPUT>>>
+	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateConfig<INPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 function baseTemplate(
@@ -90,20 +131,23 @@ function baseTemplate(
 
 // loadsTemplate: load by name via provided loader
 function loadsTemplate<
-	const TConfig extends TemplateToolConfig<INPUT> & configs.LoaderConfig,
+	const TConfig extends configs.TemplateConfig<INPUT> & configs.LoaderConfig,
 	INPUT extends Record<string, any>
 >(
-	config: TConfig
+	config: TConfig & ValidateTemplateConfig<
+		TConfig, TConfig, configs.TemplateConfig<INPUT> & configs.LoaderConfig
+	>
 ): TemplateCallSignature<TConfig, INPUT>;
 
 function loadsTemplate<
-	TConfig extends Partial<TemplateToolConfig<INPUT>> & configs.LoaderConfig,
-	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>> & configs.LoaderConfig,
+	TConfig extends Partial<configs.TemplateConfig<INPUT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
-	PARENT_INPUT extends Record<string, any>
+	PARENT_INPUT extends Record<string, any>,
+	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig,
-	parent: ConfigProvider<TParentConfig>
+	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateConfig<INPUT> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT> & configs.LoaderConfig>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 function loadsTemplate(
@@ -116,21 +160,12 @@ function loadsTemplate(
 // asTool method for Template
 function asTool<
 	const TConfig extends TemplateToolConfig<INPUT>,
-	INPUT extends Record<string, any>,
-	OUTPUT
->(
-	config: TConfig & { description?: string; inputSchema: SchemaType<INPUT> }
-): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, OUTPUT>;
-
-
-/*function baseTemplatea<
-	TConfig extends configs.TemplateConfig<INPUT>,
-	TParentConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>
 >(
-	config: utils.StrictType<TConfig, configs.TemplateConfig<INPUT>>,
-	parent: ConfigProvider<utils.StrictType<TParentConfig, configs.TemplateConfig<INPUT>>>
-): TemplateCallSignature<utils.Override<TParentConfig, TConfig>, INPUT>{};*/
+	config: TConfig & ValidateTemplateConfig<
+		TConfig, TConfig, TemplateToolConfig<INPUT>
+	>
+): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, string>;
 
 function asTool<
 	TConfig extends Partial<TemplateToolConfig<INPUT>>,
@@ -138,9 +173,10 @@ function asTool<
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
 	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
+	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig,
-	parent: ConfigProvider<TParentConfig>
+	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, TemplateToolConfig<INPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, TemplateToolConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
 function asTool<
@@ -198,6 +234,7 @@ export function _createTemplate<
 	}
 
 	// @todo - .loadsTemplate()
+	// Runtime validation for loader, backing up static checks
 	if ((merged.promptType === 'template-name' || merged.promptType === 'async-template-name') && !('loader' in merged)) {
 		throw new ConfigError('Template name types require a loader');
 	}
