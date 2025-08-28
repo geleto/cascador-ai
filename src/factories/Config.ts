@@ -65,7 +65,7 @@ export function Config<
 
 	if (parent) {
 		const merged = mergeConfigs(parent.config, config);
-		validateAnyConfig(merged);
+		validateAnyConfig(merged as Partial<configs.AnyConfig<any, any, any, any>>);
 		// Runtime check would go here if needed
 		return new ConfigData(merged) as ConfigData<TFinalConfig>;
 	}

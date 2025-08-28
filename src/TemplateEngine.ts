@@ -2,7 +2,7 @@ import * as cascada from 'cascada-engine';
 import { Context } from './types/types';
 import { TemplateConfig } from './types/config';
 
-class TemplateError extends Error {
+export class TemplateError extends Error {
 	cause?: Error;
 	name: string;
 	constructor(message: string, cause?: Error) {

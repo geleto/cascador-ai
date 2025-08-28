@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateLLMConfig } from "../validate";
+import { validateTextLLMConfig } from "../validate";
 
 export type TextStreamerConfig<TOOLS extends ToolSet, INPUT extends Record<string, any>> = configs.CascadaConfig & configs.StreamTextConfig<TOOLS, INPUT>;
 export type TextStreamerInstance<TOOLS extends ToolSet, INPUT extends Record<string, any>, PType extends types.RequiredPromptType> = LLMCallSignature<TextStreamerConfig<TOOLS, INPUT>, Promise<results.StreamTextResultAugmented<TOOLS>>, PType>;
@@ -91,7 +91,7 @@ function withText(
 	config: configs.StreamTextConfig<any, any, any>,
 	parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>
 ) {
-	return _createTextStreamer(config, 'text', parent, false, false) as StreamTextWithParentReturn<any, any, any, any, 'text'>;
+	return _createTextStreamer(config, 'text', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'text'>;
 }
 
 
@@ -114,7 +114,7 @@ function loadsText<
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name'>;
 
 function loadsText(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
-	return _createTextStreamer(config, 'text-name', parent, false, true) as StreamTextWithParentReturn<any, any, any, any, 'text-name'>;
+	return _createTextStreamer(config, 'text-name', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'text-name'>;
 }
 
 function withTemplate<
@@ -142,7 +142,7 @@ function withTemplate(
 	config: configs.StreamTextConfig<any, any, any>,
 	parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>,
 ) {
-	return _createTextStreamer(config, 'async-template', parent, false, false) as StreamTextWithParentReturn<any, any, any, any, 'async-template'>;
+	return _createTextStreamer(config, 'async-template', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'async-template'>;
 }
 
 function loadsTemplate<
@@ -167,7 +167,7 @@ function loadsTemplate<
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name'>;
 
 function loadsTemplate(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
-	return _createTextStreamer(config, 'async-template-name', parent, false, true) as StreamTextWithParentReturn<any, any, any, any, 'async-template-name'>;
+	return _createTextStreamer(config, 'async-template-name', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'async-template-name'>;
 }
 
 function withScript<
@@ -192,7 +192,7 @@ function withScript<
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script'>;
 
 function withScript(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
-	return _createTextStreamer(config, 'async-script', parent, false, false) as StreamTextWithParentReturn<any, any, any, any, 'async-script'>;
+	return _createTextStreamer(config, 'async-script', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'async-script'>;
 }
 
 function loadsScript<
@@ -217,7 +217,7 @@ function loadsScript<
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name'>;
 
 function loadsScript(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
-	return _createTextStreamer(config, 'async-script-name', parent, false, true) as StreamTextWithParentReturn<any, any, any, any, 'async-script-name'>;
+	return _createTextStreamer(config, 'async-script-name', parent, false) as StreamTextWithParentReturn<any, any, any, any, 'async-script-name'>;
 }
 
 function _createTextStreamer<
@@ -229,12 +229,11 @@ function _createTextStreamer<
 	promptType: types.RequiredPromptType,
 	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>,
 	isTool = false,
-	isLoaded = false
 ): StreamTextReturn<TConfig, TOOLS, types.RequiredPromptType> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
-	validateLLMConfig(merged, promptType, isTool, isLoaded);
+	validateTextLLMConfig(merged, promptType, isTool);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

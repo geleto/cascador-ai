@@ -118,7 +118,7 @@ function withTemplate(
 	config: configs.TemplateConfig<any>,
 	parent?: ConfigProvider<configs.TemplateConfig<any>>
 ): any {
-	return _createTemplate(config, 'async-template', parent, false, false);
+	return _createTemplate(config, 'async-template', parent, false);
 }
 
 // loadsTemplate: load by name via provided loader
@@ -146,7 +146,7 @@ function loadsTemplate(
 	config: Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>,
 	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>
 ): any {
-	return _createTemplate(config, 'async-template-name', parent, false, true);
+	return _createTemplate(config, 'async-template-name', parent, false);
 }
 
 // asTool method for Template
@@ -175,7 +175,7 @@ function withTemplateAsTool(
 	config: Partial<configs.TemplateToolConfig<any>>,
 	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any>>>,
 ): any {
-	return _createTemplateAsTool(config, 'async-template', parent, false);
+	return _createTemplateAsTool(config, 'async-template', parent);
 }
 
 // Overload 1: With a standalone config
@@ -206,7 +206,7 @@ function loadsTemplateAsTool(
 	config: Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>,
 	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>,
 ): any {
-	return _createTemplateAsTool(config, 'async-template-name', parent, true);
+	return _createTemplateAsTool(config, 'async-template-name', parent);
 }
 
 // Internal common creator for template tools
@@ -220,9 +220,8 @@ function _createTemplateAsTool<
 	config: Partial<TConfig>,
 	promptType: TemplatePromptType,
 	parent?: ConfigProvider<TParentConfig>,
-	isLoaded = false
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string> {
-	const renderer = _createTemplate(config, promptType, parent, true, isLoaded) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
+	const renderer = _createTemplate(config, promptType, parent, true) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 	const toolRenderer = renderer as unknown as results.RendererTool<FINAL_INPUT, string> & { config: { description?: string, inputSchema: SchemaType<FINAL_INPUT> } };
 	toolRenderer.description = renderer.config.description;
@@ -248,7 +247,6 @@ export function _createTemplate<
 	promptType: TemplatePromptType,
 	parent?: ConfigProvider<TParentConfig>,
 	isTool = false,
-	isLoaded = false
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> {
 
 	// Merge configs if parent exists, otherwise use provided config
@@ -257,7 +255,7 @@ export function _createTemplate<
 		? { ...mergeConfigs(parent.config, config), promptType: promptType }
 		: { ...config, promptType: promptType };
 
-	validateTemplateConfig(merged, promptType, isTool, isLoaded);
+	validateTemplateConfig(merged, promptType, isTool);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

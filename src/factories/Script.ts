@@ -141,7 +141,7 @@ function baseScript(
 	config: configs.ScriptConfig<any, any>,
 	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
 ): any {
-	return _createScript(config, 'async-script', parent, false, false);
+	return _createScript(config, 'async-script', parent, false);
 }
 
 // asTool method for Script
@@ -172,7 +172,7 @@ function asTool(
 	config: Partial<configs.ScriptToolConfig<any, any>>,
 	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any>>>
 ): any {
-	return _createScriptAsTool(config, 'async-script', parent, false);
+	return _createScriptAsTool(config, 'async-script', parent);
 }
 
 // loadsScript: load by name via provided loader
@@ -201,7 +201,7 @@ function loadsScript(
 	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.ScriptConfig<any, any> & configs.LoaderConfig>
 ): any {
-	return _createScript(config, 'async-script-name', parent, false, true);
+	return _createScript(config, 'async-script-name', parent, false);
 }
 
 // loadsScriptAsTool: load by name via provided loader and return as tool
@@ -232,7 +232,7 @@ function loadsScriptAsTool(
 	config: Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>,
 	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>>
 ): any {
-	return _createScriptAsTool(config, 'async-script-name', parent, true);
+	return _createScriptAsTool(config, 'async-script-name', parent);
 }
 
 // Internal common creator
@@ -244,7 +244,6 @@ export function _createScript<
 	scriptType: ScriptPromptType,
 	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>,
 	isTool = false,
-	isLoaded = false
 ): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> {
 	// Merge configs if parent exists, otherwise use provided config
 	//, add promptType to the config
@@ -252,7 +251,7 @@ export function _createScript<
 		? { ...mergeConfigs(parent.config, config), promptType: scriptType }
 		: { ...config, promptType: scriptType };
 
-	validateScriptConfig(merged, scriptType, isTool, isLoaded);
+	validateScriptConfig(merged, scriptType, isTool);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -310,11 +309,10 @@ export function _createScriptAsTool<
 	config: Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>,
 	scriptType: ScriptPromptType,
 	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>>,
-	isLoaded = false
 ): ScriptCallSignatureWithParent<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>, Partial<configs.ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
 	& results.RendererTool<INPUT, OUTPUT> {
 
-	const renderer = _createScript(config, scriptType, parent, true, isLoaded) as unknown as
+	const renderer = _createScript(config, scriptType, parent, true) as unknown as
 		ScriptCallSignature<configs.ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema!;
