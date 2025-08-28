@@ -44,9 +44,16 @@ export interface TemplateConfig<
 > extends CascadaConfig {
 	template: string;
 	inputSchema?: SchemaType<INPUT>;
+	promptType?: TemplatePromptType;
 }
 
-
+// Config for a Tool that uses the Template engine
+export interface TemplateToolConfig<
+	INPUT extends Record<string, any>,
+> extends TemplateConfig<INPUT> {
+	inputSchema: SchemaType<INPUT>;//required
+	description?: string;
+}
 
 // Config for prompts that are rendered with templates
 export interface TemplatePromptConfig<
@@ -65,7 +72,17 @@ export interface ScriptConfig<
 	script?: string;
 	schema?: SchemaType<OUTPUT>;
 	inputSchema?: SchemaType<INPUT>;
+	promptType?: ScriptPromptType;
 };
+
+// Config for a Tool that uses the Script engine
+export interface ScriptToolConfig<
+	INPUT extends Record<string, any>,
+	OUTPUT
+> extends ScriptConfig<INPUT, OUTPUT> {
+	inputSchema: SchemaType<INPUT>;//required
+	description?: string;
+}
 
 export type OptionalTemplatePromptConfig<
 	PROMPT = string

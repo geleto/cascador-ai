@@ -2,7 +2,7 @@ import { Tool, ToolCallOptions } from 'ai';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateConfig, validateScriptOrFunctionCall, validateAndParseOutput } from "../validate";
+import { validateFunctionConfig, validateScriptOrFunctionCall, validateAndParseOutput } from "../validate";
 
 type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
 	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & configs.BaseConfig
@@ -131,7 +131,7 @@ function _createFunction(
 		merged = config;
 	}
 
-	validateConfig(merged, undefined, isTool);
+	validateFunctionConfig(merged, isTool);
 
 	if (merged.debug) {
 		console.log('[DEBUG] Function created with config:', JSON.stringify(merged, null, 2));

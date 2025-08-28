@@ -36,101 +36,82 @@ function validateMessagesArray(messages: unknown): void {
 	}
 }
 
-// --- Targeted Excess Property Validation ---
-
-const MAIN_PROPERTIES = new Set(['schema', 'inputSchema', 'model', 'output', 'prompt', 'template', 'script', 'enum', 'mode', 'execute']);
-const OBJECT_PROPS = new Set(['model', 'output', 'schema', 'enum', 'mode', 'prompt', 'inputSchema']);
-const TEXT_PROPS = new Set(['model', 'prompt', 'inputSchema']);
-const TEMPLATE_PROPS = new Set(['template', 'prompt', 'inputSchema']);
-const SCRIPT_PROPS = new Set(['script', 'prompt', 'inputSchema', 'schema']);
-const FUNCTION_PROPS = new Set(['execute', 'inputSchema', 'schema']);
-
-function validateExcessProperties(config: Record<string, any>, allowedProps: Set<string>, rendererName: string): void {
-	for (const prop of MAIN_PROPERTIES) {
-		if (prop in config && !allowedProps.has(prop)) {
-			throw new ConfigError(`Property '${prop}' is not applicable for a ${rendererName} configuration.`);
-		}
-	}
-}
-
-// --- Internal, Type-Specific Config Validators ---
-
-function _validateObjectConfig(config: Record<string, any>): void {
-	validateExcessProperties(config, OBJECT_PROPS, 'Object');
-	if (!('model' in config)) throw new ConfigError("Object config requires a 'model' property.");
-	if ('prompt' in config && !(typeof config.prompt === 'string' || Array.isArray(config.prompt))) {
-		throw new ConfigError("'prompt' in an Object config must be a string or a ModelMessage array.");
-	}
-}
-
-function _validateTextConfig(config: Record<string, any>): void {
-	validateExcessProperties(config, TEXT_PROPS, 'Text');
-	if (!('model' in config)) throw new ConfigError("Text config requires a 'model' property.");
-	if ('prompt' in config && !(typeof config.prompt === 'string' || Array.isArray(config.prompt))) {
-		throw new ConfigError("'prompt' in a Text config must be a string or a ModelMessage array.");
-	}
-}
-
-function _validateTemplateConfig(config: Record<string, any>): void {
-	validateExcessProperties(config, TEMPLATE_PROPS, 'Template');
-	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
-		throw new ConfigError("For Template renderers, 'inputSchema' must be a Zod object schema (z.object).");
-	}
-}
-
-function _validateScriptConfig(config: Record<string, any>): void {
-	validateExcessProperties(config, SCRIPT_PROPS, 'Script');
-	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
-		throw new ConfigError("For Script renderers, 'inputSchema' must be a Zod object schema (z.object).");
-	}
-}
-
-function _validateFunctionConfig(config: Record<string, any>): void {
-	validateExcessProperties(config, FUNCTION_PROPS, 'Function');
-	if (typeof config.execute !== 'function') {
-		throw new ConfigError("The 'execute' property in a Function config must be a function.");
-	}
-}
-
-// --- Main Configuration Validator ---
-
-/**
- * Main validation router for renderer creation.
- * It prioritizes explicit type info (promptType) and uses intent inference as a fallback for generic Config().
- * @param config The configuration object.
- * @param promptType The explicit promptType, which dictates validation.
- * @param isTool A flag indicating if the renderer is being created as a tool.
- * @param isLoaded A flag indicating if the renderer uses a loader.
- */
-export function validateConfig(config?: Record<string, any>, promptType?: PromptType, isTool = false, isLoaded = false): void {
+function universalSanityChecks(config?: Record<string, any>): void {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');
 	}
-
-	// Universal Checks
 	if ('template' in config && 'script' in config) {
 		throw new ConfigError("Configuration cannot have both 'template' and 'script' properties.");
 	}
 	if (config.messages) {
 		validateMessagesArray(config.messages);
 	}
+}
 
-	// --- Primary Dispatch: Use explicit promptType if available ---
-	if (promptType) {
-		if (promptType.includes('template')) _validateTemplateConfig(config);
-		else if (promptType.includes('script')) _validateScriptConfig(config);
-		else if (promptType.includes('text')) _validateTextConfig(config);
-		if ('output' in config) _validateObjectConfig(config); // Object renderers also have a promptType
-	} else {
-		// --- Fallback: Infer intent for generic Config() calls ---
-		if ('output' in config) _validateObjectConfig(config);
-		else if ('template' in config) _validateTemplateConfig(config);
-		else if ('script' in config) _validateScriptConfig(config);
-		else if ('execute' in config) _validateFunctionConfig(config);
-		else if ('model' in config) _validateTextConfig(config);
+// --- Specialized Configuration Validators ---
+
+/**
+ * Validates a configuration for generic `create.Config()` calls by inferring its type.
+ * @param config The configuration object.
+ */
+export function validateAnyConfig(config?: Record<string, any>): void {
+	universalSanityChecks(config);
+	// Infer intent for generic Config() calls
+	if ('output' in config!) validateLLMConfig(config);
+	else if ('template' in config!) validateTemplateConfig(config);
+	else if ('script' in config!) validateScriptConfig(config);
+	else if ('execute' in config!) validateFunctionConfig(config);
+	else if ('model' in config!) validateLLMConfig(config);
+}
+
+/**
+ * Validates configurations for LLM-based generators (TextGenerator, ObjectGenerator, etc.).
+ * @param config The configuration object.
+ * @param promptType The explicit promptType from the factory.
+ * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isLoaded A flag indicating if the renderer uses a loader.
+ */
+export function validateLLMConfig(config: Record<string, any>, promptType?: PromptType, isTool = false, isLoaded = false): void {
+	universalSanityChecks(config);
+
+	if ('execute' in config) {
+		throw new ConfigError("Property 'execute' is not allowed in an LLM generator config. Use create.Function for this purpose.");
+	}
+	if (!('model' in config)) {
+		throw new ConfigError("LLM generator configs require a 'model' property.");
 	}
 
-	// --- Post-Validation Checks Based on Explicit Context ---
+	// Logic for Object Generators (ObjectGenerator, ObjectStreamer)
+	if ('output' in config || 'schema' in config || 'enum' in config) {
+		const output = (config.output ?? 'object') as string; // Vercel SDK defaults to 'object'
+
+		switch (output) {
+			case 'object':
+			case 'array':
+				if (!('schema' in config)) {
+					throw new ConfigError(`An 'output' of '${output}' requires a 'schema' property.`);
+				}
+				break;
+			case 'enum':
+				if (!('enum' in config && Array.isArray(config.enum))) {
+					throw new ConfigError("An 'output' of 'enum' requires an 'enum' property with a string array.");
+				}
+				break;
+			case 'no-schema':
+				// No extra properties needed
+				break;
+			default:
+				throw new ConfigError(`Invalid 'output' mode: '${output}'. Must be 'object', 'array', 'enum', or 'no-schema'.`);
+		}
+	}
+	// Logic for Text Generators (TextGenerator, TextStreamer)
+	else {
+		if ('schema' in config || 'enum' in config || 'mode' in config) {
+			throw new ConfigError("Properties 'schema', 'enum', and 'mode' are only for Object generators. Did you mean to set the 'output' property?");
+		}
+	}
+
+	// Post-Validation Checks Based on Context
 	if (isLoaded && !('loader' in config)) {
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
 	}
@@ -139,11 +120,95 @@ export function validateConfig(config?: Record<string, any>, promptType?: Prompt
 	}
 }
 
-// --- Invocation Validators ---
+/**
+ * Validates configurations for `create.Template`.
+ * @param config The configuration object.
+ * @param promptType The explicit promptType from the factory.
+ * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isLoaded A flag indicating if the renderer uses a loader.
+ */
+export function validateTemplateConfig(config: Record<string, any>, promptType?: PromptType, isTool = false, isLoaded = false): void {
+	universalSanityChecks(config);
+
+	const forbiddenProps = ['model', 'script', 'execute', 'output', 'enum', 'mode'];
+	for (const prop of forbiddenProps) {
+		if (prop in config) {
+			throw new ConfigError(`Property '${prop}' is not applicable for a Template configuration.`);
+		}
+	}
+
+	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
+		throw new ConfigError("For Template renderers, 'inputSchema' must be a Zod object schema (z.object).");
+	}
+
+	if (isLoaded && !('loader' in config)) {
+		throw new ConfigError("A 'loader' is required when loading a template by name.");
+	}
+	if (isTool && !('inputSchema' in config)) {
+		throw new ConfigError("'inputSchema' is a required property when creating a template as a tool.");
+	}
+}
+
+/**
+ * Validates configurations for `create.Script`.
+ * @param config The configuration object.
+ * @param promptType The explicit promptType from the factory.
+ * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isLoaded A flag indicating if the renderer uses a loader.
+ */
+export function validateScriptConfig(config: Record<string, any>, promptType?: PromptType, isTool = false, isLoaded = false): void {
+	universalSanityChecks(config);
+
+	const forbiddenProps = ['model', 'template', 'execute', 'output', 'enum', 'mode'];
+	for (const prop of forbiddenProps) {
+		if (prop in config) {
+			throw new ConfigError(`Property '${prop}' is not applicable for a Script configuration.`);
+		}
+	}
+
+	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
+		throw new ConfigError("For Script renderers, 'inputSchema' must be a Zod object schema (z.object).");
+	}
+
+	if (isLoaded && !('loader' in config)) {
+		throw new ConfigError("A 'loader' is required when loading a script by name.");
+	}
+	if (isTool && !('inputSchema' in config)) {
+		throw new ConfigError("'inputSchema' is a required property when creating a script as a tool.");
+	}
+}
+
+/**
+ * Validates configurations for `create.Function`.
+ * @param config The configuration object.
+ * @param isTool A flag indicating if the function is being created as a tool.
+ */
+export function validateFunctionConfig(config: Record<string, any>, isTool = false): void {
+	universalSanityChecks(config);
+
+	if (typeof config.execute !== 'function') {
+		throw new ConfigError("The 'execute' property in a Function config must be a function.");
+	}
+
+	const forbiddenProps = ['model', 'template', 'script', 'prompt', 'output', 'enum', 'mode', 'loader'];
+	for (const prop of forbiddenProps) {
+		if (prop in config) {
+			throw new ConfigError(`Property '${prop}' is not applicable for a Function configuration.`);
+		}
+	}
+
+	if (isTool && !('inputSchema' in config)) {
+		throw new ConfigError("'inputSchema' is a required property when creating a function as a tool.");
+	}
+}
+
+
+
+// --- Invocation Validators (Unchanged) ---
 
 export function validateLLMRendererCall(
 	config: Record<string, any>, promptType: PromptType,
-	...args: [string | ModelMessage[] | Context, (ModelMessage[] | Context)?, Context?]
+	...args: [string | undefined | ModelMessage[] | Context, (ModelMessage[] | Context)?, Context?]
 ): void {
 	const callArgs = extractCallArguments(...args);
 	validateMessagesArray(callArgs.messages);
@@ -153,11 +218,16 @@ export function validateLLMRendererCall(
 
 	if (promptType.includes('template') || promptType.includes('script')) {
 		if (typeof finalPrompt !== 'string' || finalPrompt.length === 0) {
-			throw new ConfigError("A string prompt (containing the template or script) is required when using a template or script-based renderer.");
+			// A prompt might not be provided if it's already in the config, which is checked by the renderer.
+			// Let's ensure at least one is present.
+			if (!config.prompt) {
+				throw new ConfigError("A string prompt (containing the template or script) is required when using a template or script-based renderer.");
+			}
 		}
 		if (callArgs.context) {
 			validateInput(config, callArgs.context);
-		} else if ('inputSchema' in config) {
+		} else if ('inputSchema' in config && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+			// Only require context if the schema expects properties
 			throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
 		}
 	} else { // text or text-name
@@ -173,7 +243,7 @@ export function validateLLMRendererCall(
 	}
 }
 
-export function validateTemplateCall(config: Record<string, any>, ...args: [string | Context, Context?]): void {
+export function validateTemplateCall(config: Record<string, any>, ...args: [string | undefined | Context, Context?]): void {
 	const [templateOrContext, maybeContext] = args;
 	let context: Context | undefined;
 
@@ -189,12 +259,12 @@ export function validateTemplateCall(config: Record<string, any>, ...args: [stri
 
 	if (context) {
 		validateInput(config, context);
-	} else if ('inputSchema' in config) {
-		throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
+	} else if ('inputSchema' in config && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+		throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
 	}
 }
 
-export function validateScriptOrFunctionCall(config: Record<string, any>, type: 'Script' | 'Function', ...args: [string | Context, Context?]): void {
+export function validateScriptOrFunctionCall(config: Record<string, any>, type: 'Script' | 'Function', ...args: [string | undefined | Context, Context?]): void {
 	const [arg1, arg2] = args;
 	let context: Context | undefined;
 
@@ -212,12 +282,12 @@ export function validateScriptOrFunctionCall(config: Record<string, any>, type: 
 
 	if (context) {
 		validateInput(config, context);
-	} else if ('inputSchema' in config) {
-		throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
+	} else if ('inputSchema' in config && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+		throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
 	}
 }
 
-// --- Input/Output Schema Validators ---
+// --- Input/Output Schema Validators (Unchanged) ---
 
 function validateInput(config: Record<string, any>, context: Context): void {
 	if ('inputSchema' in config) {

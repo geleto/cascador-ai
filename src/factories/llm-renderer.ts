@@ -204,6 +204,7 @@ function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = string>(
 	return result as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
 
+//@todo - the promptRenderer shall use a precompiled template/script when created with a template/script promptType
 export function _createLLMRenderer<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig>
 	& { debug?: boolean, model: LanguageModel, prompt?: string, messages?: ModelMessage[] }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
@@ -232,28 +233,41 @@ export function _createLLMRenderer<
 	let call;
 	if (config.promptType !== 'text' && config.promptType !== undefined) {
 		// We have to run the prompt through a template or script first
-		//see if we can pre-compile the template/script
+		// Create a new config containing only shared/Cascada properties to pass down,
+		// preventing validation errors from LLM-specific properties like 'model'.
+		const commonConfigKeys = ['context', 'filters', 'options', 'loader', 'inputSchema', 'debug'] as const;
+		const baseCascadaConfig = {} as configs.CascadaConfig;
+		for (const key of commonConfigKeys) {
+			if (key in config) {
+				(baseCascadaConfig as Record<string, any>)[key] = config[key as keyof typeof config];
+			}
+		}
+
 		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any>;
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		if (isTemplatePrompt) {
 			// The prompt always renders a string
-			type PromptType = TemplatePromptType;
-			const promptType = config.promptType as PromptType;
+			const promptType = config.promptType as TemplatePromptType;
 
-			//create a copy of the config without the promptType to avoid triggering the validation
-			const configWithoutPromptType = { ...config };
-			delete configWithoutPromptType.promptType;
-			renderer = _createTemplate(configWithoutPromptType as unknown as configs.TemplateConfig<any>, promptType);
+			// The LLM renderer's 'prompt' becomes the 'template' for the Template factory.
+			const templateConfig = {
+				...baseCascadaConfig,
+				template: config.prompt,
+			};
+
+			renderer = _createTemplate(templateConfig, promptType);
 		} else {
 			// The script may render a string or messages; set a matching schema
 			type ScriptOutput = string | ModelMessage[];
-			const textScriptConfig: configs.BaseConfig & configs.ScriptConfig<never, ScriptOutput> = {
-				...(config as configs.ScriptPromptConfig<string | ModelMessage[]>),
-				schema: PromptStringOrMessagesSchema as z.ZodType<ScriptOutput>, //the script may render a string or messages
-				script: config.prompt //for Script objects there is no `prompt`, `script` is used instead
-			} as configs.ScriptConfig<never, ScriptOutput>;
-			delete (textScriptConfig as configs.PromptConfig).prompt;
-			renderer = _createScript(textScriptConfig, config.promptType as ScriptPromptType);
+
+			// The LLM renderer's 'prompt' becomes the 'script' for the Script factory.
+			const scriptConfig = {
+				...baseCascadaConfig,
+				script: config.prompt,
+				schema: PromptStringOrMessagesSchema as z.ZodType<ScriptOutput>,
+			};
+
+			renderer = _createScript(scriptConfig, config.promptType as ScriptPromptType);
 		}
 		call = async (
 			promptOrMessageOrContext?: string | ModelMessage[] | Context,
@@ -263,7 +277,7 @@ export function _createLLMRenderer<
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrMessageOrContext, messagesOrContext, maybeContext });
 			}
-			validateLLMRendererCall(config, config.promptType!, promptOrMessageOrContext ?? '', messagesOrContext, maybeContext);
+			validateLLMRendererCall(config, config.promptType!, promptOrMessageOrContext, messagesOrContext, maybeContext);
 
 			// Extract normalized args
 			const { messages: messagesFromArgs } = extractCallArguments(promptOrMessageOrContext, messagesOrContext, maybeContext);
@@ -360,7 +374,7 @@ export function _createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - text path called with:', { promptOrMessages, maybeMessages });
 			}
 			const { prompt, messages } = extractCallArguments(promptOrMessages, maybeMessages);
-			validateLLMRendererCall(config, config.promptType ?? 'text', prompt ?? '', messages);
+			validateLLMRendererCall(config, config.promptType ?? 'text', prompt, messages);
 
 			const promptFromConfig = config.prompt;
 			const effectivePrompt = prompt ?? promptFromConfig;

@@ -1,6 +1,6 @@
 import * as cascada from 'cascada-engine';
 import { Context } from './types/types';
-import { TemplatePromptConfig } from './types/config';
+import { TemplateConfig } from './types/config';
 
 class TemplateError extends Error {
 	cause?: Error;
@@ -12,7 +12,10 @@ class TemplateError extends Error {
 	}
 }
 
-export class TemplateEngine<TConfig extends Partial<TemplatePromptConfig>> {
+export class TemplateEngine<
+	TConfig extends TemplateConfig<INPUT>,
+	INPUT extends Record<string, any>
+> {
 	protected env: cascada.Environment | cascada.AsyncEnvironment;
 	protected templatePromise?: Promise<cascada.Template | cascada.AsyncTemplate>;
 	protected template?: cascada.Template | cascada.AsyncTemplate;
@@ -56,16 +59,16 @@ export class TemplateEngine<TConfig extends Partial<TemplatePromptConfig>> {
 			}
 
 			// Initialize template if prompt provided
-			if (this.config.prompt) {
+			if (this.config.template) {
 				if (this.config.promptType === 'template') {
-					this.template = cascada.compileTemplate(this.config.prompt, this.env as cascada.Environment);
+					this.template = cascada.compileTemplate(this.config.template, this.env as cascada.Environment);
 				} else if (this.config.promptType === 'template-name') {
-					if (!this.config.prompt) {
+					if (!this.config.template) {
 						throw new TemplateError('Prompt is required when promptType is "template-name"');
 					}
 					// the sync template API uses callback, promisify
 					this.templatePromise = new Promise((resolve, reject) => {
-						(this.env as cascada.Environment).getTemplate(this.config.prompt!, (err, template) => {
+						(this.env as cascada.Environment).getTemplate(this.config.template, (err, template) => {
 							if (err) {
 								reject(err);
 							} else if (template) {
@@ -76,9 +79,9 @@ export class TemplateEngine<TConfig extends Partial<TemplatePromptConfig>> {
 						});
 					});
 				} else if (this.config.promptType === 'async-template') {
-					this.template = cascada.compileTemplateAsync(this.config.prompt, this.env as cascada.AsyncEnvironment);
+					this.template = cascada.compileTemplateAsync(this.config.template, this.env as cascada.AsyncEnvironment);
 				} else if (this.config.promptType === 'async-template-name') {
-					this.templatePromise = (this.env as cascada.AsyncEnvironment).getTemplate(this.config.prompt);
+					this.templatePromise = (this.env as cascada.AsyncEnvironment).getTemplate(this.config.template);
 				}
 			}
 		} catch (error) {
@@ -99,7 +102,7 @@ export class TemplateEngine<TConfig extends Partial<TemplatePromptConfig>> {
 		}
 
 		// Runtime check for missing prompt
-		if (!promptOverride && !this.config.prompt) {
+		if (!promptOverride && !this.config.template) {
 			throw new TemplateError('No template prompt provided. Either provide a prompt in the configuration or as a call argument.');
 		}
 

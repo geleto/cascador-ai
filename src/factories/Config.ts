@@ -3,6 +3,7 @@ import { ConfigProvider } from '../ConfigData';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ToolSet } from 'ai';
+import { validateAnyConfig } from '../validate';
 
 // Single config overload
 export function Config<
@@ -56,7 +57,6 @@ export function Config<
 	| ConfigData<TFinalConfig>
 	| ConfigData<utils.StrictUnionSubtype<TFinalConfig, Partial<configs.AnyConfig<FINAL_TOOLS, FINAL_INPUT, FINAL_OUTPUT, FINAL_ENUM>>>> {
 
-	//validateBaseConfig(config);
 
 	// Debug output if config.debug is true
 	if ('debug' in config && config.debug) {
@@ -65,6 +65,7 @@ export function Config<
 
 	if (parent) {
 		const merged = mergeConfigs(parent.config, config);
+		validateAnyConfig(merged);
 		// Runtime check would go here if needed
 		return new ConfigData(merged) as ConfigData<TFinalConfig>;
 	}

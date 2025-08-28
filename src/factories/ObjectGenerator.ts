@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateConfig } from "../validate";
+import { validateLLMConfig } from "../validate";
 
 export type LLMGeneratorConfig<
 	INPUT extends Record<string, any>,
@@ -740,7 +740,7 @@ function _createObjectGenerator<
 		(merged as unknown as configs.GenerateObjectObjectConfig<any, any>).output = 'object';
 	}
 
-	validateConfig(merged, promptType, isTool, isLoaded);
+	validateLLMConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

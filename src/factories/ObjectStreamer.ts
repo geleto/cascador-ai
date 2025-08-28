@@ -7,7 +7,7 @@ import * as types from "../types/types";
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateConfig } from "../validate";
+import { validateLLMConfig } from "../validate";
 
 import type { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
@@ -612,7 +612,7 @@ function _createObjectStreamer<
 		(merged as unknown as configs.StreamObjectObjectConfig<any, any>).output = 'object';
 	}
 
-	validateConfig(merged, promptType, isTool, isLoaded);
+	validateLLMConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

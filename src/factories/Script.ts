@@ -1,5 +1,5 @@
 import { ConfigProvider, mergeConfigs } from '../ConfigData';
-import { validateConfig, validateScriptOrFunctionCall, validateAndParseOutput, ConfigError } from '../validate';
+import { validateScriptConfig, validateScriptOrFunctionCall, validateAndParseOutput, ConfigError } from '../validate';
 import { ScriptEngine } from '../ScriptEngine';
 import * as configs from '../types/config';
 import * as results from '../types/result';
@@ -13,18 +13,8 @@ export type ScriptInstance<
 	OUTPUT
 > = ScriptCallSignature<TConfig, INPUT, OUTPUT>;
 
-// Config for a Tool that uses the Script engine
-export interface ScriptToolConfig<
-	INPUT extends Record<string, any>,
-	OUTPUT
-> extends configs.ScriptConfig<INPUT, OUTPUT> {
-	inputSchema: SchemaType<INPUT>;//required
-	//@todo - output schema
-	description?: string;
-}
-
 // The full shape of a final, merged Script config object, including required properties.
-type FinalScriptConfigShape = Partial<configs.ScriptConfig<any, any> & ScriptToolConfig<any, any> & { loader?: any }>;
+type FinalScriptConfigShape = Partial<configs.ScriptConfig<any, any> & configs.ScriptToolConfig<any, any> & { loader?: any }>;
 
 // Generic validator for the `config` object passed to a factory function.
 type ValidateScriptConfig<
@@ -156,16 +146,16 @@ function baseScript(
 
 // asTool method for Script
 function asTool<
-	const TConfig extends ScriptToolConfig<INPUT, OUTPUT>,
+	const TConfig extends configs.ScriptToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT
 >(
-	config: TConfig & ValidateScriptConfig<TConfig, TConfig, ScriptToolConfig<INPUT, OUTPUT>>
+	config: TConfig & ValidateScriptConfig<TConfig, TConfig, configs.ScriptToolConfig<INPUT, OUTPUT>>
 ): ScriptCallSignature<TConfig, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function asTool<
-	TConfig extends Partial<ScriptToolConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -174,13 +164,13 @@ function asTool<
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, ScriptToolConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
+	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptToolConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function asTool(
-	config: Partial<ScriptToolConfig<any, any>>,
-	parent?: ConfigProvider<Partial<ScriptToolConfig<any, any>>>
+	config: Partial<configs.ScriptToolConfig<any, any>>,
+	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any>>>
 ): any {
 	return _createScriptAsTool(config, 'async-script', parent, false);
 }
@@ -216,16 +206,16 @@ function loadsScript(
 
 // loadsScriptAsTool: load by name via provided loader and return as tool
 function loadsScriptAsTool<
-	const TConfig extends ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig,
+	const TConfig extends configs.ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig,
 	INPUT extends Record<string, any>,
 	OUTPUT
 >(
-	config: TConfig & ValidateScriptConfig<TConfig, TConfig, ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>
+	config: TConfig & ValidateScriptConfig<TConfig, TConfig, configs.ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>
 ): ScriptCallSignature<TConfig, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
-	TConfig extends Partial<ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
-	TParentConfig extends Partial<ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>,
+	TConfig extends Partial<configs.ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -234,13 +224,13 @@ function loadsScriptAsTool<
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
+	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsScriptAsTool(
-	config: Partial<ScriptToolConfig<any, any> & configs.LoaderConfig>,
-	parent?: ConfigProvider<Partial<ScriptToolConfig<any, any> & configs.LoaderConfig>>
+	config: Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>,
+	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>>
 ): any {
 	return _createScriptAsTool(config, 'async-script-name', parent, true);
 }
@@ -262,7 +252,7 @@ export function _createScript<
 		? { ...mergeConfigs(parent.config, config), promptType: scriptType }
 		: { ...config, promptType: scriptType };
 
-	validateConfig(merged, scriptType, isTool, isLoaded);
+	validateScriptConfig(merged, scriptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -284,7 +274,7 @@ export function _createScript<
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: INPUT | string, maybeContext?: INPUT): Promise<any> => {
-		validateScriptOrFunctionCall(merged, 'Script', scriptOrContext ?? '', maybeContext);
+		validateScriptOrFunctionCall(merged, 'Script', scriptOrContext, maybeContext);
 
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] Script - call function called with:', { scriptOrContext, maybeContext });
@@ -317,15 +307,15 @@ export function _createScriptAsTool<
 	INPUT extends Record<string, any>,
 	OUTPUT
 >(
-	config: Partial<ScriptToolConfig<INPUT, OUTPUT>>,
+	config: Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<Partial<ScriptToolConfig<INPUT, OUTPUT>>>,
+	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>>,
 	isLoaded = false
-): ScriptCallSignatureWithParent<Partial<ScriptToolConfig<INPUT, OUTPUT>>, Partial<ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
+): ScriptCallSignatureWithParent<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>, Partial<configs.ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
 	& results.RendererTool<INPUT, OUTPUT> {
 
 	const renderer = _createScript(config, scriptType, parent, true, isLoaded) as unknown as
-		ScriptCallSignature<ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
+		ScriptCallSignature<configs.ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else
@@ -336,7 +326,7 @@ export function _createScriptAsTool<
 		const contextWithToolOptions = { ...args, _toolCallOptions: options };
 		return await (renderer as unknown as (context: INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<OUTPUT>)(contextWithToolOptions);
 	};
-	return renderer as ScriptCallSignatureWithParent<Partial<ScriptToolConfig<INPUT, OUTPUT>>, Partial<ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
+	return renderer as ScriptCallSignatureWithParent<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>, Partial<configs.ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
 		& results.RendererTool<INPUT, OUTPUT>;
 }
 

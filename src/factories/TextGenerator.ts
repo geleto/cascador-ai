@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateConfig } from "../validate";
+import { validateLLMConfig } from "../validate";
 
 export type TextGeneratorConfig<TOOLS extends ToolSet, INPUT extends Record<string, any>> = configs.CascadaConfig & configs.GenerateTextConfig<TOOLS, INPUT>;
 export type TextGeneratorInstance<TOOLS extends ToolSet, INPUT extends Record<string, any>, PType extends types.RequiredPromptType> = LLMCallSignature<TextGeneratorConfig<TOOLS, INPUT>, Promise<results.GenerateTextResultAugmented<TOOLS>>, PType>;
@@ -381,7 +381,7 @@ function _createTextGenerator<
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
-	validateConfig(merged, promptType, isTool, isLoaded);
+	validateLLMConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {

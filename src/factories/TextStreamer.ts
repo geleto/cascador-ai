@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateConfig } from "../validate";
+import { validateLLMConfig } from "../validate";
 
 export type TextStreamerConfig<TOOLS extends ToolSet, INPUT extends Record<string, any>> = configs.CascadaConfig & configs.StreamTextConfig<TOOLS, INPUT>;
 export type TextStreamerInstance<TOOLS extends ToolSet, INPUT extends Record<string, any>, PType extends types.RequiredPromptType> = LLMCallSignature<TextStreamerConfig<TOOLS, INPUT>, Promise<results.StreamTextResultAugmented<TOOLS>>, PType>;
@@ -234,7 +234,7 @@ function _createTextStreamer<
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
-	validateConfig(merged, promptType, isTool, isLoaded);
+	validateLLMConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
