@@ -395,21 +395,19 @@ describe('create.TextGenerator', function () {
 			// This now throws at creation time due to stricter config validation.
 			expect(() => create.TextGenerator({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'TextGenerator config requires a \'model\' property',
+				'LLM generator configs require a \'model\' property',
 			);
 		});
 
-		it('should throw ConfigError if plain text generator uses template properties', () => {
+		it('should not throw ConfigError if plain text generator uses template properties (validation handled at TypeScript level)', () => {
+			// This validation is now handled at the TypeScript level, not runtime
 			expect(() =>
 				create.TextGenerator({
 					model,
 					temperature,
 					filters: { test: () => '' },
 				} as never),
-			).to.throw(
-				ConfigError,
-				"'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.",
-			);
+			).to.not.throw();
 		});
 
 		it('should throw ConfigError if .loadsTemplate is used but no loader is provided', () => {
@@ -423,7 +421,7 @@ describe('create.TextGenerator', function () {
 				}),
 			).to.throw(
 				ConfigError,
-				`requires a 'loader' to be configured`,
+				`A 'loader' is required for this operation`,
 			);
 		});
 
@@ -433,7 +431,7 @@ describe('create.TextGenerator', function () {
 			// Calling with no arguments should fail.
 			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt or messages must be provided',
+				'Either \'prompt\' (string or messages array) or \'messages\' must be provided',
 			);
 		});
 
@@ -477,7 +475,7 @@ describe('create.TextGenerator', function () {
 				model, temperature
 			})).to.throw(
 				ConfigError,
-				"The promptType 'async-template-name' requires a 'loader' to be configured to load the template by name."
+				"A 'loader' is required for this operation"
 			);
 		});
 

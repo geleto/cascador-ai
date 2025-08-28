@@ -394,7 +394,7 @@ describe('create.TextStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.TextStreamer({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'TextStreamer config requires a \'model\' property',
+				'LLM generator configs require a \'model\' property',
 			);
 		});
 
@@ -407,7 +407,7 @@ describe('create.TextStreamer', function () {
 				}),
 			).to.throw(
 				ConfigError,
-				`requires a 'loader'`,
+				`A 'loader' is required for this operation`,
 			);
 		});
 
@@ -416,7 +416,7 @@ describe('create.TextStreamer', function () {
 			// The call returns promises that should reject
 			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt or messages must be provided',
+				'Either \'prompt\' (string or messages array) or \'messages\' must be provided',
 			);
 		});
 

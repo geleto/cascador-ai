@@ -356,7 +356,7 @@ describe('create.Script', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate an array with length 2 having these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, make sure NOT to create an array with just one item in it',
+				prompt: 'Generate an array with a length of 2 having these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2, make sure NOT to create an array with just one item in it.',
 			});
 			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },
@@ -381,8 +381,6 @@ describe('create.Script', function () {
 			expect(result).to.deep.equal({ ids: [1, 2, 1, 2] });
 		});
 	});
-
-	// --- CONFIGURATION & INHERITANCE ---
 
 	describe('Configuration & Inheritance', () => {
 		const parentConfig = create.Config({

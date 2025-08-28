@@ -150,7 +150,7 @@ describe('Messages, Conversation & Integration', function () {
 				// The call is invalid because a prompt string is required for rendering
 				// @ts-expect-error - we want to test the error
 				const promise = generator(simpleUserMessage);
-				await expect(promise).to.be.rejectedWith(ConfigError, /Prompt is required/);
+				await expect(promise).to.be.rejectedWith(ConfigError, /A string prompt \(containing the templ/);
 			});
 
 			it('should use a one-off template string over a configured prompt', async () => {

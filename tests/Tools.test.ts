@@ -32,7 +32,7 @@ chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe.only('create.Tool', function () {
+describe('create.Tool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
@@ -52,7 +52,7 @@ describe.only('create.Tool', function () {
 					// Missing inputSchema
 				})).to.throw(
 					ConfigError,
-					'Tool config requires inputSchema schema'
+					'\'inputSchema\' is a required property when creating a renderer as a tool'
 				);
 			});
 		});
@@ -155,7 +155,7 @@ describe.only('create.Tool', function () {
 					inputSchema: z.string() // Not z.object
 				})).to.throw(
 					ConfigError,
-					'Tool config requires inputSchema schema'
+					'For Template renderers, \'inputSchema\' must be a Zod object schema'
 				);
 			});
 		});

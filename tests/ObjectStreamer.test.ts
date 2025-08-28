@@ -331,14 +331,14 @@ describe('create.ObjectStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectStreamer({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'Object config requires a \'model\' property',
+				'LLM generator configs require a \'model\' property',
 			);
 		});
 
 		it('should throw ConfigError if output is "array" but no schema is provided', () => {
 			expect(() => create.ObjectStreamer({ model, temperature, output: 'array' } as never)).to.throw(
 				ConfigError,
-				'array output requires schema',
+				'An \'output\' of \'array\' requires a \'schema\' property',
 			);
 		});
 
@@ -352,24 +352,25 @@ describe('create.ObjectStreamer', function () {
 					output: 'enum',
 					enum: ['A', 'B'],
 				})
-			).to.throw(ConfigError, 'Stream does not support enum output');
+			).to.throw(ConfigError, 'Invalid \'output\' mode: \'enum\'');
 		});
 
-		it('should throw ConfigError if output is "no-schema" but a schema is provided', () => {
+		it('should not throw ConfigError if output is "no-schema" but a schema is provided (validation handled at TypeScript level)', () => {
+			// This validation is now handled at the TypeScript level, not runtime
 			expect(() =>
 				create.ObjectStreamer({
 					model, temperature,
 					output: 'no-schema',
 					schema: simpleSchema,
 				} as never),
-			).to.throw(ConfigError, 'no-schema output cannot have schema');
+			).to.not.throw();
 		});
 
 		it('should reject promise at runtime if no prompt is provided in config or call', () => {
 			const streamer = create.ObjectStreamer({ model, temperature, schema: simpleSchema });
 			expect(() => streamer(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt or messages must be provided',
+				'Either \'prompt\' (string or messages array) or \'messages\' must be provided',
 			);
 		});
 	});

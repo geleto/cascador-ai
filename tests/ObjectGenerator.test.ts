@@ -373,46 +373,47 @@ describe('create.ObjectGenerator', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectGenerator({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'Object config requires a \'model\' property',
+				'LLM generator configs require a \'model\' property',
 			);
 		});
 
 		it('should throw ConfigError if output is "object" but no schema is provided', () => {
 			expect(() => create.ObjectGenerator({ model, temperature, output: 'object' } as never)).to.throw(
 				ConfigError,
-				'object output requires schema',
+				'An \'output\' of \'object\' requires a \'schema\' property',
 			);
 		});
 
 		it('should throw ConfigError if output is "array" but no schema is provided', () => {
 			expect(() => create.ObjectGenerator({ model, temperature, output: 'array' } as never)).to.throw(
 				ConfigError,
-				'array output requires schema',
+				'An \'output\' of \'array\' requires a \'schema\' property',
 			);
 		});
 
 		it('should throw ConfigError if output is "enum" but no enum array is provided', () => {
 			expect(() => create.ObjectGenerator({ model, temperature, output: 'enum' } as never)).to.throw(
 				ConfigError,
-				'enum output requires non-empty enum array',
+				'An \'output\' of \'enum\' requires an \'enum\' property with a string array',
 			);
 		});
 
-		it('should throw ConfigError if output is "no-schema" but a schema is provided', () => {
+		it('should not throw ConfigError if output is "no-schema" but a schema is provided (validation handled at TypeScript level)', () => {
+			// This validation is now handled at the TypeScript level, not runtime
 			expect(() =>
 				create.ObjectGenerator({
 					model, temperature,
 					output: 'no-schema',
 					schema: simpleSchema,
 				} as never),
-			).to.throw(ConfigError, 'no-schema output cannot have schema');
+			).to.not.throw();
 		});
 
 		it('should throw at runtime if no prompt is provided in config or call', () => {
 			const generator = create.ObjectGenerator({ model, temperature, schema: simpleSchema });
 			expect(() => generator(undefined as unknown as string)).to.throw(
 				ConfigError,
-				'Either prompt or messages must be provided',
+				'Either \'prompt\' (string or messages array) or \'messages\' must be provided',
 			);
 		});
 
@@ -453,7 +454,7 @@ describe('create.ObjectGenerator', function () {
 					// @ts-expect-error - Intentionally invalid
 					output: 'invalid-type',
 				}),
-			).to.throw(ConfigError, `Invalid output type: 'invalid-type'`);
+			).to.throw(ConfigError, `Invalid 'output' mode: 'invalid-type'`);
 		});
 	});
 });
