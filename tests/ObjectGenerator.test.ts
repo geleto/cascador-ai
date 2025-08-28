@@ -373,7 +373,7 @@ describe('create.ObjectGenerator', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectGenerator({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'LLM generator configs require a \'model\' property',
+				'Object generator configs require a \'model\' property',
 			);
 		});
 

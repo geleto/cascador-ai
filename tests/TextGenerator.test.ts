@@ -395,7 +395,7 @@ describe('create.TextGenerator', function () {
 			// This now throws at creation time due to stricter config validation.
 			expect(() => create.TextGenerator({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'LLM generator configs require a \'model\' property',
+				'Text generator configs require a \'model\' property',
 			);
 		});
 

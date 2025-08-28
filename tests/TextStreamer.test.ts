@@ -394,7 +394,7 @@ describe('create.TextStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.TextStreamer({ prompt: 'test' } as never)).to.throw(
 				ConfigError,
-				'LLM generator configs require a \'model\' property',
+				'Text generator configs require a \'model\' property',
 			);
 		});
 

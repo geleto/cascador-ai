@@ -331,7 +331,7 @@ describe('create.ObjectStreamer', function () {
 		it('should throw ConfigError if no model is provided', () => {
 			expect(() => create.ObjectStreamer({ schema: simpleSchema } as never)).to.throw(
 				ConfigError,
-				'LLM generator configs require a \'model\' property',
+				'Object generator configs require a \'model\' property',
 			);
 		});
 
@@ -352,7 +352,7 @@ describe('create.ObjectStreamer', function () {
 					output: 'enum',
 					enum: ['A', 'B'],
 				})
-			).to.throw(ConfigError, 'Invalid \'output\' mode: \'enum\'');
+			).to.throw(ConfigError, 'Object streamers do not support "enum" output.');
 		});
 
 		it('should not throw ConfigError if output is "no-schema" but a schema is provided (validation handled at TypeScript level)', () => {

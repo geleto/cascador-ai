@@ -5,7 +5,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { z } from 'zod';
 import { create } from '../src/index';
 import { model, temperature, timeout } from './common';
-import { ConfigError } from '../src/validate';
+import { TemplateError } from '../src/TemplateEngine';
 import {
 	extractCallArguments,
 	// The augment functions are tested through the public API, so direct import is not needed.
@@ -150,7 +150,7 @@ describe('Messages, Conversation & Integration', function () {
 				// The call is invalid because a prompt string is required for rendering
 				// @ts-expect-error - we want to test the error
 				const promise = generator(simpleUserMessage);
-				await expect(promise).to.be.rejectedWith(ConfigError, /A string prompt \(containing the templ/);
+				await expect(promise).to.be.rejectedWith(TemplateError, /No template prompt provided/);
 			});
 
 			it('should use a one-off template string over a configured prompt', async () => {

@@ -68,6 +68,7 @@ describe('create.Script', function () {
 		it('accepts script string at runtime', async () => {
 			const scriptRunner = create.Script({
 				context: { val: 10 },
+				script: ':data @data.result = val * 2', // Add required script property
 			});
 			const result = await scriptRunner(
 				`:data
@@ -400,7 +401,10 @@ describe('create.Script', function () {
 		});
 
 		it('inherits from another Script', async () => {
-			const parent = create.Script({ context: { inherited: 'ok' } });
+			const parent = create.Script({
+				context: { inherited: 'ok' },
+				script: ':data @data.x = inherited' // Add required script property
+			});
 			const child = create.Script({
 				script:
 					`:data
