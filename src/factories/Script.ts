@@ -1,5 +1,5 @@
 import { ConfigProvider, mergeConfigs } from '../ConfigData';
-import { validateBaseConfig, ConfigError } from '../validate';
+import { validateConfig, validateScriptOrFunctionCall, validateAndParseOutput, ConfigError } from '../validate';
 import { ScriptEngine } from '../ScriptEngine';
 import * as configs from '../types/config';
 import * as results from '../types/result';
@@ -151,7 +151,7 @@ function baseScript(
 	config: configs.ScriptConfig<any, any>,
 	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
 ): any {
-	return _createScript(config, 'async-script', parent);
+	return _createScript(config, 'async-script', parent, false, false);
 }
 
 // asTool method for Script
@@ -182,7 +182,7 @@ function asTool(
 	config: Partial<ScriptToolConfig<any, any>>,
 	parent?: ConfigProvider<Partial<ScriptToolConfig<any, any>>>
 ): any {
-	return _createScriptAsTool(config, 'async-script', parent);
+	return _createScriptAsTool(config, 'async-script', parent, false);
 }
 
 // loadsScript: load by name via provided loader
@@ -211,7 +211,7 @@ function loadsScript(
 	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
 	parent?: ConfigProvider<configs.ScriptConfig<any, any> & configs.LoaderConfig>
 ): any {
-	return _createScript(config, 'async-script-name', parent);
+	return _createScript(config, 'async-script-name', parent, false, true);
 }
 
 // loadsScriptAsTool: load by name via provided loader and return as tool
@@ -242,7 +242,7 @@ function loadsScriptAsTool(
 	config: Partial<ScriptToolConfig<any, any> & configs.LoaderConfig>,
 	parent?: ConfigProvider<Partial<ScriptToolConfig<any, any> & configs.LoaderConfig>>
 ): any {
-	return _createScriptAsTool(config, 'async-script-name', parent);
+	return _createScriptAsTool(config, 'async-script-name', parent, true);
 }
 
 // Internal common creator
@@ -252,7 +252,9 @@ export function _createScript<
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>
+	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>,
+	isTool = false,
+	isLoaded = false
 ): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> {
 	// Merge configs if parent exists, otherwise use provided config
 	//, add promptType to the config
@@ -260,7 +262,7 @@ export function _createScript<
 		? { ...mergeConfigs(parent.config, config), promptType: scriptType }
 		: { ...config, promptType: scriptType };
 
-	validateBaseConfig(merged);
+	validateConfig(merged, scriptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -282,6 +284,8 @@ export function _createScript<
 
 	// Define the call function that handles both cases
 	const call = async (scriptOrContext?: INPUT | string, maybeContext?: INPUT): Promise<any> => {
+		validateScriptOrFunctionCall(merged, 'Script', scriptOrContext ?? '', maybeContext);
+
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] Script - call function called with:', { scriptOrContext, maybeContext });
 		}
@@ -290,7 +294,7 @@ export function _createScript<
 			if ('debug' in merged && merged.debug) {
 				console.log('[DEBUG] Script - run result:', result);
 			}
-			return result;
+			return validateAndParseOutput(merged, result);
 		} else {
 			if (maybeContext !== undefined) {
 				throw new Error('Second argument must be undefined when not providing script.');
@@ -299,7 +303,7 @@ export function _createScript<
 			if ('debug' in merged && merged.debug) {
 				console.log('[DEBUG] Script - run result:', result);
 			}
-			return result;
+			return validateAndParseOutput(merged, result);
 		}
 	};
 
@@ -315,11 +319,12 @@ export function _createScriptAsTool<
 >(
 	config: Partial<ScriptToolConfig<INPUT, OUTPUT>>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<Partial<ScriptToolConfig<INPUT, OUTPUT>>>
+	parent?: ConfigProvider<Partial<ScriptToolConfig<INPUT, OUTPUT>>>,
+	isLoaded = false
 ): ScriptCallSignatureWithParent<Partial<ScriptToolConfig<INPUT, OUTPUT>>, Partial<ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
 	& results.RendererTool<INPUT, OUTPUT> {
 
-	const renderer = _createScript(config, scriptType, parent) as unknown as
+	const renderer = _createScript(config, scriptType, parent, true, isLoaded) as unknown as
 		ScriptCallSignature<ScriptToolConfig<INPUT, OUTPUT>, INPUT, OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema!;
@@ -337,7 +342,7 @@ export function _createScriptAsTool<
 
 export const Script = Object.assign(baseScript, {
 	loadsScript: Object.assign(loadsScript, {
-		asTool: loadsScriptAsTool // This was incorrect, fixed `loadsScript.asTool` to point to `loadsScriptAsTool`
+		asTool: loadsScriptAsTool
 	}),
 	asTool,
 	loadsScriptAsTool

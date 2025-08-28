@@ -1,6 +1,6 @@
 import { TemplateEngine } from '../TemplateEngine';
 import { ConfigProvider, mergeConfigs } from '../ConfigData';
-import { validateBaseConfig, ConfigError } from '../validate';
+import { validateConfig, validateTemplateCall, ConfigError } from '../validate';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import * as results from '../types/result';
@@ -102,7 +102,7 @@ type ValidateTemplateParentConfig<
 	: `Parent Config Error: Parent has properties not allowed for the final template type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
 
 // Default behavior: inline/embedded template
-function baseTemplate<
+function withTemplate<
 	const TConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>
 >(
@@ -111,7 +111,7 @@ function baseTemplate<
 	>
 ): TemplateCallSignature<TConfig, INPUT>;
 
-function baseTemplate<
+function withTemplate<
 	TConfig extends Partial<configs.TemplateConfig<INPUT>>,
 	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
@@ -122,11 +122,11 @@ function baseTemplate<
 	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
-function baseTemplate(
+function withTemplate(
 	config: configs.TemplateConfig<any>,
 	parent?: ConfigProvider<configs.TemplateConfig<any>>
 ): any {
-	return _createTemplate(config, 'async-template', parent);
+	return _createTemplate(config, 'async-template', parent, false, false);
 }
 
 // loadsTemplate: load by name via provided loader
@@ -154,11 +154,11 @@ function loadsTemplate(
 	config: Partial<TemplateToolConfig<any> & configs.LoaderConfig>,
 	parent?: ConfigProvider<Partial<TemplateToolConfig<any> & configs.LoaderConfig>>
 ): any {
-	return _createTemplate(config, 'async-template-name', parent);
+	return _createTemplate(config, 'async-template-name', parent, false, true);
 }
 
 // asTool method for Template
-function asTool<
+function withTemplateAsTool<
 	const TConfig extends TemplateToolConfig<INPUT>,
 	INPUT extends Record<string, any>
 >(
@@ -167,7 +167,7 @@ function asTool<
 	>
 ): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, string>;
 
-function asTool<
+function withTemplateAsTool<
 	TConfig extends Partial<TemplateToolConfig<INPUT>>,
 	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
@@ -179,7 +179,46 @@ function asTool<
 	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, TemplateToolConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
-function asTool<
+function withTemplateAsTool(
+	config: Partial<TemplateToolConfig<any>>,
+	parent?: ConfigProvider<Partial<TemplateToolConfig<any>>>,
+): any {
+	return _createTemplateAsTool(config, 'async-template', parent, false);
+}
+
+// Overload 1: With a standalone config
+function loadsTemplateAsTool<
+	const TConfig extends TemplateToolConfig<INPUT> & configs.LoaderConfig,
+	INPUT extends Record<string, any>
+>(
+	config: TConfig & ValidateTemplateConfig<
+		TConfig, TConfig, TemplateToolConfig<INPUT> & configs.LoaderConfig
+	>
+): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, string>;
+
+// Overload 2: With a parent config
+function loadsTemplateAsTool<
+	TConfig extends Partial<TemplateToolConfig<INPUT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>,
+	INPUT extends Record<string, any>,
+	PARENT_INPUT extends Record<string, any>,
+	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
+	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
+>(
+	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, TemplateToolConfig<INPUT> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>>
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
+
+// Implementation
+function loadsTemplateAsTool(
+	config: Partial<TemplateToolConfig<any> & configs.LoaderConfig>,
+	parent?: ConfigProvider<Partial<TemplateToolConfig<any> & configs.LoaderConfig>>,
+): any {
+	return _createTemplateAsTool(config, 'async-template-name', parent, true);
+}
+
+// Internal common creator for template tools
+function _createTemplateAsTool<
 	const TConfig extends Partial<TemplateToolConfig<INPUT>>,
 	TParentConfig extends Partial<TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
@@ -187,20 +226,18 @@ function asTool<
 	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
 >(
 	config: Partial<TConfig>,
+	promptType: TemplatePromptType,
 	parent?: ConfigProvider<TParentConfig>,
-
+	isLoaded = false
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string> {
-	const renderer = _createTemplate(config, 'async-template', parent) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
-	console.log('renderer config', renderer.config);
+	const renderer = _createTemplate(config, promptType, parent, true, isLoaded) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
-	const toolRenderer = renderer as unknown as results.RendererTool<FINAL_INPUT, string> & { inputSchema: SchemaType<FINAL_INPUT> };
+	const toolRenderer = renderer as unknown as results.RendererTool<FINAL_INPUT, string> & { config: { description?: string, inputSchema: SchemaType<FINAL_INPUT> } };
 	toolRenderer.description = renderer.config.description;
 	toolRenderer.inputSchema = renderer.config.inputSchema as unknown as SchemaType<FINAL_INPUT>;
-	toolRenderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else
+	toolRenderer.type = 'function';
 
-	//result is a caller, assign the execute function to it. Args is the context object, options contains _toolCallOptions
 	toolRenderer.execute = async (args: FINAL_INPUT, options: ToolCallOptions): Promise<string> => {
-		// Merge the _toolCallOptions into the context so templates can access it
 		const contextWithToolOptions = { ...args, _toolCallOptions: options };
 		return await (renderer as unknown as (context: FINAL_INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<string>)(contextWithToolOptions);
 	};
@@ -217,7 +254,9 @@ export function _createTemplate<
 >(
 	config: TConfig,
 	promptType: TemplatePromptType,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: ConfigProvider<TParentConfig>,
+	isTool = false,
+	isLoaded = false
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> {
 
 	// Merge configs if parent exists, otherwise use provided config
@@ -226,7 +265,7 @@ export function _createTemplate<
 		? { ...mergeConfigs(parent.config, config), promptType: promptType }
 		: { ...config, promptType: promptType };
 
-	validateBaseConfig(merged);
+	validateConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -250,6 +289,8 @@ export function _createTemplate<
 
 	// Define the call function that handles both cases
 	const call = async (promptOrContext?: Context | string, maybeContext?: Context): Promise<string> => {
+		validateTemplateCall(merged, promptOrContext ?? '', maybeContext);
+
 		if ('debug' in merged && merged.debug) {
 			console.log('[DEBUG] Template - call function called with:', { promptOrContext, maybeContext });
 		}
@@ -277,7 +318,9 @@ export function _createTemplate<
 	return callSignature as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 }
 
-export const Template = Object.assign(baseTemplate, {
-	loadsTemplate,
-	asTool
+export const Template = Object.assign(withTemplate, {
+	loadsTemplate: Object.assign(loadsTemplate, {
+		asTool: loadsTemplateAsTool
+	}),
+	asTool: withTemplateAsTool
 });

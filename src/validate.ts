@@ -1,7 +1,10 @@
+// file: validate.ts
+
 import { ModelMessage } from "ai";
-import type * as TypesConfig from "./types/config";
-import { Context } from "./types/types";
+import { z, ZodError } from 'zod';
+import { Context, PromptType } from "./types/types";
 import { extractCallArguments } from './factories/llm-renderer';
+import { ModelMessageSchema } from "./types/schemas";
 
 export class ConfigError extends Error {
 	cause?: Error;
@@ -15,144 +18,229 @@ export class ConfigError extends Error {
 	}
 }
 
-//@todo - this needs some work
-export function validateBaseConfig(config?: Record<string, any>) {
+// --- Helper Functions ---
+
+function formatZodError(error: ZodError): string {
+	const issues = error.issues.map(issue => {
+		const path = issue.path.join('.');
+		return `  - Invalid value for '${path}': ${issue.message}.`;
+	});
+	return `Validation failed:\n${issues.join('\n')}`;
+}
+
+function validateMessagesArray(messages: unknown): void {
+	if (!Array.isArray(messages)) return;
+	const result = z.array(ModelMessageSchema).safeParse(messages);
+	if (!result.success) {
+		throw new ConfigError(`'messages' array contains invalid message objects.\n${formatZodError(result.error)}`);
+	}
+}
+
+// --- Targeted Excess Property Validation ---
+
+const MAIN_PROPERTIES = new Set(['schema', 'inputSchema', 'model', 'output', 'prompt', 'template', 'script', 'enum', 'mode', 'execute']);
+const OBJECT_PROPS = new Set(['model', 'output', 'schema', 'enum', 'mode', 'prompt', 'inputSchema']);
+const TEXT_PROPS = new Set(['model', 'prompt', 'inputSchema']);
+const TEMPLATE_PROPS = new Set(['template', 'prompt', 'inputSchema']);
+const SCRIPT_PROPS = new Set(['script', 'prompt', 'inputSchema', 'schema']);
+const FUNCTION_PROPS = new Set(['execute', 'inputSchema', 'schema']);
+
+function validateExcessProperties(config: Record<string, any>, allowedProps: Set<string>, rendererName: string): void {
+	for (const prop of MAIN_PROPERTIES) {
+		if (prop in config && !allowedProps.has(prop)) {
+			throw new ConfigError(`Property '${prop}' is not applicable for a ${rendererName} configuration.`);
+		}
+	}
+}
+
+// --- Internal, Type-Specific Config Validators ---
+
+function _validateObjectConfig(config: Record<string, any>): void {
+	validateExcessProperties(config, OBJECT_PROPS, 'Object');
+	if (!('model' in config)) throw new ConfigError("Object config requires a 'model' property.");
+	if ('prompt' in config && !(typeof config.prompt === 'string' || Array.isArray(config.prompt))) {
+		throw new ConfigError("'prompt' in an Object config must be a string or a ModelMessage array.");
+	}
+}
+
+function _validateTextConfig(config: Record<string, any>): void {
+	validateExcessProperties(config, TEXT_PROPS, 'Text');
+	if (!('model' in config)) throw new ConfigError("Text config requires a 'model' property.");
+	if ('prompt' in config && !(typeof config.prompt === 'string' || Array.isArray(config.prompt))) {
+		throw new ConfigError("'prompt' in a Text config must be a string or a ModelMessage array.");
+	}
+}
+
+function _validateTemplateConfig(config: Record<string, any>): void {
+	validateExcessProperties(config, TEMPLATE_PROPS, 'Template');
+	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
+		throw new ConfigError("For Template renderers, 'inputSchema' must be a Zod object schema (z.object).");
+	}
+}
+
+function _validateScriptConfig(config: Record<string, any>): void {
+	validateExcessProperties(config, SCRIPT_PROPS, 'Script');
+	if ('inputSchema' in config && !(config.inputSchema instanceof z.ZodObject)) {
+		throw new ConfigError("For Script renderers, 'inputSchema' must be a Zod object schema (z.object).");
+	}
+}
+
+function _validateFunctionConfig(config: Record<string, any>): void {
+	validateExcessProperties(config, FUNCTION_PROPS, 'Function');
+	if (typeof config.execute !== 'function') {
+		throw new ConfigError("The 'execute' property in a Function config must be a function.");
+	}
+}
+
+// --- Main Configuration Validator ---
+
+/**
+ * Main validation router for renderer creation.
+ * It prioritizes explicit type info (promptType) and uses intent inference as a fallback for generic Config().
+ * @param config The configuration object.
+ * @param promptType The explicit promptType, which dictates validation.
+ * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isLoaded A flag indicating if the renderer uses a loader.
+ */
+export function validateConfig(config?: Record<string, any>, promptType?: PromptType, isTool = false, isLoaded = false): void {
 	if (!config || typeof config !== 'object') {
 		throw new ConfigError('Config must be an object.');
 	}
 
-	// A configuration's type (template vs. script) is determined by its INTENT.
-	// This intent can be signaled either by providing the content ('prompt' or 'script')
-	// or by specifying how content will be handled ('promptType').
-	const hasTemplateKeys = 'template' in config;
-	const hasScriptKeys = 'script' in config;
-
-	// A single configuration cannot be for both templating and scripting.
-	if (hasTemplateKeys && hasScriptKeys) {
-		throw new ConfigError('Configuration cannot have both template/prompt and script properties. A config must be either for templating or for scripting, not both.');
+	// Universal Checks
+	if ('template' in config && 'script' in config) {
+		throw new ConfigError("Configuration cannot have both 'template' and 'script' properties.");
 	}
-	if (config.promptType as string === 'text') {
-		// 'text' prompt type is for direct LLM calls and should not be mixed with cascada template engine features.
-		if (config.loader || config.filters || config.options) {
-			throw new ConfigError("'text' promptType cannot be used with template engine properties like 'loader', 'filters', or 'options'.");
-		}
-	} else if (config.promptType) {
-		// For all other named template types (template, async-template, template-name, async-template-name).
-		if (!['template', 'async-template', 'template-name', 'async-template-name',
-			'script', 'async-script', 'script-name', 'async-script-name'
-		].includes(config.promptType as string)) {
-			throw new ConfigError(`Invalid promptType: '${config.promptType as string}'. Valid options are 'template', 'async-template', 'template-name', 'async-template-name', 'script', 'async-script', 'script-name', 'async-script-name'.`);
-		}
-		// If the user intends to load a template by name, a loader must be provided.
-		if ((config.promptType === 'template-name' || config.promptType === 'async-template-name') && !config.loader) {
-			throw new ConfigError(`The promptType '${config.promptType as string}' requires a 'loader' to be configured to load the template by name.`);
-		}
+	if (config.messages) {
+		validateMessagesArray(config.messages);
 	}
 
-	// --- Shared validation for Cascada-based configs (templates and scripts) ---
-	if ('filters' in config && config.filters) {
+	// --- Primary Dispatch: Use explicit promptType if available ---
+	if (promptType) {
+		if (promptType.includes('template')) _validateTemplateConfig(config);
+		else if (promptType.includes('script')) _validateScriptConfig(config);
+		else if (promptType.includes('text')) _validateTextConfig(config);
+		if ('output' in config) _validateObjectConfig(config); // Object renderers also have a promptType
+	} else {
+		// --- Fallback: Infer intent for generic Config() calls ---
+		if ('output' in config) _validateObjectConfig(config);
+		else if ('template' in config) _validateTemplateConfig(config);
+		else if ('script' in config) _validateScriptConfig(config);
+		else if ('execute' in config) _validateFunctionConfig(config);
+		else if ('model' in config) _validateTextConfig(config);
+	}
 
-		if (typeof config.filters !== 'object' || config.filters === null || Array.isArray(config.filters)) {
-			throw new ConfigError("'filters' must be a record object of filter functions.");
+	// --- Post-Validation Checks Based on Explicit Context ---
+	if (isLoaded && !('loader' in config)) {
+		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
+	}
+	if (isTool && !('inputSchema' in config)) {
+		throw new ConfigError("'inputSchema' is a required property when creating a renderer as a tool.");
+	}
+}
+
+// --- Invocation Validators ---
+
+export function validateLLMRendererCall(
+	config: Record<string, any>, promptType: PromptType,
+	...args: [string | ModelMessage[] | Context, (ModelMessage[] | Context)?, Context?]
+): void {
+	const callArgs = extractCallArguments(...args);
+	validateMessagesArray(callArgs.messages);
+
+	const finalPrompt = (callArgs.prompt ?? config.prompt) as (string | ModelMessage[] | undefined);
+	const finalMessages = callArgs.messages ?? (Array.isArray(config.messages) ? config.messages : undefined);
+
+	if (promptType.includes('template') || promptType.includes('script')) {
+		if (typeof finalPrompt !== 'string' || finalPrompt.length === 0) {
+			throw new ConfigError("A string prompt (containing the template or script) is required when using a template or script-based renderer.");
 		}
-		for (const [name, filter] of Object.entries(config.filters as TypesConfig.CascadaFilter)) {
-			if (typeof filter !== 'function') {
-				throw new ConfigError(`Filter '${name}' must be a function.`);
-			}
+		if (callArgs.context) {
+			validateInput(config, callArgs.context);
+		} else if ('inputSchema' in config) {
+			throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
+		}
+	} else { // text or text-name
+		const hasPrompt = (typeof finalPrompt === 'string' && finalPrompt.length > 0) || (Array.isArray(finalPrompt) && finalPrompt.length > 0);
+		const hasMessages = Array.isArray(finalMessages) && finalMessages.length > 0;
+
+		if (!hasPrompt && !hasMessages) {
+			throw new ConfigError("Either 'prompt' (string or messages array) or 'messages' must be provided.");
+		}
+		if (callArgs.context) {
+			throw new ConfigError("A 'context' object cannot be provided when using a 'text' or 'text-name' renderer.");
 		}
 	}
 }
 
-// export function validateCall(config: Record<string, any>, promptOrContext?: Context | string, maybeContext?: Context) {
-export function validateCall(config: Record<string, any>, promptOrMessageOrContext?: string | ModelMessage[] | Context, contextOrMessages?: ModelMessage[] | Context, maybeContext?: Context) {
-	// Debug output if config.debug is true
-	if ('debug' in config && config.debug) {
-		console.log('[DEBUG] validateCall called with:', { config: JSON.stringify(config, null, 2), promptOrMessageOrContext, contextOrMessages, maybeContext });
+export function validateTemplateCall(config: Record<string, any>, ...args: [string | Context, Context?]): void {
+	const [templateOrContext, maybeContext] = args;
+	let context: Context | undefined;
+
+	if (typeof templateOrContext === 'string') context = maybeContext;
+	else {
+		if (maybeContext !== undefined) throw new ConfigError("Second argument must be undefined when the first is a context object.");
+		context = templateOrContext;
 	}
 
-	// Determine mode
-	const isTemplateOrScript = (config.promptType !== 'text' && config.promptType !== undefined);
-
-	// 1) Extract from arguments via helper (with duplicate detection)
-	let promptFromArgs: string | undefined;
-	let messagesFromArgs: ModelMessage[] | undefined;
-	let contextFromArgs: Context | undefined;
-	try {
-		({ prompt: promptFromArgs, messages: messagesFromArgs, context: contextFromArgs } = extractCallArguments(promptOrMessageOrContext, contextOrMessages, maybeContext));
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Invalid arguments';
-		throw new ConfigError(message);
-	}
-	void contextFromArgs;
-
-	// 2) Merge with config defaults
-	const promptFromConfig: string | undefined = (typeof (config as Record<string, unknown>).prompt === 'string' && (config as Record<string, string>).prompt.length > 0)
-		? (config as Record<string, string>).prompt
-		: undefined;
-	const messagesFromConfig: ModelMessage[] | undefined = Array.isArray((config as Record<string, unknown>).messages)
-		? (config as Record<string, unknown>).messages as ModelMessage[]
-		: undefined;
-
-	const prompt: string | undefined = promptFromArgs ?? promptFromConfig;
-	const messages: ModelMessage[] | undefined = messagesFromArgs ?? messagesFromConfig;
-
-	// 3) Apply rules
-	if (isTemplateOrScript) {
-		// PROMPT REQUIRED; messages optional
-		if (!prompt) {
-			throw new ConfigError('Prompt is required when promptType is not "text".');
-		}
-		return;
+	if (!('template' in config) && typeof templateOrContext !== 'string') {
+		throw new ConfigError("A template string must be provided either in the config or as the first argument.");
 	}
 
-	// TEXT MODE: require either prompt or messages
-	const hasPrompt = typeof prompt === 'string' && prompt.length > 0;
-	const hasMessages = Array.isArray(messages) && messages.length > 0;
-	if (!hasPrompt && !hasMessages) {
-		throw new ConfigError('Either prompt or messages must be provided (via arguments or config).');
+	if (context) {
+		validateInput(config, context);
+	} else if ('inputSchema' in config) {
+		throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
 	}
 }
 
-export function validateObjectConfig(config?: Record<string, any>, isStream = false) {
-	// Debug output if config.debug is true
-	if (config && 'debug' in config && config.debug) {
-		console.log('[DEBUG] validateObjectConfig called with:', { config: JSON.stringify(config, null, 2), isStream });
+export function validateScriptOrFunctionCall(config: Record<string, any>, type: 'Script' | 'Function', ...args: [string | Context, Context?]): void {
+	const [arg1, arg2] = args;
+	let context: Context | undefined;
+
+	if (typeof arg1 === 'string') {
+		if (type === 'Function') throw new ConfigError("Function renderer does not accept a script string; provide a context object.");
+		context = arg2;
+	} else {
+		if (arg2 !== undefined) throw new ConfigError("Second argument must be undefined when the first is a context object.");
+		context = arg1;
 	}
 
-	if (!config || typeof config !== 'object') {
-		throw new ConfigError('Config must be an object');
+	if (type === 'Script' && !('script' in config) && typeof arg1 !== 'string') {
+		throw new ConfigError("A script string must be provided either in the config or as the first argument.");
 	}
 
-	// The 'output' property defaults to 'object' if not specified or is undefined.
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const outputType = config.output ?? 'object';
-
-	if (!('model' in config)) {
-		throw new ConfigError('Object config requires a \'model\' property');
+	if (context) {
+		validateInput(config, context);
+	} else if ('inputSchema' in config) {
+		throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
 	}
+}
 
-	switch (outputType) {
-		case 'object':
-		case 'array':
-			if (!('schema' in config)) {
-				throw new ConfigError(`${outputType as string} output requires schema`);
-			}
-			break;
-		case 'enum':
-			if (!isStream) {
-				if (!('enum' in config) || !Array.isArray(config.enum) || config.enum.length === 0) {
-					throw new ConfigError('enum output requires non-empty enum array');
-				}
-			} else {
-				throw new ConfigError('Stream does not support enum output');
-			}
-			break;
-		case 'no-schema':
-			if ('schema' in config || (!isStream && 'enum' in config)) {
-				throw new ConfigError('no-schema output cannot have schema' + (!isStream ? ' or enum' : ''));
-			}
-			break;
-		default:
-			throw new ConfigError(`Invalid output type: '${String(outputType)}'`);
+// --- Input/Output Schema Validators ---
+
+function validateInput(config: Record<string, any>, context: Context): void {
+	if ('inputSchema' in config) {
+		if (!(config.inputSchema instanceof z.ZodType)) {
+			throw new ConfigError("Invalid 'inputSchema' in config; it is not a valid Zod schema.");
+		}
+		const result = config.inputSchema.safeParse(context);
+		if (!result.success) {
+			throw new ConfigError(`Input context validation failed.\n${formatZodError(result.error)}`);
+		}
 	}
+}
+
+export function validateAndParseOutput<T>(config: Record<string, any>, result: T): T {
+	if ('schema' in config) {
+		if (!(config.schema instanceof z.ZodType)) {
+			throw new ConfigError("Invalid 'schema' in config; it is not a valid Zod schema.");
+		}
+		const validationResult = config.schema.safeParse(result);
+		if (!validationResult.success) {
+			throw new ConfigError(`Output validation failed.\n${formatZodError(validationResult.error)}`);
+		}
+		return validationResult.data as T;
+	}
+	return result;
 }

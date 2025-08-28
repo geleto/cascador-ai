@@ -1,5 +1,4 @@
 import { ConfigData, mergeConfigs } from '../ConfigData';
-import { validateBaseConfig } from '../validate';
 import { ConfigProvider } from '../ConfigData';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
@@ -67,10 +66,8 @@ export function Config<
 	if (parent) {
 		const merged = mergeConfigs(parent.config, config);
 		// Runtime check would go here if needed
-		validateBaseConfig(merged);
 		return new ConfigData(merged) as ConfigData<TFinalConfig>;
 	}
 
-	validateBaseConfig(config);
 	return new ConfigData(config) as unknown as ConfigData<TFinalConfig>;
 }

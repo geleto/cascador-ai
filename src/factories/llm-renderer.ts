@@ -1,6 +1,6 @@
 import { Context, ScriptPromptType, TemplatePromptType } from '../types/types';
 import * as configs from '../types/config';
-import { validateCall } from '../validate';
+import { validateLLMRendererCall } from '../validate';
 import * as utils from '../types/utils';
 import { _createTemplate, TemplateCallSignature } from './Template';
 import { _createScript, ScriptCallSignature } from './Script';
@@ -263,7 +263,7 @@ export function _createLLMRenderer<
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrMessageOrContext, messagesOrContext, maybeContext });
 			}
-			validateCall(config, promptOrMessageOrContext, messagesOrContext, maybeContext);
+			validateLLMRendererCall(config, config.promptType!, promptOrMessageOrContext ?? '', messagesOrContext, maybeContext);
 
 			// Extract normalized args
 			const { messages: messagesFromArgs } = extractCallArguments(promptOrMessageOrContext, messagesOrContext, maybeContext);
@@ -360,7 +360,7 @@ export function _createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - text path called with:', { promptOrMessages, maybeMessages });
 			}
 			const { prompt, messages } = extractCallArguments(promptOrMessages, maybeMessages);
-			validateCall(config, prompt, messages);
+			validateLLMRendererCall(config, config.promptType ?? 'text', prompt ?? '', messages);
 
 			const promptFromConfig = config.prompt;
 			const effectivePrompt = prompt ?? promptFromConfig;

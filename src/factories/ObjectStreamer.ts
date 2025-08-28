@@ -7,7 +7,7 @@ import * as types from "../types/types";
 
 import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { validateBaseConfig, validateObjectConfig } from "../validate";
+import { validateConfig } from "../validate";
 
 import type { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
@@ -121,7 +121,7 @@ function withText<
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'text', OUTPUT> {
 	return _createObjectStreamer(config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig, 'text',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false, false
 	) as unknown as StreamObjectReturn<TConfig, 'text', OUTPUT>;
 }
 
@@ -161,7 +161,7 @@ function withTextAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<Record<string, never>, OUTPUT>,
 		'text',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
 	) as unknown as StreamObjectReturn<TConfig, 'text', OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 }
 
@@ -204,7 +204,7 @@ function loadsText<
 	return _createObjectStreamer(
 		config,
 		'text-name',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false, true
 	) as unknown as StreamObjectReturn<TConfig, 'text-name', OUTPUT>;
 }
 
@@ -244,7 +244,7 @@ function loadsTextAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<Record<string, never>, OUTPUT>,
 		'text-name',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>
+		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, true
 	) as unknown as StreamObjectReturn<TConfig, 'text-name', OUTPUT> & results.RendererTool<Record<string, never>, OUTPUT>;
 }
 
@@ -286,7 +286,7 @@ function withTemplate<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> {
-	return _createObjectStreamer(config, 'async-template', parent) as unknown as StreamObjectReturn<TConfig, 'async-template', OUTPUT>;
+	return _createObjectStreamer(config, 'async-template', parent, false, false) as unknown as StreamObjectReturn<TConfig, 'async-template', OUTPUT>;
 }
 
 function withTemplateAsTool<
@@ -329,7 +329,7 @@ function withTemplateAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
 		'async-template',
-		parent
+		parent, false
 	) as unknown as StreamObjectReturn<TConfig, 'async-template', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 }
 
@@ -372,7 +372,7 @@ function loadsTemplate<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'async-template-name', OUTPUT> {
-	return _createObjectStreamer(config, 'async-template-name', parent) as unknown as StreamObjectReturn<TConfig, 'async-template-name', OUTPUT>;
+	return _createObjectStreamer(config, 'async-template-name', parent, false, true) as unknown as StreamObjectReturn<TConfig, 'async-template-name', OUTPUT>;
 }
 
 function loadsTemplateAsTool<
@@ -415,7 +415,7 @@ function loadsTemplateAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
 		'async-template-name',
-		parent
+		parent, true
 	) as unknown as StreamObjectReturn<TConfig, 'async-template-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 }
 
@@ -458,7 +458,7 @@ function withScript<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'async-script', OUTPUT> {
-	return _createObjectStreamer(config, 'async-script', parent) as unknown as StreamObjectReturn<TConfig, 'async-script', OUTPUT>;
+	return _createObjectStreamer(config, 'async-script', parent, false, false) as unknown as StreamObjectReturn<TConfig, 'async-script', OUTPUT>;
 }
 
 function withScriptAsTool<
@@ -501,7 +501,7 @@ function withScriptAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
 		'async-script',
-		parent
+		parent, false
 	) as unknown as StreamObjectReturn<TConfig, 'async-script', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 }
 
@@ -544,7 +544,7 @@ function loadsScript<
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'async-script-name', OUTPUT> {
-	return _createObjectStreamer(config, 'async-script-name', parent) as unknown as StreamObjectReturn<TConfig, 'async-script-name', OUTPUT>;
+	return _createObjectStreamer(config, 'async-script-name', parent, false, true) as unknown as StreamObjectReturn<TConfig, 'async-script-name', OUTPUT>;
 }
 
 function loadsScriptAsTool<
@@ -587,7 +587,7 @@ function loadsScriptAsTool<
 	return _createObjectStreamerAsTool(
 		config as StreamObjectConfig<INPUT, OUTPUT> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
 		'async-script-name',
-		parent
+		parent, true
 	) as unknown as StreamObjectReturn<TConfig, 'async-script-name', OUTPUT> & results.RendererTool<INPUT, OUTPUT>;
 }
 
@@ -599,7 +599,9 @@ function _createObjectStreamer<
 >(
 	config: TConfig,
 	promptType: types.PromptType,
-	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>
+	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>,
+	isTool = false,
+	isLoaded = false
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> {
 
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
@@ -610,8 +612,7 @@ function _createObjectStreamer<
 		(merged as unknown as configs.StreamObjectObjectConfig<any, any>).output = 'object';
 	}
 
-	validateBaseConfig(merged);
-	validateObjectConfig(merged, false);
+	validateConfig(merged, promptType, isTool, isLoaded);
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
@@ -631,10 +632,11 @@ function _createObjectStreamerAsTool<
 >(
 	config: TConfig & { description?: string; inputSchema: types.SchemaType<INPUT> },
 	promptType: types.PromptType,
-	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>
+	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>,
+	isLoaded = false
 ): StreamObjectReturn<TConfig, 'async-template', OUTPUT> & results.RendererTool<INPUT, OUTPUT> {
 
-	const renderer = _createObjectStreamer(config, promptType, parent) as unknown as results.RendererTool<INPUT, OUTPUT> & { config: TConfig };
+	const renderer = _createObjectStreamer(config, promptType, parent, true, isLoaded) as unknown as results.RendererTool<INPUT, OUTPUT> & { config: TConfig };
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else

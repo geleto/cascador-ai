@@ -2,7 +2,7 @@ import { Tool, ToolCallOptions } from 'ai';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
-import { ConfigError } from "../validate";
+import { validateConfig, validateScriptOrFunctionCall, validateAndParseOutput } from "../validate";
 
 type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
 	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & configs.BaseConfig
@@ -82,7 +82,7 @@ function asFunction<
 ): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 
 function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
-	return _createFunction(config, parent);
+	return _createFunction(config, parent, false);
 }
 
 //the default is withFunction
@@ -120,7 +120,8 @@ function _createFunction(
 	config: FunctionConfig<any, any>,
 	parent?: ConfigProvider<FunctionConfig<any, any>> | //has parent.config
 		FunctionCallSignature<FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
-		ToolCallSignature<ToolConfig<any, any>, any, any> //parent is the config as well as a tool
+		ToolCallSignature<ToolConfig<any, any>, any, any>, //parent is the config as well as a tool
+	isTool = false
 ): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
 
 	let merged;
@@ -130,11 +131,7 @@ function _createFunction(
 		merged = config;
 	}
 
-	//@todo - validateBaseConfig(merged);//@todo - nothing in common with baseConfig
-	if (!('execute' in merged)) {
-		// This runtime check backs up the static type check.
-		throw new ConfigError("Function config requires an 'execute' property.");
-	}
+	validateConfig(merged, undefined, isTool);
 
 	if (merged.debug) {
 		console.log('[DEBUG] Function created with config:', JSON.stringify(merged, null, 2));
@@ -142,7 +139,8 @@ function _createFunction(
 
 	// Create a callable function that delegates to the execute method
 	const callableFunction = async (context: Record<string, any>): Promise<any> => {
-		return await merged.execute(context);
+		validateScriptOrFunctionCall(merged, 'Function', context);
+		return validateAndParseOutput(merged, await merged.execute(context));
 	};
 
 	// Merge all properties from merged config into the callable function, but exclude execute
@@ -158,7 +156,7 @@ function _createFunctionAsTool(
 		FunctionCallSignature<FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
 		ToolCallSignature<ToolConfig<any, any>, any, any> //parent is the config as well as a tool
 ): ToolCallSignature<ToolConfig<any, any>, any, any> {
-	const renderer = _createFunction(config as FunctionConfig<any, any>, parent as FunctionCallSignature<FunctionConfig<any, any>, any, any>) as unknown as
+	const renderer = _createFunction(config as FunctionConfig<any, any>, parent as FunctionCallSignature<FunctionConfig<any, any>, any, any>, true) as unknown as
 		ToolCallSignature<ToolConfig<any, any>, any, any>;
 	//the Tool properties are already in the renderer root (not in a config property)
 

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { ILoader, LoaderSource } from 'cascada-engine';
 import { LanguageModel } from 'ai';
 
-import { anthropic, createAnthropic, AnthropicProviderSettings } from '@ai-sdk/anthropic';
+import { anthropic, createAnthropic } from '@ai-sdk/anthropic';
 export const modelName = 'claude-3-5-haiku-latest';
 export const model: LanguageModel = anthropic(modelName);
 export const createProvider = createAnthropic;
