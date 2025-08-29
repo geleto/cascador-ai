@@ -141,7 +141,7 @@ export interface FunctionTool<INPUT extends Record<string, any>, OUTPUT> {
 export type GenerateTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	PROMPT = string,
+	PROMPT = string | ModelMessage[],
 > = Omit<Parameters<typeof generateText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -150,7 +150,7 @@ export type GenerateTextConfig<
 export type StreamTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	PROMPT = string,
+	PROMPT = string | ModelMessage[],
 > = Omit<Parameters<typeof streamText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -158,7 +158,7 @@ export type StreamTextConfig<
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type GenerateObjectBaseConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string
+	PROMPT = string | ModelMessage[]
 > = Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode' | 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -208,7 +208,7 @@ export type GenerateObjectNoSchemaConfig<
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type StreamObjectBaseConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string
+	PROMPT = string | ModelMessage[]
 > = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt' | 'onFinish'>
 	& BaseConfig
 	& {
