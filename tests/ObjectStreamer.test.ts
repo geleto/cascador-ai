@@ -101,7 +101,6 @@ describe('create.ObjectStreamer', function () {
 
 			const result = await streamer();
 			const partials = await collectPartials(result.partialObjectStream);
-			// The `object` promise from Vercel's streamObject with `mode: 'json'` can hang indefinitely.
 			// As a workaround, we use mergePartials to get the complete object from the stream.
 			expect(partials.length).to.be.greaterThan(0);
 			const finalObject = mergePartials(partials);
@@ -189,7 +188,14 @@ describe('create.ObjectStreamer', function () {
 			}, parentStreamer);
 
 			expect(childStreamer.config.output).to.equal('array');
-			const { object: finalArray } = await childStreamer();
+
+			//collect the stream
+			const result = await childStreamer();
+			const array = await collectElements(result.elementStream);
+			expect(array).to.be.an('array').with.lengthOf(1);
+			expect(array).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
+
+			const { object: finalArray } = result;
 			expect(await finalArray).to.be.an('array').with.lengthOf(1);
 			expect(await finalArray).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
 		});

@@ -11,8 +11,6 @@ import { validateObjectLLMConfig } from "../validate";
 
 import type { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
-//@todo - this does not support tools but we will use experimental_output with generateText/streamText
-
 export type LLMStreamerConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT

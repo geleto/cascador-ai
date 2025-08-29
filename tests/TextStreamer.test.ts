@@ -39,21 +39,22 @@ describe('create.TextStreamer', function () {
 			expect(streamedText).to.equal(simpleExpected);
 		});
 
-		// vercel bug, result.text does not resolve, the stream is ok
-		it.skip('should provide the full text in the resolved .text promise', async () => {
+		it('should provide the full text in the resolved .text promise', async () => {
 			const streamer = create.TextStreamer({ model, temperature, prompt: simplePrompt });
 			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
 			const fullText = await result.text;
 			expect(fullText).to.equal(simpleExpected);
+			expect(streamedText).to.equal(simpleExpected);
 		});
 
 		// vercel bug, result.text does not resolve, the stream is ok
-		it.skip('should provide the full text using Vercel streamText directly', async () => {
+		it('should provide the full text using Vercel streamText directly', async () => {
 			const result = streamText({
 				model, temperature,
 				prompt: simplePrompt,
 			});
-			const fullText = await result.text;
+			const fullText = await streamToString(result.textStream);
 			expect(fullText).to.equal(simpleExpected);
 		});
 

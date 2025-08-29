@@ -9,7 +9,6 @@ import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 
-//@todo - this does not support tools but we will use experimental_output with generateText/streamText
 
 export type LLMGeneratorConfig<
 	INPUT extends Record<string, any>,
