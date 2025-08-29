@@ -376,13 +376,20 @@ export function _createLLMRenderer<
 			const { prompt, messages } = extractCallArguments(promptOrMessages, maybeMessages);
 			validateLLMRendererCall(config, config.promptType ?? 'text', prompt, messages);
 
-			const promptFromConfig = config.prompt;
-			const effectivePrompt = prompt ?? promptFromConfig;
+			const promptFromConfig = config.prompt as string | ModelMessage[] | undefined;
+			const effectivePrompt = prompt ?? (typeof promptFromConfig === 'string' ? promptFromConfig : undefined);
 			const messagesFromConfig = (config as unknown as { messages?: ModelMessage[] }).messages;
 			const configMessages = messagesFromConfig;
 			const callArgumentMessages = messages;
+
+			// Gather messages from multiple sources in specific order:
+			// 1. config.messages (static messages like system prompts)
+			// 2. config.prompt if it is an array of ModelMessage
+			// 3. Messages passed as a runtime argument (callArgumentMessages)
+			const configPromptAsMessages = Array.isArray(promptFromConfig) ? promptFromConfig : [];
 			const combinedBase = [
 				...(configMessages ?? []),
+				...configPromptAsMessages,
 				...(callArgumentMessages ?? []),
 			];
 
@@ -397,10 +404,16 @@ export function _createLLMRenderer<
 			) as TFunctionConfig;
 
 			const result = vercelFunc(resultConfig);
-			const userMessage: ModelMessage | undefined = (typeof effectivePrompt === 'string' && effectivePrompt.length > 0)
+
+			// Update result augmentation logic:
+			// messagesPrefix should contain:
+			// 1. The messages from config.prompt if it was an array
+			// 2. The new user message created from the effectivePrompt if it existed
+			const userMessageFromString: ModelMessage | undefined = (typeof effectivePrompt === 'string' && effectivePrompt.length > 0)
 				? ({ role: 'user', content: effectivePrompt } as ModelMessage)
 				: undefined;
-			const messagesPrefix = userMessage ? [userMessage] : [];
+
+			const messagesPrefix = [...configPromptAsMessages, ...(userMessageFromString ? [userMessageFromString] : [])];
 			const historyPrefixFull = callArgumentMessages ?? [];
 
 			if ((vercelFunc as unknown) === generateText) {
