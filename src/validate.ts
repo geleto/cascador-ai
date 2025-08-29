@@ -97,6 +97,13 @@ export function validateAnyConfig(config?: Partial<configs.AnyConfig<any, any, a
  */
 export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType?: types.PromptType, isTool = false): void {
 	universalSanityChecks(config);
+
+	// For template/script-based prompt types, disallow messages array as prompt
+	if (promptType?.includes('template') || promptType?.includes('script')) {
+		if (Array.isArray(config.prompt)) {
+			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
+		}
+	}
 	if (!('model' in config)) throw new ConfigError("Text generator configs require a 'model' property.");
 	if ('execute' in config) {
 		throw new ConfigError("Property 'execute' is not allowed in a Text generator config. Use create.Function for this purpose.");
@@ -104,6 +111,12 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
 	if ('schema' in config || 'enum' in config || 'output' in config) {
 		throw new ConfigError("Properties 'schema', 'enum', and 'output' are only for Object generators.");
 	}
+
+	// Add validation for prompt property when it's an array
+	if (Array.isArray(config.prompt)) {
+		validateMessagesArray(config.prompt);
+	}
+
 	const isLoaded = promptType?.endsWith('-name') ?? false;
 	if (isLoaded && !('loader' in config)) {
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
@@ -122,9 +135,20 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
  */
 export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, promptType?: types.PromptType, isTool = false, isStreamer = false): void {
 	universalSanityChecks(config);
+	// For template/script-based prompt types, disallow messages array as prompt
+	if (promptType?.includes('template') || promptType?.includes('script')) {
+		if (Array.isArray(config.prompt)) {
+			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
+		}
+	}
 	if (!('model' in config)) throw new ConfigError("Object generator configs require a 'model' property.");
 	if ('execute' in config) {
 		throw new ConfigError("Property 'execute' is not allowed in an LLM generator config. Use create.Function for this purpose.");
+	}
+
+	// Add validation for prompt property when it's an array
+	if (Array.isArray(config.prompt)) {
+		validateMessagesArray(config.prompt);
 	}
 
 	const output = ('output' in config ? config.output : 'object') as string; // Vercel SDK defaults to 'object'
@@ -263,9 +287,6 @@ export function validateLLMRendererCall(
 	const callArgs = extractCallArguments(...args);
 	validateMessagesArray(callArgs.messages);
 
-	const finalPrompt = (callArgs.prompt ?? config.prompt) as (string | ModelMessage[] | undefined);
-	const finalMessages = callArgs.messages ?? (Array.isArray(config.messages) ? config.messages : undefined);
-
 	if (promptType.includes('template') || promptType.includes('script')) {
 		if (callArgs.context) {
 			validateInput(config, callArgs.context);
@@ -273,9 +294,17 @@ export function validateLLMRendererCall(
 			throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
 		}
 	} else { // text or text-name
-		const hasPrompt = (typeof finalPrompt === 'string' && finalPrompt.length > 0) || (Array.isArray(finalPrompt) && finalPrompt.length > 0);
-		const hasMessages = Array.isArray(finalMessages) && finalMessages.length > 0;
-		if (!hasPrompt && !hasMessages) throw new ConfigError("Either 'prompt' (string or messages array) or 'messages' must be provided.");
+		const finalPromptString = callArgs.prompt ?? (typeof config.prompt === 'string' ? config.prompt : undefined);
+		const finalPromptMessages = Array.isArray(config.prompt) ? config.prompt : [];
+		const finalMessages = callArgs.messages ?? (Array.isArray(config.messages) ? config.messages : undefined);
+
+		const hasPromptString = typeof finalPromptString === 'string' && finalPromptString.length > 0;
+		const hasPromptMessages = finalPromptMessages.length > 0;
+		const hasMessages = finalMessages && finalMessages.length > 0;
+
+		if (!hasPromptString && !hasPromptMessages && !hasMessages) {
+			throw new ConfigError("Either 'prompt' (string or messages array) or 'messages' must be provided in the config or at call time.");
+		}
 		if (callArgs.context) throw new ConfigError("A 'context' object cannot be provided when using a 'text' or 'text-name' renderer.");
 	}
 }
