@@ -67,17 +67,18 @@ export function validateAnyConfig(config?: Partial<configs.AnyConfig<any, any, a
 
 	// Infer intent for generic Config() calls
 	const isObjectConfig = 'output' in config || 'schema' in config || 'enum' in config;
-	const isTextConfig = 'model' in config && !isObjectConfig;
-	const isTool = 'inputSchema' in config; // Infer if it's a tool for context
+	//const isTextConfig = 'model' in config && !isObjectConfig;
+	//const isTool = inputSchema' in config; // Infer if it's a tool for context
+	const isTool = false;
 
 	if (isObjectConfig) {
 		// We don't know if it will be a streamer, so we assume false.
 		// The final check in the ObjectStreamer factory will catch inconsistencies.
 		validateObjectLLMConfig(config, (config as Partial<configs.TemplateConfig<any>>).promptType, isTool, false);
 	}
-	else if (isTextConfig) {
+	/*else if (isTextConfig) {
 		validateTextLLMConfig(config, (config as Partial<configs.TemplateConfig<any>>).promptType, isTool);
-	}
+	}*/
 	else if ('template' in config) {
 		validateTemplateConfig(config as Partial<configs.TemplateConfig<any>>, config.promptType, isTool);
 	}
@@ -86,6 +87,15 @@ export function validateAnyConfig(config?: Partial<configs.AnyConfig<any, any, a
 	}
 	else if ('execute' in config) {
 		validateFunctionConfig(config, isTool);
+	} else {
+		// Handle any conflicting properties
+		if ('model' in config) {
+			// If 'model' is present, we treat and validate it as a TextConfig.
+			// The validateTextLLMConfig function is responsible for checking for
+			// conflicting properties like 'schema', 'output', 'enum', etc.,
+			// and will throw an error if they are found.
+			validateTextLLMConfig(config as Partial<AnyTextConfig>, (config as Partial<configs.TemplateConfig<any>>).promptType, isTool);
+		}
 	}
 }
 
@@ -157,6 +167,10 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 		throw new ConfigError('Object streamers do not support "enum" output.');
 	}
 
+	if ('tools' in config) {
+		throw new ConfigError(`Object renderers do not support "tools" property.`);
+	}
+
 	switch (output) {
 		case 'object':
 		case 'array':
@@ -167,6 +181,9 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 		case 'enum':
 			if (!('enum' in config && Array.isArray(config.enum))) {
 				throw new ConfigError("An 'output' of 'enum' requires an 'enum' property with a string array.");
+			}
+			if (isStreamer) {
+				throw new ConfigError('Object streamers do not support "enum" output.');
 			}
 			break;
 		case 'no-schema': break; // No extra properties needed
