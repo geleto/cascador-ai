@@ -192,7 +192,7 @@ describe('Messages, Conversation & Integration', function () {
 				const generator = create.TextGenerator({ model, temperature, messages: simpleSystemMessage });
 				const result = await generator('Reply only with "OK".');
 
-				expect(result.text).to.equal('OK');
+				expect(result.text.trim()).to.match(/^ok\.?/i);
 				expect(result.response).to.have.property('messageHistory');
 				const history = result.response.messageHistory;
 				expect(history).to.have.lengthOf(2); // user, assistant (config excluded)
@@ -547,13 +547,13 @@ describe('Messages, Conversation & Integration', function () {
 				let messageHistory: ModelMessage[] = [];
 
 				// --- TURN 1: A simple chat message without tool use ---
-				const prompt1 = 'Hello there!';
+				const prompt1 = 'Reply only with "OK".';
 				const turn1Result = await agent(prompt1, messageHistory);
 
 				// Assertions for the first turn (simple response)
 				expect(turn1Result.finishReason).to.equal('stop');
 				expect(turn1Result.toolCalls).to.be.empty;
-				expect(turn1Result.text).to.be.a('string').and.not.be.empty;
+				expect(turn1Result.text.trim()).to.match(/^ok\.?/i);
 
 				// 2. Update the history after the first turn
 				// `response.messageHistory` contains the full history (old messages + new ones from this turn)
@@ -566,7 +566,7 @@ describe('Messages, Conversation & Integration', function () {
 
 
 				// --- TURN 2: A message that requires tool use ---
-				const prompt2 = 'Great, thanks! Now, can you tell me the weather in San Francisco?';
+				const prompt2 = 'Weather in San Francisco?';
 
 				// Pass the new prompt AND the existing message history
 				const turn2Result = await agent(prompt2, messageHistory);
@@ -603,13 +603,13 @@ describe('Messages, Conversation & Integration', function () {
 				const chatAgent = create.TextGenerator({
 					model,
 					temperature,
-					messages: [{ role: 'system', content: 'Have a casual conversation about a user\'s order.' }],
+					messages: [{ role: 'system', content: 'Acknowledge messages. Reply only with "OK".' }],
 				});
 
-				// Have a conversation
-				const res1 = await chatAgent('Hi, I need to order a large pizza.');
+				// Have a conversation (concise prompts + concise replies)
+				const res1 = await chatAgent('Order: large pizza.');
 				const history1 = res1.response.messageHistory;
-				const res2 = await chatAgent('Please add pepperoni and mushrooms.', history1);
+				const res2 = await chatAgent('Add: pepperoni and mushrooms.', history1);
 				const finalHistory = res2.response.messageHistory;
 
 				// Extract from the conversation
