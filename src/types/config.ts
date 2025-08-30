@@ -3,12 +3,13 @@ import {
 	ToolSet,
 	ToolCallOptions,
 	StreamObjectOnFinishCallback,
-	ModelMessage
+	ModelMessage,
+	Tool
 } from 'ai';
-import { ConfigureOptions, ILoaderAny } from 'cascada-engine';
+import { ConfigureOptions } from 'cascada-engine';
 import {
 	TemplatePromptType, ScriptPromptType, /*, LLMPromptType */
-	SchemaType
+	SchemaType, CascadaFilters, CascadaLoaders
 } from './types';
 
 // Some of the hacks here are because Parameters<T> helper type only returns the last overload type
@@ -24,18 +25,16 @@ export interface BaseConfig {
 	description?: string;//useful for future OpenTelemetry, error logging, etc.
 }
 
-export type CascadaFilter = Record<string, (input: any, ...args: any[]) => any>;
-
 // Shared for scripts and templates
 export interface CascadaConfig {
 	context?: Record<string, any>;
-	filters?: CascadaFilter;
+	filters?: CascadaFilters;
 	options?: ConfigureOptions;
-	loader?: ILoaderAny | ILoaderAny[] | null;
+	loader?: CascadaLoaders | null;
 }
 
 export interface LoaderConfig {
-	loader: ILoaderAny | ILoaderAny[];
+	loader: CascadaLoaders;
 }
 
 // Only for use in Template
@@ -57,7 +56,7 @@ export interface TemplateToolConfig<
 
 // Config for prompts that are rendered with templates
 export interface TemplatePromptConfig<
-	PROMPT = string,
+	PROMPT extends string | ModelMessage[] = string,
 > extends CascadaConfig {
 	prompt?: PROMPT;
 	messages?: ModelMessage[];
@@ -85,11 +84,11 @@ export interface ScriptToolConfig<
 }
 
 export type OptionalTemplatePromptConfig<
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = TemplatePromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
 
 export interface ScriptPromptConfig<
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > extends CascadaConfig {
 	prompt?: PROMPT;
 	messages?: ModelMessage[];
@@ -97,15 +96,15 @@ export interface ScriptPromptConfig<
 }
 
 export type OptionalScriptPromptConfig<
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = ScriptPromptConfig<PROMPT> | { promptType: 'text'/*, prompt?: string */ };
 
 //@todo OptionalGeneratedPromptConfig
 export type OptionalPromptConfig<
-	PROMPT = string //In some cases prompt can be ModelMessage[]
+	PROMPT extends string | ModelMessage[] = string //In some cases prompt can be ModelMessage[]
 > = OptionalTemplatePromptConfig<PROMPT> | OptionalScriptPromptConfig<PROMPT>;
 
-export type PromptConfig<PROMPT = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
+export type PromptConfig<PROMPT extends string | ModelMessage[] = string> = TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT>;
 
 /**
  * The basic configuration required for a vercel function tool derived from a renderer
@@ -141,7 +140,7 @@ export interface FunctionTool<INPUT extends Record<string, any>, OUTPUT> {
 export type GenerateTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	PROMPT = string | ModelMessage[],
+	PROMPT extends string | ModelMessage[] = string,
 > = Omit<Parameters<typeof generateText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -150,7 +149,7 @@ export type GenerateTextConfig<
 export type StreamTextConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
-	PROMPT = string | ModelMessage[],
+	PROMPT extends string | ModelMessage[] = string,
 > = Omit<Parameters<typeof streamText<TOOLS>>[0], 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -158,7 +157,7 @@ export type StreamTextConfig<
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type GenerateObjectBaseConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string | ModelMessage[]
+	PROMPT extends string | ModelMessage[] = string
 > = Omit<Parameters<typeof generateObject>[0], | 'output' | 'mode' | 'prompt'>
 	& BaseConfig
 	& { prompt?: PROMPT, inputSchema?: SchemaType<INPUT> };
@@ -166,7 +165,7 @@ export type GenerateObjectBaseConfig<
 export type GenerateObjectObjectConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output?: 'object' | undefined;
 	schema: SchemaType<OUTPUT>;
@@ -178,7 +177,7 @@ export type GenerateObjectObjectConfig<
 export type GenerateObjectArrayConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'array';
 	schema: SchemaType<OUTPUT>;
@@ -190,7 +189,7 @@ export type GenerateObjectArrayConfig<
 export type GenerateObjectEnumConfig<
 	INPUT extends Record<string, any>,
 	ENUM extends string = string,
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'enum';
 	enum: readonly ENUM[];
@@ -199,7 +198,7 @@ export type GenerateObjectEnumConfig<
 
 export type GenerateObjectNoSchemaConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = GenerateObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'no-schema';
 	mode?: 'json';
@@ -208,7 +207,7 @@ export type GenerateObjectNoSchemaConfig<
 // We get the last overload which is the no-schema overload and make it base by omitting the output and mode properties
 export type StreamObjectBaseConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string | ModelMessage[]
+	PROMPT extends string | ModelMessage[] = string
 > = Omit<Parameters<typeof streamObject>[0], | 'output' | 'mode' | 'prompt' | 'onFinish'>
 	& BaseConfig
 	& {
@@ -221,7 +220,7 @@ export type StreamObjectBaseConfig<
 export type StreamObjectObjectConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output?: 'object' | undefined;
 	schema: SchemaType<OUTPUT>;
@@ -233,7 +232,7 @@ export type StreamObjectObjectConfig<
 export type StreamObjectArrayConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'array';
 	schema: SchemaType<OUTPUT>;
@@ -244,18 +243,53 @@ export type StreamObjectArrayConfig<
 
 export type StreamObjectNoSchemaConfig<
 	INPUT extends Record<string, any>,
-	PROMPT = string
+	PROMPT extends string | ModelMessage[] = string
 > = StreamObjectBaseConfig<INPUT, PROMPT> & {
 	output: 'no-schema';
 	mode?: 'json';
 }
 
-export type AnyNoTemplateConfig<
+export type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
+	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & BaseConfig
+
+export type FunctionToolConfig<INPUT extends Record<string, any>, OUTPUT> =
+	Tool<INPUT, OUTPUT> & BaseConfig
+
+export type AnyConfig<
+	TOOLS extends ToolSet,
+	INPUT extends Record<string, any>,
+	OUTPUT, //@out
+	ENUM extends string = string,
+	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
+> =
+	((// LLM Configs with template prompt
+		| GenerateTextConfig<TOOLS, INPUT, PROMPT>
+		| StreamTextConfig<TOOLS, INPUT, PROMPT>
+		| GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT>
+		| GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT>
+		| GenerateObjectEnumConfig<INPUT, ENUM, PROMPT>
+		| GenerateObjectNoSchemaConfig<INPUT, PROMPT>
+		| StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT>
+		| StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT>
+		| StreamObjectNoSchemaConfig<INPUT, PROMPT>
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	) & (ToolConfig<INPUT, OUTPUT> | {}) & (LoaderConfig | {}) & (TemplatePromptConfig<PROMPT> | ScriptPromptConfig<PROMPT> | {})) |
+	((// Template/Script Engine Configs
+		| TemplateConfig<INPUT>
+		| TemplateToolConfig<INPUT>
+		| ScriptToolConfig<INPUT, OUTPUT>
+		| ScriptConfig<INPUT, OUTPUT>
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	) & (LoaderConfig | {}))
+	| FunctionToolConfig<INPUT, OUTPUT>
+	| FunctionConfig<INPUT, OUTPUT>;
+
+/*export type AnyNoTemplateConfig<
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
 	ENUM extends string = never,
-	PROMPT = string
+	PROMPT extends string | ModelMessage[]  = string
 > =
 	| GenerateTextConfig<TOOLS, INPUT, PROMPT>
 	| StreamTextConfig<TOOLS, INPUT, PROMPT>
@@ -272,8 +306,8 @@ export type AnyConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
 	ENUM extends string = string,
-	PROMPT = string
+	PROMPT extends string | ModelMessage[]  = string
 > =
 	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & { promptType: 'text' | undefined }) // text mode - no template props
 	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & TemplatePromptConfig & { promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' })
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & ScriptPromptConfig & { promptType: 'script' | 'async-script' | 'script-name' | 'async-script-name' });
+	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & ScriptPromptConfig & { promptType: 'script' | 'async-script' | 'script-name' | 'async-script-name' });*/

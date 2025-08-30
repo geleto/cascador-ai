@@ -49,7 +49,7 @@ function universalSanityChecks(config?: Partial<configs.AnyConfig<any, any, any,
 	if ('template' in config && 'script' in config) {
 		throw new ConfigError("Configuration cannot have both 'template' and 'script' properties.");
 	}
-	if (config.messages) {
+	if ('messages' in config && config.messages) {
 		validateMessagesArray(config.messages);
 	}
 }
@@ -73,16 +73,16 @@ export function validateAnyConfig(config?: Partial<configs.AnyConfig<any, any, a
 	if (isObjectConfig) {
 		// We don't know if it will be a streamer, so we assume false.
 		// The final check in the ObjectStreamer factory will catch inconsistencies.
-		validateObjectLLMConfig(config, config.promptType, isTool, false);
+		validateObjectLLMConfig(config, (config as Partial<configs.TemplateConfig<any>>).promptType, isTool, false);
 	}
 	else if (isTextConfig) {
-		validateTextLLMConfig(config, config.promptType, isTool);
+		validateTextLLMConfig(config, (config as Partial<configs.TemplateConfig<any>>).promptType, isTool);
 	}
 	else if ('template' in config) {
-		validateTemplateConfig(config as Partial<configs.TemplateConfig<any>>, config.promptType as types.TemplatePromptType, isTool);
+		validateTemplateConfig(config as Partial<configs.TemplateConfig<any>>, config.promptType, isTool);
 	}
 	else if ('script' in config) {
-		validateScriptConfig(config as Partial<configs.ScriptConfig<any, any>>, config.promptType as types.ScriptPromptType, isTool);
+		validateScriptConfig(config as Partial<configs.ScriptConfig<any, any>>, config.promptType, isTool);
 	}
 	else if ('execute' in config) {
 		validateFunctionConfig(config, isTool);
@@ -294,9 +294,10 @@ export function validateLLMRendererCall(
 			throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
 		}
 	} else { // text or text-name
-		const finalPromptString = callArgs.prompt ?? (typeof config.prompt === 'string' ? config.prompt : undefined);
-		const finalPromptMessages = Array.isArray(config.prompt) ? config.prompt : [];
-		const finalMessages = callArgs.messages ?? (Array.isArray(config.messages) ? config.messages : undefined);
+		const prompt = (config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).prompt;
+		const finalPromptString = callArgs.prompt ?? (typeof prompt === 'string' ? prompt : undefined);
+		const finalPromptMessages = Array.isArray(prompt) ? prompt : [];
+		const finalMessages = callArgs.messages ?? (Array.isArray((config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).messages) ? (config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).messages : undefined);
 
 		const hasPromptString = typeof finalPromptString === 'string' && finalPromptString.length > 0;
 		const hasPromptMessages = finalPromptMessages.length > 0;
@@ -340,7 +341,7 @@ export function validateScriptOrFunctionCall(config: Record<string, any>, type: 
 // --- Input/Output Schema Validators ---
 
 function validateInput(config: Partial<configs.AnyConfig<any, any, any, any>>, context: types.Context): void {
-	if (config.inputSchema) {
+	if ('inputSchema' in config && config.inputSchema) {
 		const schema = config.inputSchema as z.ZodType;
 		const result = schema.safeParse(context);
 		if (!result.success) {

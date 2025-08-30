@@ -13,9 +13,10 @@ import { RequiredPromptType } from '../types/types';
 
 //@todo - INPUT like in template
 export type LLMCallSignature<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig,
+	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
 	TResult,
-	PType extends RequiredPromptType = RequiredPromptType
+	PType extends RequiredPromptType = RequiredPromptType,
+	PROMPT extends string | ModelMessage[] = string
 > = PType extends 'text' | 'text-name'
 	? (
 		// TConfig has no template, no context argument is needed
@@ -23,14 +24,14 @@ export type LLMCallSignature<
 		TConfig extends { prompt: string } | { messages: ModelMessage[] }
 		? {
 			// Optional prompt/messages
-			(prompt: string, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
+			(prompt: PROMPT, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
 		}
 		: {
 			// Required a prompt or messages
-			(prompt: string, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
+			(prompt: PROMPT, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;

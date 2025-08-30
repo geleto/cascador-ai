@@ -1,4 +1,4 @@
-import { generateText, LanguageModel, ToolSet, ToolCallOptions } from "ai";
+import { generateText, LanguageModel, ToolSet, ToolCallOptions, ModelMessage } from "ai";
 
 import * as results from '../types/result';
 import * as configs from '../types/config';
@@ -16,34 +16,37 @@ export type TextGeneratorInstance<TOOLS extends ToolSet, INPUT extends Record<st
 // It correctly infers the TOOL and INPUT types from the final merged config.
 // Parameterize by the concrete promptType literal used by the implementation.
 type GenerateTextReturn<
-	TConfig extends configs.OptionalPromptConfig & configs.BaseConfig,
+	TConfig extends configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig,
 	TOOLS extends ToolSet,
-	PType extends types.RequiredPromptType
-> = LLMCallSignature<TConfig, Promise<results.GenerateTextResultAugmented<TOOLS>>, PType>;
+	PType extends types.RequiredPromptType,
+	PROMPT extends string | ModelMessage[] = string
+> = LLMCallSignature<TConfig, Promise<results.GenerateTextResultAugmented<TOOLS>>, PType, PROMPT>;
 
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
 type GenerateTextWithParentReturn<
-	TConfig extends Partial<configs.OptionalPromptConfig & configs.BaseConfig>,
-	TParentConfig extends Partial<configs.OptionalPromptConfig & configs.BaseConfig>,
+	TConfig extends Partial<configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig>,
+	TParentConfig extends Partial<configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig>,
 	TOOLS extends ToolSet, //@todo - merge tools
 	PARENT_TOOLS extends ToolSet, //@todo - merge tools
 	PType extends types.RequiredPromptType,
 	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
-	TFinalConfig extends configs.BaseConfig = utils.Override<TParentConfig, TConfig>
-> = LLMCallSignature<TFinalConfig, Promise<results.GenerateTextResultAugmented<FINAL_TOOLS>>, PType>;
+	TFinalConfig extends configs.BaseConfig = utils.Override<TParentConfig, TConfig>,
+	PROMPT extends string | ModelMessage[] = string
+> = LLMCallSignature<TFinalConfig, Promise<results.GenerateTextResultAugmented<FINAL_TOOLS>>, PType, PROMPT>;
 
 // The full shape of a final, merged config object, including required properties.
 type FinalTextConfigShape = Partial<configs.GenerateTextConfig<any, any, any> & { model: LanguageModel }>;
 
 // Generic validator for the `config` object passed to a factory function.
 type ValidateTextConfig<
-	TConfig extends Partial<configs.GenerateTextConfig<any, any>>,
+	TConfig extends Partial<configs.GenerateTextConfig<any, any, PROMPT>>,
 	TFinalConfig extends FinalTextConfigShape,
-	TShape extends configs.GenerateTextConfig<any, any>,
+	TShape extends configs.GenerateTextConfig<any, any, PROMPT>,
+	PROMPT extends string | ModelMessage[] = string,
 	TRequired =
 	& (TShape extends { inputSchema: any } ? { inputSchema: any, model: LanguageModel } : { model: LanguageModel })
-	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel })
+	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel }),
 > =
 	// GATEKEEPER: Check for excess or missing properties
 	// 1. Check for excess properties in TConfig that are not in TShape
@@ -59,8 +62,9 @@ type ValidateTextConfig<
 
 // Generic validator for the `parent` config object.
 type ValidateTextParentConfig<
-	TParentConfig extends Partial<configs.GenerateTextConfig<any, any>>,
-	TShape extends configs.GenerateTextConfig<any, any>
+	TParentConfig extends Partial<configs.GenerateTextConfig<any, any, PROMPT>>,
+	TShape extends configs.GenerateTextConfig<any, any, PROMPT>,
+	PROMPT extends string | ModelMessage[] = string
 > =
 	// Check for excess properties in the parent validated against TShape
 	keyof Omit<TParentConfig, keyof TShape> extends never
@@ -68,24 +72,26 @@ type ValidateTextParentConfig<
 	: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
 
 function withText<
-	const TConfig extends configs.GenerateTextConfig<TOOLS, never>,
+	const TConfig extends configs.GenerateTextConfig<TOOLS, never, PROMPT>,
 	TOOLS extends ToolSet = ToolSet,
+	PROMPT extends string | ModelMessage[] = string
 >(
 	config: TConfig & ValidateTextConfig<
-		TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never>
+		TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT
 	>
-): GenerateTextReturn<TConfig, TOOLS, 'text'>;
+): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT>;
 
 function withText<
-	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never>>,
-	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never>>,
+	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never, PROMPT>>,
+	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never, PROMPT>>,
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
-	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
+	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, never>>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<TOOLS, never>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text'>;
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT>>
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', TOOLS, TFinalConfig, PROMPT>;
 
 function withText(
 	config: configs.GenerateTextConfig<any, any, any>,
@@ -95,67 +101,75 @@ function withText(
 }
 
 function withTextAsTool<
-	const TConfig extends configs.GenerateTextConfig<TOOLS, never> & configs.ToolConfig<Record<string, never>, string>,
+	const TConfig extends configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>,
 	TOOLS extends ToolSet = ToolSet,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never> & configs.ToolConfig<Record<string, never>, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'text'> & results.RendererTool<Record<string, never>, string>;
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>
+): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 function withTextAsTool<
-	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never> & configs.ToolConfig<Record<string, never>, string>>,
-	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never> & configs.ToolConfig<Record<string, never>, string>>,
+	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>>,
+	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>>,
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
-	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>
+	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never> & configs.ToolConfig<Record<string, never>, string>>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never> & configs.ToolConfig<Record<string, never>, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text'> & results.RendererTool<Record<string, never>, string>;
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>>
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', TOOLS, TFinalConfig, PROMPT> & results.RendererTool<Record<string, never>, string>;
 
+// Implementation
 function withTextAsTool(config: configs.GenerateTextConfig<any, any, any> & { inputSchema: types.SchemaType<never> }, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
 	return _createTextGeneratorAsTool(config, 'text', parent) as GenerateTextWithParentReturn<any, any, any, any, 'text'> & results.RendererTool<Record<string, never>, string>;
 }
 
 function loadsText<
-	const TConfig extends configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig,
+	const TConfig extends configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig,
 	TOOLS extends ToolSet,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig>
-): GenerateTextReturn<TConfig, TOOLS, 'text-name'>;
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig, PROMPT>
+): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT>;
 
 function loadsText<
-	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig>,
-	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never> & configs.LoaderConfig>,
+	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig>,
+	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never, PROMPT> & configs.LoaderConfig>,
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never> & configs.LoaderConfig>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name'>;
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>>
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', TOOLS, TFinalConfig, PROMPT>;
 
 function loadsText(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
 	return _createTextGenerator(config, 'text-name', parent, false) as GenerateTextWithParentReturn<any, any, any, any, 'text-name'>;
 }
 
 function loadsTextAsTool<
-	const TConfig extends configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>,
+	const TConfig extends configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>,
 	TOOLS extends ToolSet,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'text-name'> & results.RendererTool<Record<string, never>, string>;
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>
+): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 function loadsTextAsTool<
-	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
-	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
+	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
+	TParentConfig extends Partial<configs.GenerateTextConfig<PARENT_TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
+	PROMPT extends string | ModelMessage[] = string
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name'> & results.RendererTool<Record<string, never>, string>;
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>>
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', TOOLS, TFinalConfig, PROMPT> & results.RendererTool<Record<string, never>, string>;
 
+//Implementation
 function loadsTextAsTool(config: configs.GenerateTextConfig<any, any, any> & { inputSchema: types.SchemaType<never> }, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
 	return _createTextGeneratorAsTool(config, 'text-name', parent) as GenerateTextWithParentReturn<any, any, any, any, 'text-name'> & results.RendererTool<Record<string, never>, string>;
 }

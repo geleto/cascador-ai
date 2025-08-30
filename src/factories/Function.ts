@@ -1,20 +1,14 @@
-import { Tool, ToolCallOptions } from 'ai';
+import { ToolCallOptions } from 'ai';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateFunctionConfig, validateScriptOrFunctionCall, validateAndParseOutput } from "../validate";
 
-type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
-	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & configs.BaseConfig
-
-type ToolConfig<INPUT extends Record<string, any>, OUTPUT> =
-	Tool<INPUT, OUTPUT> & configs.BaseConfig
-
 type ToolOrFunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
-	ToolConfig<INPUT, OUTPUT> | FunctionConfig<INPUT, OUTPUT>
+	configs.FunctionToolConfig<INPUT, OUTPUT> | configs.FunctionConfig<INPUT, OUTPUT>
 
 export type FunctionCallSignature<
-	TConfig extends FunctionConfig<INPUT, OUTPUT>,
+	TConfig extends configs.FunctionConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 > = ((context: INPUT) => PromiseLike<OUTPUT>) & Omit<TConfig, 'execute'> & { type: 'FunctionCall' };
@@ -22,7 +16,7 @@ export type FunctionCallSignature<
 type FinalTextConfigShape = Partial<ToolOrFunctionConfig<any, any>>;
 
 export type ToolCallSignature<
-	TConfig extends ToolConfig<INPUT, OUTPUT>,
+	TConfig extends configs.FunctionToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 > = ((context: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>) & TConfig & { type: 'function' };
@@ -59,46 +53,46 @@ type ValidateParentConfig<
 //the default is withFunction
 //no parent config
 function asFunction<
-	TConfig extends FunctionConfig<INPUT, OUTPUT>,
+	TConfig extends configs.FunctionConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, FunctionConfig<INPUT, OUTPUT>>
+	config: TConfig & ValidateConfig<TConfig, TConfig, configs.FunctionConfig<INPUT, OUTPUT>>
 ): FunctionCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Functionparent config
 function asFunction<
-	TConfig extends Partial<FunctionConfig<INPUT, OUTPUT>>,
-	TParentConfig extends Partial<FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	TConfig extends Partial<configs.FunctionConfig<INPUT, OUTPUT>>,
+	TParentConfig extends Partial<configs.FunctionConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateConfig<TConfig, TParentConfig, FunctionConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<any, any>>> |
-		TParentConfig & ValidateParentConfig<TParentConfig, FunctionConfig<any, any>>
-): FunctionCallSignature<TFinalConfig & FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
+	config: TConfig & ValidateConfig<TConfig, TParentConfig, configs.FunctionConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, configs.FunctionConfig<any, any>>> |
+		TParentConfig & ValidateParentConfig<TParentConfig, configs.FunctionConfig<any, any>>
+): FunctionCallSignature<TFinalConfig & configs.FunctionConfig<INPUT, OUTPUT>, INPUT, OUTPUT>;
 
-function asFunction(config: FunctionConfig<any, any>, parent?: ConfigProvider<FunctionConfig<any, any>> | FunctionCallSignature<FunctionConfig<any, any>, any, any>): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
+function asFunction(config: configs.FunctionConfig<any, any>, parent?: ConfigProvider<configs.FunctionConfig<any, any>> | FunctionCallSignature<configs.FunctionConfig<any, any>, any, any>): FunctionCallSignature<configs.FunctionConfig<any, any>, any, any> {
 	return _createFunction(config, parent, false);
 }
 
 //the default is withFunction
 //no parent config
 function asTool<
-	TConfig extends ToolConfig<INPUT, OUTPUT>,
+	TConfig extends configs.FunctionToolConfig<INPUT, OUTPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TConfig, ToolConfig<INPUT, OUTPUT>>
+	config: TConfig & ValidateConfig<TConfig, TConfig, configs.FunctionToolConfig<INPUT, OUTPUT>>
 ): ToolCallSignature<TConfig, INPUT, OUTPUT>;
 
 //with ConfigProvider or Toolparent config
 function asTool<
-	const TConfig extends Partial<ToolConfig<INPUT, OUTPUT>>,
-	const TParentConfig extends Partial<ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
+	const TConfig extends Partial<configs.FunctionToolConfig<INPUT, OUTPUT>>,
+	const TParentConfig extends Partial<configs.FunctionToolConfig<PARENT_INPUT, PARENT_OUTPUT>>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
@@ -107,22 +101,22 @@ function asTool<
 	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 >(
-	config: TConfig & ValidateConfig<TConfig, TFinalConfig, ToolConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<any, any>>> |
-		TParentConfig & ValidateParentConfig<TParentConfig, ToolConfig<any, any>>
-): ToolCallSignature<TFinalConfig & ToolConfig<FINAL_INPUT, FINAL_OUTPUT>, FINAL_INPUT, FINAL_OUTPUT>;
+	config: TConfig & ValidateConfig<TConfig, TFinalConfig, configs.FunctionToolConfig<INPUT, OUTPUT>>,
+	parent: ConfigProvider<TParentConfig & ValidateParentConfig<TParentConfig, configs.FunctionToolConfig<any, any>>> |
+		TParentConfig & ValidateParentConfig<TParentConfig, configs.FunctionToolConfig<any, any>>
+): ToolCallSignature<TFinalConfig & configs.FunctionToolConfig<FINAL_INPUT, FINAL_OUTPUT>, FINAL_INPUT, FINAL_OUTPUT>;
 
-function asTool(config: ToolConfig<any, any>, parent?: ConfigProvider<ToolConfig<any, any>> | ToolCallSignature<ToolConfig<any, any>, any, any>): any {
-	return _createFunctionAsTool(config, parent) as unknown as ToolCallSignature<ToolConfig<any, any>, any, any>;
+function asTool(config: configs.FunctionToolConfig<any, any>, parent?: ConfigProvider<configs.FunctionToolConfig<any, any>> | ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any>): any {
+	return _createFunctionAsTool(config, parent) as unknown as ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any>;
 }
 
 function _createFunction(
-	config: FunctionConfig<any, any>,
-	parent?: ConfigProvider<FunctionConfig<any, any>> | //has parent.config
-		FunctionCallSignature<FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
-		ToolCallSignature<ToolConfig<any, any>, any, any>, //parent is the config as well as a tool
+	config: configs.FunctionConfig<any, any>,
+	parent?: ConfigProvider<configs.FunctionConfig<any, any>> | //has parent.config
+		FunctionCallSignature<configs.FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
+		ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any>, //parent is the config as well as a tool
 	isTool = false
-): FunctionCallSignature<FunctionConfig<any, any>, any, any> {
+): FunctionCallSignature<configs.FunctionConfig<any, any>, any, any> {
 
 	let merged;
 	if (parent) {
@@ -147,17 +141,17 @@ function _createFunction(
 	const { execute: _execute, ...configWithoutExecute } = merged;
 	const result = Object.assign(callableFunction, configWithoutExecute, { type: 'FunctionCall' });
 
-	return result as FunctionCallSignature<FunctionConfig<any, any>, any, any>;
+	return result as FunctionCallSignature<configs.FunctionConfig<any, any>, any, any>;
 }
 
 function _createFunctionAsTool(
-	config: ToolConfig<any, any>,
-	parent?: ConfigProvider<ToolConfig<any, any>> | //has parent.config
-		FunctionCallSignature<FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
-		ToolCallSignature<ToolConfig<any, any>, any, any> //parent is the config as well as a tool
-): ToolCallSignature<ToolConfig<any, any>, any, any> {
-	const renderer = _createFunction(config as FunctionConfig<any, any>, parent as FunctionCallSignature<FunctionConfig<any, any>, any, any>, true) as unknown as
-		ToolCallSignature<ToolConfig<any, any>, any, any>;
+	config: configs.FunctionToolConfig<any, any>,
+	parent?: ConfigProvider<configs.FunctionToolConfig<any, any>> | //has parent.config
+		FunctionCallSignature<configs.FunctionConfig<any, any>, any, any> | //parent is the config as well as a function
+		ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any> //parent is the config as well as a tool
+): ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any> {
+	const renderer = _createFunction(config as configs.FunctionConfig<any, any>, parent as FunctionCallSignature<configs.FunctionConfig<any, any>, any, any>, true) as unknown as
+		ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any>;
 	//the Tool properties are already in the renderer root (not in a config property)
 
 	// Add the execute property back for tools

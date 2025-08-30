@@ -1,6 +1,7 @@
 import { Schema, StreamObjectOnFinishCallback, StreamTextOnFinishCallback, ToolSet } from 'ai';//do not confuze the 'ai' Schema type with the 'zod' Schema type
 import { z } from 'zod';
 import { InferParameters } from './utils';
+import { ILoaderAny } from 'cascada-engine';
 
 // Template types
 export type Context = Record<string, any>;
@@ -30,4 +31,8 @@ export type StreamTextOnFinishEvent<TOOLS extends ToolSet = Record<string, never
 	Parameters<StreamTextOnFinishCallback<TOOLS>>[0];
 
 export type EmptyObject = Record<string, never>;
+
+export type CascadaFilters = Record<string, (input: any, ...args: any[]) => any>;
+
+export type CascadaLoaders = ILoaderAny | ILoaderAny[];
 
