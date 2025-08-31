@@ -188,7 +188,7 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 			break;
 		case 'no-schema': break; // No extra properties needed
 		default:
-			throw new ConfigError(`Invalid 'output' mode: '${output}'. Must be 'object', 'array', 'enum', or 'no-schema'.`);
+			throw new ConfigError(`Invalid 'output' mode: '${output}'. Must be 'object', 'array', ${isStreamer ? '' : 'enum'}, or 'no-schema'.`);
 	}
 
 	const isLoaded = promptType?.endsWith('-name') ?? false;
