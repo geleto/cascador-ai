@@ -198,11 +198,11 @@ These modifiers create a renderer designed to load its prompt or script from an 
 
 Here's a quick overview of the primary renderers you'll use:
 *   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects.
-*   [**`create.Script`**](#script): **For data-layer orchestration.** Executes a Cascada script.
 *   [**`create.Template`**](#template): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
+*   [**`create.Script`**](#script): **For data-layer orchestration.** Executes a Cascada script.
+*   [**`create.Function`**](#function): **For wrapping standard JS logic.** Creates a callable function from an `execute` method, which can be exposed as a tool to an LLM.
 *   [**`create.TextGenerator` / `create.TextStreamer`**](#textgenerator): **For LLM-based text generation.** Generates or streams unstructured text.
 *   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects.
-*   [**`create.Tool`**](#tool): **For exposing functions to an LLM.** Wraps any other renderer or a standard JavaScript function into a Vercel AI SDK-compatible tool.
 
 ### Callable Interface:
 
@@ -339,6 +339,16 @@ You can call any `Template` with a new template and context.
     ```
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
+#### Using as a Tool (`.asTool`)
+You can expose a `Template` renderer as a tool for an LLM to call. This is useful when you want the LLM to be able to generate a formatted string based on structured input.
+```typescript
+const reportTool = create.Template.asTool({
+  description: 'Generates a formatted user summary string.',
+  inputSchema: z.object({ name: z.string(), activity: z.number() }),
+  template: 'User Report: {{ name }} has an activity score of {{ activity }}.'
+});
+```
+
 ### Script
 
 **What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. An optional Zod `schema` can be provided to validate the script's output.
@@ -399,11 +409,21 @@ You can execute a new script dynamically by passing it as an argument.
     const otherAgentResult = await agentRunner('cleanup_agent.csc'); // Loads and runs a different script
     ```
 
-#### Key Properties
-
-*   **`script`**: A string containing the Cascada script that defines the orchestration logic.
-*   **`context`**: An object providing data and functions (both sync and async) to the script.
-*   **`schema`** (Optional): A Zod schema to validate the final output object.
+#### Using as a Tool (`.asTool`)
+Exposing a `Script` as a tool allows an LLM to trigger complex, multi-step data orchestration tasks.
+```typescript
+const userOnboardingTool = create.Script.asTool({
+    description: 'Onboards a new user by creating a profile and sending a welcome email.',
+    inputSchema: z.object({ name: z.string(), email: z.string() }),
+    context: { /* db, emailService, ... */ },
+    script: `
+      :data
+      var profile = db.createUser({ name: name, email: email })
+      var emailStatus = emailService.sendWelcome(email)
+      @data = { userId: profile.id, emailSent: emailStatus.success }
+    `
+});
+```
 
 **Use it for**: Building type-safe data layers, orchestrating multi-step agentic workflows, and fetching and aggregating data from multiple APIs/databases. For a deep dive into the scripting language, see the **[Cascada Script Documentation](script.md)**.
 
@@ -436,6 +456,17 @@ You can call a `TextGenerator` with a new `prompt`, `messages` array, `context` 
 const { text, toolCalls } = await templateGenerator({ topic: 'The Sun' });
 ```
 
+#### Using as a Tool (`.asTool`)
+Wrap a `TextGenerator` to create a tool that generates text based on structured input.
+```typescript
+const summarizeTool = create.TextGenerator.withTemplate.asTool({
+  model: openai('gpt-4o-mini'),
+  description: 'Summarizes a given piece of text into a single sentence.',
+  inputSchema: z.object({ text: z.string() }),
+  prompt: 'Provide a concise, one-sentence summary of: {{ text }}',
+});
+```
+
 #### Return Value
 When you `await` a `TextGenerator` call, it returns a promise that resolves to a rich result object, identical to the one from the Vercel AI SDK's [`generateText`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-text#generatetext) function. Key properties include:
 *   **`text`**: The generated text as a string.
@@ -452,6 +483,8 @@ When you `await` a `TextGenerator` call, it returns a promise that resolves to a
 ### TextStreamer
 
 **What it does**: Streams LLM text in real time using Vercel’s [`streamText` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-text). Like `TextGenerator`, it can operate on a single `prompt` or a full conversational `messages` history. This is ideal for interactive applications like chatbots where users expect immediate feedback.
+
+> **Note**: Streaming renderers like `TextStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
 
 #### How to Create It
 `TextStreamer` is created with the same flexible modifiers as `TextGenerator`, allowing you to provide the prompt as static text or generate it dynamically from a template or script.
@@ -542,9 +575,7 @@ You can provide callbacks in the renderer's configuration to handle events as th
     ```
 
 **Output Strategies:**
-
 The `output` property in the configuration determines how the generated data is structured:
-
 - **`object`** (default): Generates a single object matching the provided `schema`.
 - **`array`**: Generates an array of objects, each matching the `schema`.
 - **`enum`**: Generates a value from a provided list of enums. Requires an `enum` array in the configuration.
@@ -561,10 +592,24 @@ Additionally, you can provide `schemaName` and `schemaDescription` for better mo
     ```typescript
     const { object: profile2 } = await profileGenerator('Create a profile for a {{ role }} named {{ name }}', { role: 'knight', name: 'Galahad' });
     ```
+
+#### Using as a Tool (`.asTool`)
+Create a tool that returns structured, validated JSON.
+```typescript
+const extractorTool = create.ObjectGenerator.withTemplate.asTool({
+  model: openai('gpt-4o'),
+  description: 'Extracts user name and email from text.',
+  inputSchema: z.object({ text: z.string() }),
+  schema: z.object({ name: z.string(), email: z.string().email() }),
+  prompt: 'Extract the name and email from this text: {{ text }}',
+});
+```
 **Use it for**: Data extraction, structured responses, or enum-based classification. [See Vercel docs on object generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) for return details.
 
 ### ObjectStreamer
 **What it does**: Streams structured data incrementally via Vercel’s [`streamObject` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-object). It follows the same creation and calling patterns as `TextGenerator`.
+
+> **Note**: Streaming renderers like `ObjectStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
 
 #### How to Create It
 *   **Default (Plain Text)**: The `prompt` is a static string with no processing.
@@ -590,9 +635,7 @@ Additionally, you can provide `schemaName` and `schemaDescription` for better mo
     ```
 
 **Output Strategies:**
-
 The `output` property in the configuration determines the structure of the streamed data:
-
 - **`object`** (default): Streams a single object. Use `partialObjectStream` to access incremental updates of the object.
 - **`array`**: Streams an array of objects. Use `elementStream` to access each element as it’s generated.
 - **`no-schema`**: Streams text data. Use `textStream` to access the streamed text.
@@ -611,15 +654,27 @@ You can also specify `schemaName` and `schemaDescription` for additional guidanc
     const { elementStream: stream2 } = await characterStreamer('Generate 2 characters from {{ genre }}', { genre: 'sci-fi' });
     ```
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
-### Tool
-**What it does**: Wraps another renderer or a standard JavaScript function into a standardized, **Vercel AI SDK-compatible tool**. The resulting object can be provided to an LLM to be called based on its own reasoning.
 
-You can define the tool's logic in two ways:
+### Function
+**What it does**: Wraps a standard JavaScript function into a callable renderer. This is the primary way to integrate custom, non-LLM logic into your workflows and expose it as a **Vercel AI SDK-compatible tool**.
 
-1.  **Using an `execute` Function**: For direct, straightforward logic, provide a standard JavaScript function. This is ideal for simple API calls or data transformations.
+You can define the function's logic in two ways:
+
+1.  **As a Standard Callable Function**: The default `create.Function` returns a simple async function. This is useful for encapsulating logic to be used within the `context` of other renderers.
 
     ```typescript
-    const getTimeTool = create.Tool({
+    const toUpperCase = create.Function({
+        inputSchema: z.object({ text: z.string() }),
+        execute: async ({ text }) => text.toUpperCase()
+    });
+    // Can now be used in another renderer's context:
+    // context: { toUpperCase }
+    ```
+
+2.  **As a Tool (`.asTool`)**: The `.asTool` modifier formats the function into a standardized tool object that can be provided to an LLM.
+
+    ```typescript
+    const getTimeTool = create.Function.asTool({
         description: 'Gets the current time for a specific timezone.',
         inputSchema: z.object({ timezone: z.string() }),
         execute: async ({ timezone }) => ({
@@ -628,60 +683,52 @@ You can define the tool's logic in two ways:
     });
     ```
 
-2.  **Wrapping a Renderer**: For complex, multi-step logic that might involve LLM calls or data orchestration, you can wrap any other Cascador-AI renderer. The tool's `inputSchema` are passed as `context` to the wrapped renderer.
-
-    ```typescript
-    // Define a renderer to perform a specific task
-    const summarizer = create.TextGenerator.withTemplate({
-      model: openai('gpt-4o-mini'),
-      prompt: 'Provide a concise, one-sentence summary of: {{ text }}',
-    });
-    // Wrap it in a Tool
-    const summarizeTool = create.Tool({
-      description: 'Summarizes a given piece of text into a single sentence.',
-      inputSchema: z.object({ text: z.string() }),
-    }, summarizer); // The summarizer renderer is now the tool's implementation
-    ```
+### Tools: Exposing Capabilities to the LLM
+Tools are functions you expose to an LLM, empowering it to interact with the outside world to fulfill a user's request. Cascador-AI provides two primary ways to create them.
 
 #### Providing the Tool to an LLM Renderer
-Once you have created a tool, you make it available to a language model by passing it to a `TextGenerator` or `TextStreamer` within the `tools` property. This property accepts an object where each key is the name you want the model to use for the tool, and the value is the tool object itself. This enables the model to reason about when to use the tool based on the user's prompt.
+Once you have created a tool, you make it available to a language model by passing it to a `TextGenerator` or `TextStreamer` within the `tools` property. This property accepts an object where each key is the name you want the model to use for the tool, and the value is the tool object itself.
 
 ```typescript
+// The summarizer is a renderer wrapped with .asTool
+const summarizerTool = create.TextGenerator.withTemplate.asTool({ /* ... */ });
+// The getTimeTool is a JS function wrapped with .asTool
+const getTimeTool = create.Function.asTool({ /* ... */ });
+
 const agent = create.TextGenerator({
-  tools: { summarize: summarizeTool, getTime: getTimeTool },
-  ...
+  model: openai('gpt-4o'),
+  tools: {
+    summarize: summarizerTool,
+    getTime: getTimeTool
+  },
+  // ...
 });
 ```
 
 #### Accessing Tool Call Context
-When you wrap a renderer that uses a template or script, Cascador-AI automatically injects a `_toolCallOptions` object into the renderer's `context`. This gives your tool's internal logic access to important metadata about the call.
+When you wrap a renderer that uses a template or script (`TextGenerator.asTool`, `Script.asTool`, etc.), Cascador-AI automatically injects a `_toolCallOptions` object into the renderer's `context`. This gives your tool's internal logic access to important metadata about the call.
 
 The `_toolCallOptions` object contains:
 - **`toolCallId`**: `string` - The unique ID for this specific tool call. Useful for logging or streaming updates.
 - **`messages`**: `ModelMessage[]` - The message history sent to the LLM that triggered this tool call. Does not include the system prompt or the assistant's response.
 - **`abortSignal`**: `AbortSignal` (optional) - A signal to gracefully cancel the operation if the overall request is aborted.
 
-#### Example
 You can use this context within your tool's template or script to add logging or change its behavior.
-
 ```typescript
-const loggingSummarizer = create.TextGenerator.withTemplate({
+const loggingSummarizer = create.TextGenerator.withTemplate.asTool({
   model: openai('gpt-4o-mini'),
+  description: 'Summarizes text and logs the call ID.',
+  inputSchema: z.object({ text: z.string() }),
   prompt: `
     SYSTEM LOG: Starting summarization for tool call ID {{ _toolCallOptions.toolCallId }}.
     TASK: Provide a concise, one-sentence summary of: {{ text }}
   `,
 });
 
-const smarterTool = create.Tool({
-  description: 'Summarizes text and logs the call ID.',
-  inputSchema: z.object({ text: z.string() }),
-}, loggingSummarizer);
-
 // To use the tool, provide it to an LLM renderer:
 const agent = create.TextGenerator({
   model: openai('gpt-4o'),
-  tools: { summarize: smarterTool },
+  tools: { summarize: loggingSummarizer },
   prompt: "Please summarize this for me: 'Cascador-AI is an AI orchestration library...'",
 });
 
@@ -823,15 +870,16 @@ const renderer = create.TextGenerator({
 
 ### tools
 **Purpose**: Enables the model to call external functions *based on its own reasoning*.
-**Details**: Supported by `TextGenerator` and `TextStreamer`. This is for model-driven tool use. For better organization, you can populate this with tools created by `create.Tool`.
+**Details**: Supported by `TextGenerator` and `TextStreamer`. This is for model-driven tool use. For better organization, you can populate this with tools created by `create.Function.asTool` or by wrapping other renderers with `.asTool`.
 **Example**:
 ```typescript
 import { openai } from '@ai-sdk/openai';
 import { create } from 'cascador-ai';
 import { z } from 'zod';
 
-// Define a tool using the create.Tool factory
-const getWeatherTool = create.Tool({
+// Define a tool using create.Function.asTool
+const getWeatherTool = create.Function.asTool({
+  description: 'Gets the weather for a city.',
   inputSchema: z.object({ city: z.string() }),
   execute: async ({ city }) => ({ temperature: Math.floor(Math.random() * 30) })
 });
@@ -1058,7 +1106,7 @@ These are the fundamental JS/TS functions you provide to *both* scripts and temp
 -   **You want to expose utilities:** Provide helper functions (e.g., `formatDate`, `calculateTotal`) to your scripts and templates.
 
 ### `Tools`: For Developer-Defined Functionality
-`create.Tool` provides a clean, type-safe way to expose custom functionality to your AI workflows.
+Using `.asTool` (on `create.Function` or another renderer) provides a clean, type-safe way to expose custom functionality to an LLM.
 
 **Use When:**
 -   **The workflow is unpredictable**: You can't know ahead of time what the user will ask. The LLM must infer intent and select the appropriate tool (e.g., `getWeather` vs. `sendEmail`).
