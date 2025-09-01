@@ -302,14 +302,22 @@ export function validateLLMRendererCall(
 	...args: [string | undefined | ModelMessage[] | types.Context, (ModelMessage[] | types.Context)?, types.Context?]
 ): void {
 	const callArgs = extractCallArguments(...args);
+	const isToolCall = callArgs.context?._toolCallOptions !== undefined;
+
 	validateMessagesArray(callArgs.messages);
 
 	if (promptType.includes('template') || promptType.includes('script')) {
-		if (callArgs.context) {
-			validateInput(config, callArgs.context);
-		} else if ('inputSchema' in config && config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
-			throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
-		}
+
+		if (!isToolCall) {
+			if (callArgs.context) {
+				// Skip input validation if this is a tool call (indicated by presence of _toolCallOptions)
+
+				validateInput(config, callArgs.context);
+
+			} else if ('inputSchema' in config && config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+				throw new ConfigError("A context object is required because an 'inputSchema' is defined in the configuration.");
+			}
+		}// else - the tool call will have its own input schema validation
 	} else { // text or text-name
 		const prompt = (config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).prompt;
 		const finalPromptString = callArgs.prompt ?? (typeof prompt === 'string' ? prompt : undefined);
@@ -330,29 +338,37 @@ export function validateLLMRendererCall(
 export function validateTemplateCall(config: Partial<configs.TemplateConfig<any>>, ...args: [string | undefined | types.Context, types.Context?]): void {
 	const [templateOrContext, maybeContext] = args;
 	const context = (typeof templateOrContext === 'string') ? maybeContext : templateOrContext;
+	const isToolCall = context?._toolCallOptions !== undefined;
 
 	if (!('template' in config) && typeof templateOrContext !== 'string') {
 		throw new ConfigError("A template string must be provided either in the config or as the first argument.");
 	}
-	if (context) {
-		validateInput(config, context);
-	} else if (config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
-		throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
-	}
+
+	if (!isToolCall) {
+		if (context) {
+			validateInput(config, context);
+		} else if (config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+			throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
+		}
+	}// else - the tool call will have its own input schema validation
 }
 
 export function validateScriptOrFunctionCall(config: Record<string, any>, type: 'Script' | 'Function', ...args: [string | undefined | types.Context, types.Context?]): void {
 	const [arg1, arg2] = args;
 	const context = (typeof arg1 === 'string') ? arg2 : arg1;
+	const isToolCall = context?._toolCallOptions !== undefined;
 
 	if (type === 'Script' && !('script' in config) && typeof arg1 !== 'string') {
 		throw new ConfigError("A script string must be provided either in the config or as the first argument.");
 	}
-	if (context) {
-		validateInput(config, context);
-	} else if (config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
-		throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
-	}
+
+	if (!isToolCall) {
+		if (context) {
+			validateInput(config, context);
+		} else if (config.inputSchema && Object.keys((config.inputSchema as z.ZodObject<any>).shape as Record<string, any>).length > 0) {
+			throw new ConfigError("A context object is required because an 'inputSchema' with properties is defined in the configuration.");
+		}
+	}// else - the tool call will have its own input schema validation
 }
 
 // --- Input/Output Schema Validators ---
