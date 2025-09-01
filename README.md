@@ -384,7 +384,6 @@ const dealFinder = create.Script({
   `,
 });
 ```
-> **Note:** Cascada scripts require each command (e.g., `:data`, variable declarations, loops) to be on its own separate line.
 
 *   **Loading from a resource with `.loadsScript`**: Use this modifier to load the script from an external source. This requires a `loader`, and the `script` property now specifies the *name* of the script to load.
     ```typescript
@@ -445,7 +444,13 @@ const userOnboardingTool = create.Script.asTool({
     ```
 *   **With a Script (`.withScript`)**: The `prompt` property contains a Cascada script. The script can return a `string` (which becomes the prompt) or a `ModelMessage[]` array (for a multi-message prompt).
     ```typescript
-    const scriptGenerator = create.TextGenerator.withScript({ model: openai('gpt-4o'), prompt: ':data @data = "Summarize the key points from: " + article' });
+    const scriptGenerator = create.TextGenerator.withScript({
+      model: openai('gpt-4o'),
+      prompt: `
+        :data
+        @data = "Summarize the key points from: " + article
+      `
+    });
     ```
 *   **Loading from a resource (`.loads...`)**: Load the `prompt` from a file or other resource using a loader. The input can be treated as plain text (`.loadsText`), a template (`.loadsTemplate`), or a script (`.loadsScript`).
     ```typescript
@@ -505,7 +510,13 @@ When you `await` a `TextGenerator` call, it returns a promise that resolves to a
     ```
 *   **With a Script (`.withScript`)**: The script (provided in the `prompt` property) can return a prompt string or a full `ModelMessage[]` array.
     ```typescript
-    const scriptStreamer = create.TextStreamer.withScript({ model: openai('gpt-4o'), prompt: ':data @data = "Write a story based on this premise: " + premise' });
+    const scriptStreamer = create.TextStreamer.withScript({
+      model: openai('gpt-4o'),
+      prompt: `
+        :data
+        @data = "Write a story based on this premise: " + premise
+      `
+    });
     ```
 *   **Loading from a resource (`.loads...`)**: Load the `prompt` from a file. It can be treated as plain text (`.loadsText`), a template (`.loadsTemplate`), or a script (`.loadsScript`).
     ```typescript
@@ -570,7 +581,14 @@ You can provide callbacks in the renderer's configuration to handle events as th
     ```
 *   **With a Script (`.withScript`)**: The `prompt` property contains a Cascada script whose output generates the prompt.
     ```typescript
-    const scriptObjGenerator = create.ObjectGenerator.withScript({ model: openai('gpt-4o'), schema: z.object({ ... }), prompt: ':data @data = "Extract key entities from: " + text' });
+    const scriptObjGenerator = create.ObjectGenerator.withScript({
+      model: openai('gpt-4o'),
+      schema: z.object({ ... }),
+      prompt: `
+        :data
+        @data = "Extract key entities from: " + text
+      `
+    });
     ```
 *   **Loading from a resource (`.loads...`)**: Load the `prompt` from a file. It can be treated as plain text (`.loadsText`), a template (`.loadsTemplate`), or a script (`.loadsScript`).
     ```typescript
@@ -630,7 +648,14 @@ const extractorTool = create.ObjectGenerator.withTemplate.asTool({
     ```
 *   **With a Script (`.withScript`)**: The `prompt` property contains a Cascada script whose output generates the prompt.
     ```typescript
-    const scriptObjStreamer = create.ObjectStreamer.withScript({ model: openai('gpt-4o'), schema: z.object({ ... }), prompt: ':data @data = "Generate characters based on: " + theme' });
+    const scriptObjStreamer = create.ObjectStreamer.withScript({
+      model: openai('gpt-4o'),
+      schema: z.object({ ... }),
+      prompt: `
+        :data
+        @data = "Generate characters based on: " + theme
+      `
+    });
     ```
 *   **Loading from a resource (`.loads...`)**: Load the `prompt` from a file. It can be treated as plain text (`.loadsText`), a template (`.loadsTemplate`), or a script (`.loadsScript`).
     ```typescript
