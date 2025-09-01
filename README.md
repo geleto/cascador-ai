@@ -61,6 +61,7 @@ Cascador-AI is a new project and is evolving quickly! This is exciting, but it a
 - [Choosing Your Orchestration Strategy: Scripts, Templates, Context Methods, and Tools](#choosing-your-orchestration-strategy-scripts-templates-context-methods-and-tools)
 - [Embedding Integration](#embedding-integration)
 - [RAG Integration](#rag-integration)
+- [Input and Output Validation with Zod](#input-and-output-validation-with-zod)
 - [Type Checking](#type-checking)
 - [Roadmap](#roadmap)
 
@@ -301,7 +302,7 @@ Let's explore each renderer in detail.
 
 ### Template
 
-**What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. Ideal for presentation-layer tasks like generating HTML or Markdown.
+**What it does**: Processes a Cascada template to produce a final string output, with no LLMs involved. Ideal for presentation-layer tasks like generating HTML or Markdown. An optional `inputSchema` can be used to validate the `context` data.
 
 #### How to Create It
 *   **Providing the Template Directly**: This is the default behavior. The `template` property contains the template string.
@@ -352,7 +353,7 @@ const reportTool = create.Template.asTool({
 
 ### Script
 
-**What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. An optional Zod `schema` can be provided to validate the script's output.
+**What it does**: Executes a Cascada script to produce a structured data object (JSON). It is the ideal tool for orchestrating data sources, running multi-step logic, and building the data layer of your application. An optional Zod `schema` can be provided to validate the script's output, and an `inputSchema` can validate the `context`.
 
 #### How to Create It
 *   **Providing the Script Directly**: This is the default behavior. The `script` property contains the script string.
@@ -361,10 +362,17 @@ import { create } from 'cascador-ai';
 import { z } from 'zod';
 
 const dealFinder = create.Script({
+  // Validate the final output object
   schema: z.record(
     z.string(), // e.g., "sku-a123"
     z.array(z.object({ vendor: z.string(), price: z.number() }))
   ),
+  // Validate the input context
+  inputSchema: z.object({
+    productIds: z.array(z.string()),
+    vendors: z.array(z.string()),
+    getPrice: z.function()
+  }),
   context: {
     productIds: ['sku-a123', 'sku-b456'],
     vendors: ['VendorX', 'VendorY'],
@@ -397,7 +405,7 @@ const dealFinder = create.Script({
 You can execute a new script dynamically by passing it as an argument.
 *   **With pre-configured input**:
     ```typescript
-    const result = await runner(); // { status: "complete" }
+    const result = await dealFinder();
     ```
 *   **With a one-off script string**:
     ```typescript
@@ -684,7 +692,7 @@ You can also specify `schemaName` and `schemaDescription` for additional guidanc
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
 ### Function
-**What it does**: Wraps a standard JavaScript function into a callable renderer. This is the primary way to integrate custom, non-LLM logic into your workflows and expose it as a **Vercel AI SDK-compatible tool**.
+**What it does**: Wraps a standard JavaScript function into a callable renderer, allowing for input and output validation. This is the primary way to integrate custom, non-LLM logic into your workflows and expose it as a **Vercel AI SDK-compatible tool**.
 
 You can define the function's logic in two ways:
 
@@ -693,6 +701,7 @@ You can define the function's logic in two ways:
     ```typescript
     const toUpperCase = create.Function({
         inputSchema: z.object({ text: z.string() }),
+        schema: z.string(), // Validate the output is a string
         execute: async ({ text }) => text.toUpperCase()
     });
     // Can now be used in another renderer's context:
@@ -719,7 +728,7 @@ You can convert a renderer into a tool by appending the `.asTool` modifier to it
 
 When using `.asTool`, you must provide two additional properties in the configuration:
 -   **`description`**: A string explaining what the tool does. The LLM uses this to decide when to call the tool.
--   **`inputSchema`**: A Zod schema defining the arguments the tool accepts.
+-   **`inputSchema`**: A Zod schema defining the arguments the tool accepts. This property is mandatory for tools.
 
 **Key Limitation:**
 Streaming renderers (`TextStreamer` and `ObjectStreamer`) **cannot** be used as tools. The Vercel AI SDK's tool-use protocol requires a single, resolved response (a `Promise`), not a real-time stream.
@@ -1303,6 +1312,73 @@ class VercelEmbeddingAdapter extends BaseEmbedding {
 const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
   embedModel: new VercelEmbeddingAdapter()
 });
+```
+
+## Input and Output Validation with Zod
+
+Cascador-AI integrates with Zod to provide automatic, runtime validation for both the data you provide to renderers and the data they produce, ensuring type safety throughout your workflows.
+
+### Ensuring Type-Safe Inputs with `inputSchema`
+
+The `inputSchema` property validates the `context` data provided to a renderer before execution, catching errors early and ensuring your logic receives the correct data structure.
+
+-   **Applies to**: Any renderer that uses a `context` object (`Template`, `Script`, `Function`, and LLM renderers created with `.withTemplate` or `.withScript`).
+-   **Usage**: Define the expected input data for a renderer using a Zod schema.
+-   **Requirement**: This property is **mandatory** when creating a tool with `.asTool`, as it defines the tool's arguments for the LLM.
+
+```typescript
+import { z } from 'zod';
+
+const userProcessor = create.Script({
+  inputSchema: z.object({
+    userId: z.string(),
+    db: z.object({
+      getUser: z.function(),
+    }),
+  }),
+  script: `
+    :data
+    @data = db.getUser(userId)
+  `
+});
+
+// This will succeed
+await userProcessor({ context: { userId: '123', db: { getUser: (id) => ({ id }) } } });
+
+// This will throw a validation error at runtime
+await userProcessor({ context: { user_id: '123' } });
+```
+
+### Ensuring Type-Safe Outputs with `schema`
+
+The `schema` property validates the final output of a renderer, guaranteeing that the produced data conforms to a specific structure. This is crucial for building reliable, predictable data pipelines.
+
+-   **Applies to**: Renderers that produce structured JSON data (`ObjectGenerator`, `ObjectStreamer`, `Script`, `Function`).
+-   **Usage**: Provide a Zod schema in the configuration to validate the renderer's return value.
+-   **Benefit**: This is the core of reliable structured data generation, ensuring the final object is always valid and strongly-typed.
+
+```typescript
+import { z } from 'zod';
+
+// For ObjectGenerator, this schema guides the LLM and validates the output.
+const userExtractor = create.ObjectGenerator({
+  model: openai('gpt-4o'),
+  schema: z.object({ name: z.string(), email: z.string().email() }),
+  prompt: 'Extract user info from text...'
+});
+
+// For Script and Function, it validates the final return value of your logic.
+const dataAggregator = create.Script({
+  schema: z.object({ status: z.string(), count: z.number() }),
+  script: `
+    :data
+    @data.status = "completed"
+    @data.count = 100
+  `
+});
+
+const { object } = await userExtractor(); // object is guaranteed to match the schema
+const result = await dataAggregator(); // result is guaranteed to match the schema
 ```
 
 ## Type Checking
