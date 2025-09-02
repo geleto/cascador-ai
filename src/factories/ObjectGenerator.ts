@@ -14,7 +14,7 @@ export type LLMGeneratorConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > = (
 	| configs.GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT>
 	| configs.GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT>
@@ -35,7 +35,7 @@ type GenerateObjectConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
 	ENUM extends string,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > =
 	configs.GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT> |
 	configs.GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT> |
@@ -44,11 +44,11 @@ type GenerateObjectConfig<
 
 // Parameterize return types by concrete promptType literal used by implementation
 type GenerateObjectReturn<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	PType extends types.RequiredPromptType,
 	OUTPUT, //@out
 	ENUM extends string,
-	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
+	PROMPT extends string | ModelMessage[] = string
 > =
 	TConfig extends { output: 'array', schema: types.SchemaType<OUTPUT> }
 	? LLMCallSignature<TConfig, Promise<results.GenerateObjectArrayResult<utils.InferParameters<TConfig['schema']>>>, PType, PROMPT>
@@ -66,8 +66,8 @@ type GenerateObjectReturn<
 
 // With parent
 type GenerateObjectWithParentReturn<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
-	TParentConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
+	TParentConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	PType extends types.RequiredPromptType,
 	OUTPUT, //@out
 	ENUM extends string,
@@ -77,7 +77,7 @@ type GenerateObjectWithParentReturn<
 	TFinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	GenerateObjectReturn<
-		TFinalConfig & configs.OptionalPromptConfig<PROMPT>,
+		TFinalConfig & configs.BaseConfig, // & configs.OptionalPromptConfig,
 		PType,
 		OUTPUT extends never ? PARENT_OUTPUT : OUTPUT, //@out
 		ENUM extends never ? PARENT_ENUM : ENUM,
@@ -122,13 +122,14 @@ type GetObjectGeneratordShape<TFinalConfig extends { output?: string }> =
 	configs.GenerateObjectObjectConfig<any, any>;
 
 export type ValidateObjectConfig<
-	TConfig extends Partial<configs.GenerateObjectBaseConfig<any, string | ModelMessage[]> & { output?: string | undefined }>,
+	TConfig extends Partial<configs.GenerateObjectBaseConfig<any, PROMPT> & { output?: string | undefined }>,
 	TFinalConfig extends AllSpecializedProperties & Record<string, any>,
 	TShapeExtras = Record<string, never>, // extends { output?: string | undefined, inputSchema?: types.SchemaType<any>, loader?: any } = Record<string, never>,
+	PROMPT extends string | ModelMessage[] = string,
 	TShape = GetObjectGeneratordShape<TFinalConfig> & TShapeExtras,
 	TRequiredShape =
 	& (TShapeExtras extends { inputSchema: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { inputSchema: any } : GetObjectGeneratorRequiredShape<TFinalConfig>)
-	& (TShapeExtras extends { loader: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { loader: any } : GetObjectGeneratorRequiredShape<TFinalConfig>)
+	& (TShapeExtras extends { loader: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { loader: any } : GetObjectGeneratorRequiredShape<TFinalConfig>),
 > =
 	// Reusable for object streamer
 	// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
@@ -147,10 +148,11 @@ export type ValidateObjectConfig<
 	);
 
 export type ValidateObjectParentConfig<
-	TParentConfig extends Partial<GenerateObjectConfig<any, any, any, string | ModelMessage[]> & { output?: string | undefined }>,
+	TParentConfig extends Partial<GenerateObjectConfig<any, any, any, PROMPT> & { output?: string | undefined }>,
 	TFinalConfig extends AllSpecializedProperties & Record<string, any>,
 	TShapeExtras extends { output?: string | undefined, inputSchema?: types.SchemaType<any>, loader?: any } = Record<string, never>,
-	TShape = GetObjectGeneratordShape<TFinalConfig> & TShapeExtras
+	PROMPT extends string | ModelMessage[] = string,
+	TShape = GetObjectGeneratordShape<TFinalConfig> & TShapeExtras,
 > =
 	// Check for excess properties in the parent
 	keyof Omit<TParentConfig, keyof TShape> extends never
@@ -166,7 +168,8 @@ function withText<
 	ENUM extends string,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[],
 >(
-	config: TConfig & ValidateObjectConfig<TConfig, TConfig>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		Record<string, never>, PROMPT>,
 ): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM, PROMPT>;
 
 // Overload 2: With parent parameter
@@ -181,8 +184,10 @@ function withText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig>>,
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		Record<string, never>, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		Record<string, never>, PROMPT>>,
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT>
@@ -226,9 +231,9 @@ function withTextAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.ToolConfig<Record<string, never>, any>>,
+		configs.ToolConfig<Record<string, never>, any>, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.ToolConfig<Record<string, never>, any>>>
+		configs.ToolConfig<Record<string, never>, any>, PROMPT>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.RendererTool<Record<string, never>, OUTPUT>;
@@ -276,9 +281,9 @@ function loadsText<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.LoaderConfig>,
+		configs.LoaderConfig, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.LoaderConfig>>
+		configs.LoaderConfig, PROMPT>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT>;
 
@@ -325,9 +330,9 @@ function loadsTextAsTool<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>>,
+		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>>>
+		configs.LoaderConfig & configs.ToolConfig<Record<string, never>, any>, PROMPT>>
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.RendererTool<Record<string, never>, OUTPUT>;
 
@@ -349,7 +354,6 @@ function loadsTextAsTool<
 		parent as ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
 	) as unknown as GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM> & results.RendererTool<Record<string, never>, OUTPUT>;
 }
-
 
 function withTemplate<
 	const TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig,
@@ -538,7 +542,7 @@ function loadsTemplateAsTool<
 	return _createObjectGeneratorAsTool(
 		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
 		'async-template-name',
-		parent
+		parent as ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>>
 	) as unknown as GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
 }
 
@@ -736,14 +740,14 @@ function loadsScriptAsTool<
 
 //common function for the specialized from/loads Template/Script/Text
 function _createObjectGenerator<
-	TConfig extends configs.GenerateObjectBaseConfig<INPUT> & configs.OptionalPromptConfig,
+	TConfig extends configs.GenerateObjectBaseConfig<INPUT>,
 	INPUT extends Record<string, any>,
 	OUTPUT,
 	ENUM extends string,
 >(
 	config: TConfig,
 	promptType: types.PromptType,
-	parent?: ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>,
+	parent?: ConfigProvider<configs.BaseConfig>,
 	isTool = false,
 ): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> {
 

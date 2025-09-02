@@ -13,7 +13,7 @@ import { validateObjectLLMConfig } from "../validate";
 export type LLMStreamerConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > = (
 	| configs.StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT>
 	| configs.StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT>
@@ -31,7 +31,7 @@ export type ObjectStreamerInstance<
 type StreamObjectConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > =
 	configs.StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT> |
 	configs.StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT> |
@@ -39,10 +39,10 @@ type StreamObjectConfig<
 
 // Parameterize return types by concrete promptType literal used by implementation
 type StreamObjectReturn<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	PType extends types.RequiredPromptType,
 	OUTPUT, //@out
-	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
+	PROMPT extends string | ModelMessage[] = string
 > =
 	TConfig extends { output: 'array', schema: types.SchemaType<OUTPUT> }
 	? LLMCallSignature<TConfig, Promise<results.StreamObjectArrayResult<utils.InferParameters<TConfig['schema']>>>, PType, PROMPT>
@@ -56,8 +56,8 @@ type StreamObjectReturn<
 
 // With parent
 type StreamObjectWithParentReturn<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
-	TParentConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
+	TParentConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	PType extends types.RequiredPromptType,
 	OUTPUT, //@out
 	PARENT_OUTPUT, //@out
@@ -65,7 +65,7 @@ type StreamObjectWithParentReturn<
 	TFinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	StreamObjectReturn<
-		TFinalConfig & configs.OptionalPromptConfig<PROMPT>,
+		TFinalConfig & configs.BaseConfig, // & configs.OptionalPromptConfig,
 		PType,
 		OUTPUT extends never ? PARENT_OUTPUT : OUTPUT, //@out
 		PROMPT
@@ -106,13 +106,14 @@ type GetObjectStreamerdShape<TFinalConfig extends { output?: string }> =
 	configs.StreamObjectObjectConfig<any, any>;
 
 export type ValidateObjectConfig<
-	TConfig extends Partial<configs.StreamObjectBaseConfig<any, string | ModelMessage[]> & { output?: string | undefined }>,
+	TConfig extends Partial<configs.StreamObjectBaseConfig<any, PROMPT> & { output?: string | undefined }>,
 	TFinalConfig extends AllSpecializedProperties & Record<string, any>,
 	TShapeExtras = Record<string, never>, // extends { output?: string | undefined, inputSchema?: types.SchemaType<any>, loader?: any } = Record<string, never>,
+	PROMPT extends string | ModelMessage[] = string,
 	TShape = GetObjectStreamerdShape<TFinalConfig> & TShapeExtras,
 	TRequiredShape =
 	& (TShapeExtras extends { inputSchema: any } ? GetObjectStreamerRequiredShape<TFinalConfig> & { inputSchema: any } : GetObjectStreamerRequiredShape<TFinalConfig>)
-	& (TShapeExtras extends { loader: any } ? GetObjectStreamerRequiredShape<TFinalConfig> & { loader: any } : GetObjectStreamerRequiredShape<TFinalConfig>)
+	& (TShapeExtras extends { loader: any } ? GetObjectStreamerRequiredShape<TFinalConfig> & { loader: any } : GetObjectStreamerRequiredShape<TFinalConfig>),
 > =
 	// Reusable for object streamer
 	// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.
@@ -131,10 +132,11 @@ export type ValidateObjectConfig<
 	);
 
 export type ValidateObjectParentConfig<
-	TParentConfig extends Partial<StreamObjectConfig<any, any, string | ModelMessage[]> & { output?: string | undefined }>,
+	TParentConfig extends Partial<StreamObjectConfig<any, any, PROMPT> & { output?: string | undefined }>,
 	TFinalConfig extends AllSpecializedProperties & Record<string, any>,
 	TShapeExtras extends { output?: string | undefined, inputSchema?: types.SchemaType<any>, loader?: any } = Record<string, never>,
-	TShape = GetObjectStreamerdShape<TFinalConfig> & TShapeExtras
+	PROMPT extends string | ModelMessage[] = string,
+	TShape = GetObjectStreamerdShape<TFinalConfig> & TShapeExtras,
 > =
 	// Check for excess properties in the parent
 	keyof Omit<TParentConfig, keyof TShape> extends never
@@ -149,7 +151,8 @@ function withText<
 	OUTPUT, //@out
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[],
 >(
-	config: TConfig & ValidateObjectConfig<TConfig, TConfig>,
+	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
+		Record<string, never>, PROMPT>,
 ): StreamObjectReturn<TConfig, 'text', OUTPUT, PROMPT>;
 
 // Overload 2: With parent parameter
@@ -162,8 +165,10 @@ function withText<
 
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
-	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig>>,
+	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
+		Record<string, never>, PROMPT>,
+	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+		Record<string, never>, PROMPT>>,
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, PARENT_OUTPUT, PROMPT>
@@ -205,9 +210,9 @@ function loadsText<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>//@todo we need just the correct output type
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
-		configs.LoaderConfig>,
+		configs.LoaderConfig, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
-		configs.LoaderConfig>>
+		configs.LoaderConfig, PROMPT>>
 
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, PARENT_OUTPUT, PROMPT>;
 
@@ -223,7 +228,7 @@ function loadsText<
 	parent?: ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'text-name', OUTPUT> {
 	return _createObjectStreamer(
-		config,
+		config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig,
 		'text-name',
 		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
 	) as unknown as StreamObjectReturn<TConfig, 'text-name', OUTPUT>;

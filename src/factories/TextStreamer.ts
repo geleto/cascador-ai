@@ -16,23 +16,23 @@ export type TextStreamerInstance<TOOLS extends ToolSet, INPUT extends Record<str
 // It correctly infers the TOOL and INPUT types from the final merged config.
 // Parameterize by the concrete promptType literal used by the implementation.
 type StreamTextReturn<
-	TConfig extends configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig,
+	TConfig extends configs.BaseConfig, //& configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
 	PType extends types.RequiredPromptType,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > = LLMCallSignature<TConfig, Promise<results.StreamTextResultAugmented<TOOLS>>, PType, PROMPT>;
 
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
 type StreamTextWithParentReturn<
-	TConfig extends Partial<configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig>,
-	TParentConfig extends Partial<configs.OptionalPromptConfig<PROMPT> & configs.BaseConfig>,
+	TConfig extends Partial<configs.BaseConfig>, //& configs.OptionalPromptConfig,
+	TParentConfig extends Partial<configs.BaseConfig>, //& configs.OptionalPromptConfig,
 	TOOLS extends ToolSet, //@todo - merge tools
 	PARENT_TOOLS extends ToolSet, //@todo - merge tools
 	PType extends types.RequiredPromptType,
 	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
 	TFinalConfig extends configs.BaseConfig = utils.Override<TParentConfig, TConfig>,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends types.AnyPromptSource = string
 > = LLMCallSignature<TFinalConfig, Promise<results.StreamTextResultAugmented<FINAL_TOOLS>>, PType, PROMPT>;
 
 // The full shape of a final, merged config object, including required properties.
@@ -74,7 +74,7 @@ type ValidateTextParentConfig<
 function withText<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never, PROMPT>,
 	TOOLS extends ToolSet = ToolSet,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<
 		TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT
@@ -87,7 +87,7 @@ function withText<
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT>>
@@ -103,7 +103,7 @@ function withText(
 function loadsText<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig,
 	TOOLS extends ToolSet,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig, PROMPT>
 ): StreamTextReturn<TConfig, TOOLS, 'text-name', PROMPT>;
@@ -114,7 +114,7 @@ function loadsText<
 	TOOLS extends ToolSet,
 	PARENT_TOOLS extends ToolSet,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>>

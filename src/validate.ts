@@ -319,10 +319,10 @@ export function validateLLMRendererCall(
 			}
 		}// else - the tool call will have its own input schema validation
 	} else { // text or text-name
-		const prompt = (config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).prompt;
+		const prompt = (config as Partial<configs.TemplatePromptConfig>).prompt;
 		const finalPromptString = callArgs.prompt ?? (typeof prompt === 'string' ? prompt : undefined);
 		const finalPromptMessages = Array.isArray(prompt) ? prompt : [];
-		const finalMessages = callArgs.messages ?? (Array.isArray((config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).messages) ? (config as Partial<configs.TemplatePromptConfig<ModelMessage[] | string>>).messages : undefined);
+		const finalMessages = callArgs.messages ?? (Array.isArray((config as Partial<configs.TemplatePromptConfig>).messages) ? (config as Partial<configs.TemplatePromptConfig>).messages : undefined);
 
 		const hasPromptString = typeof finalPromptString === 'string' && finalPromptString.length > 0;
 		const hasPromptMessages = finalPromptMessages.length > 0;

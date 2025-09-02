@@ -9,42 +9,42 @@ import type { GenerateTextResult, StreamTextResult } from 'ai';
 import type { GenerateTextResultAugmented, StreamTextResultAugmented } from '../types/result';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
-import { RequiredPromptType } from '../types/types';
+import { RequiredPromptType, AnyPromptSource } from '../types/types';
 
 //@todo - INPUT like in template
 export type LLMCallSignature<
-	TConfig extends configs.BaseConfig & configs.OptionalPromptConfig<PROMPT>,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	TResult,
 	PType extends RequiredPromptType = RequiredPromptType,
-	PROMPT extends string | ModelMessage[] = string
+	PROMPT extends AnyPromptSource = string
 > = PType extends 'text' | 'text-name'
 	? (
 		// TConfig has no template, no context argument is needed
 		// We can have either a prompt or messages, but not both. No context as nothing is rendered.
-		TConfig extends { prompt: string } | { messages: ModelMessage[] }
+		TConfig extends { prompt: string | ModelMessage[] } | { messages: ModelMessage[] }
 		? {
 			// Optional prompt/messages
-			(prompt: PROMPT, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
+			(prompt: string | ModelMessage[], messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
 		}
 		: {
 			// Required a prompt or messages
-			(prompt: PROMPT, messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
+			(prompt: string | ModelMessage[], messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
 		}
 	)
 	: (
-		// TConfig has template or script; return type is always a promise
+		// TConfig has template or script or function; return type is always a promise
 		// we can have a prompt and/or messages at the same time (prompt are required and get rendered).
-		TConfig extends { prompt: string }
+		TConfig extends { prompt: PROMPT }
 		? {
 			// Config already has a prompt => Optional prompt, optional messages, and optional context
-			(prompt: string, messages: ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
-			(prompt: string | ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
+			(prompt: PROMPT, messages: ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
+			(prompt: PROMPT, context?: Context): utils.EnsurePromise<TResult>;
 			(context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
@@ -52,7 +52,7 @@ export type LLMCallSignature<
 		: {
 			// Requires a prompt, optional messages, and optional context
 			//(prompt: string, message: ModelMessage[], context?: Context): utils.EnsurePromise<TResult>;
-			(prompt: string, context?: Context): utils.EnsurePromise<TResult>;
+			(prompt: PROMPT, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
 		}

@@ -1,4 +1,4 @@
-import { Schema, StreamObjectOnFinishCallback, StreamTextOnFinishCallback, ToolSet } from 'ai';//do not confuze the 'ai' Schema type with the 'zod' Schema type
+import { ModelMessage, Schema, StreamObjectOnFinishCallback, StreamTextOnFinishCallback, ToolSet } from 'ai';//do not confuze the 'ai' Schema type with the 'zod' Schema type
 import { z } from 'zod';
 import { InferParameters } from './utils';
 import { ILoaderAny } from 'cascada-engine';
@@ -11,11 +11,17 @@ export type Filters = Record<string, (input: any, ...args: any[]) => any>;
 export type SchemaType<T> = z.ZodType<T, z.ZodTypeDef, any> | Schema<T>;
 
 // Define the possible prompt types
-export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';// | undefined;
-export type ScriptPromptType = 'script' | 'async-script' | 'script-name' | 'async-script-name';// | undefined;
+export type TemplatePromptType = 'template' | 'async-template' | 'template-name' | 'async-template-name';
+export type ScriptPromptType = 'script' | 'async-script' | 'script-name' | 'async-script-name';
+export type FunctionPromptType = 'function';
 
-export type PromptType = TemplatePromptType | ScriptPromptType | 'text' | 'text-name';
+export type PromptType = TemplatePromptType | ScriptPromptType | FunctionPromptType | 'text' | 'text-name';
 export type RequiredPromptType = Exclude<PromptType, undefined>;
+
+export type AnyPromptSource = string | ModelMessage[] | PromptFunction<string | ModelMessage[]>;
+
+export type PromptFunction<PROMPT extends string | ModelMessage[]> =
+	(context: Context) => PROMPT | Promise<PROMPT>;
 
 //export type LLMPromptType = TemplatePromptType | 'text';
 
