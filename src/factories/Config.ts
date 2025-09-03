@@ -45,7 +45,7 @@ export function Config<
 	PARENT_ENUM extends string,
 
 	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
-	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	FINAL_ENUM extends string = ENUM extends never ? PARENT_ENUM : ENUM,
 

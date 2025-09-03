@@ -103,7 +103,7 @@ export type OptionalScriptPromptConfig = ScriptPromptConfig | { promptType: 'tex
 export type OptionalPromptConfig = OptionalTemplatePromptConfig | OptionalScriptPromptConfig | OptionalFunctionPromptConfig;
 
 export interface FunctionPromptConfig extends ContextConfig {
-	prompt: PromptFunction<string | ModelMessage[]>;//The prompt is a function that returns a string or ModelMessage[]
+	prompt: PromptFunction;//The prompt is a function that returns a string or ModelMessage[]
 	messages?: ModelMessage[];
 	promptType?: FunctionPromptType;
 }

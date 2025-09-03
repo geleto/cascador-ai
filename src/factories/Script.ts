@@ -96,7 +96,7 @@ export type ScriptCallSignatureWithParent<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	FinalConfig extends { script: string }
@@ -160,7 +160,7 @@ function asTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
@@ -220,7 +220,7 @@ function loadsScriptAsTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(

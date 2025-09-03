@@ -20,8 +20,8 @@ export type RequiredPromptType = Exclude<PromptType, undefined>;
 
 export type AnyPromptSource = string | ModelMessage[] | PromptFunction<string | ModelMessage[]>;
 
-export type PromptFunction<PROMPT extends string | ModelMessage[]> =
-	(context: Context) => PROMPT | Promise<PROMPT>;
+export type PromptFunction<PR extends string | ModelMessage[] = string | ModelMessage[]> =
+	(context: Context) => PR | Promise<PR>;
 
 //export type LLMPromptType = TemplatePromptType | 'text';
 

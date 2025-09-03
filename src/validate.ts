@@ -113,6 +113,10 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
 		if (Array.isArray(config.prompt)) {
 			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
 		}
+	} else if (promptType?.includes('function')) {
+		if (typeof config.prompt !== 'function') {
+			throw new ConfigError("The 'prompt' property must be a function when using withFunction().");
+		}
 	}
 	if (!('model' in config)) throw new ConfigError("Text generator configs require a 'model' property.");
 	if ('execute' in config) {
@@ -149,6 +153,10 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 	if (promptType?.includes('template') || promptType?.includes('script')) {
 		if (Array.isArray(config.prompt)) {
 			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
+		}
+	} else if (promptType?.includes('function')) {
+		if (typeof config.prompt !== 'function') {
+			throw new ConfigError("The 'prompt' property must be a function when using withFunction().");
 		}
 	}
 	if (!('model' in config)) throw new ConfigError("Object generator configs require a 'model' property.");

@@ -110,7 +110,7 @@ function asTool(config: configs.FunctionToolConfig<any, any>, parent?: ConfigPro
 	return _createFunctionAsTool(config, parent) as unknown as ToolCallSignature<configs.FunctionToolConfig<any, any>, any, any>;
 }
 
-function _createFunction(
+export function _createFunction(
 	config: configs.FunctionConfig<any, any>,
 	parent?: ConfigProvider<configs.FunctionConfig<any, any>> | //has parent.config
 		FunctionCallSignature<configs.FunctionConfig<any, any>, any, any> | //parent is the config as well as a function

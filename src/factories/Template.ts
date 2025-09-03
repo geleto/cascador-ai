@@ -37,7 +37,7 @@ export type TemplateCallSignatureWithParent<
 	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>, //only INPUT, the output is string
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
 	FinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	FinalConfig extends { template: string }
@@ -164,7 +164,7 @@ function withTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT>>,
@@ -194,7 +194,7 @@ function loadsTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT> & configs.LoaderConfig>,
@@ -215,7 +215,7 @@ function _createTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT extends Record<string, any> = INPUT extends never ? PARENT_INPUT : INPUT,
+	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
 >(
 	config: Partial<TConfig>,
 	promptType: TemplatePromptType,

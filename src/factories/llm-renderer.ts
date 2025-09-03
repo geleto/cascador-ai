@@ -10,6 +10,7 @@ import type { GenerateTextResultAugmented, StreamTextResultAugmented } from '../
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
 import { RequiredPromptType, AnyPromptSource } from '../types/types';
+import { _createFunction, FunctionCallSignature } from './Function';
 
 //@todo - INPUT like in template
 export type LLMCallSignature<
@@ -33,6 +34,16 @@ export type LLMCallSignature<
 			// Required a prompt or messages
 			(prompt: string | ModelMessage[], messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
+			config: TConfig;
+			type: string;
+		}
+	)
+	: PType extends 'function'
+	? (
+		// Function-based renderers only accept a context object.
+		// Overriding the prompt function with a one-off string is ambiguous.
+		{
+			(context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
 		}
@@ -244,8 +255,12 @@ export function _createLLMRenderer<
 			}
 		}
 
-		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any>;
+		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any> | FunctionCallSignature<any, any, any>;
+
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
+		const isScriptPrompt = config.promptType === 'script' || config.promptType === 'script-name' || config.promptType === 'async-script' || config.promptType === 'async-script-name';
+		const isFunctionPrompt = config.promptType === 'function';
+
 		if (isTemplatePrompt) {
 			// The prompt always renders a string
 			const promptType = config.promptType as TemplatePromptType;
@@ -257,7 +272,8 @@ export function _createLLMRenderer<
 			};
 
 			renderer = _createTemplate(templateConfig, promptType);
-		} else {
+
+		} else if (isScriptPrompt) {
 			// The script may render a string or messages; set a matching schema
 			type ScriptOutput = string | ModelMessage[];
 
@@ -269,6 +285,13 @@ export function _createLLMRenderer<
 			};
 
 			renderer = _createScript(scriptConfig, config.promptType as ScriptPromptType);
+		} else if (isFunctionPrompt) {
+			const functionConfig = {
+				execute: config.prompt as (context: Context) => Promise<string | ModelMessage[]>
+			};
+			renderer = _createFunction(functionConfig);
+		} else {
+			throw new Error(`Unhandled prompt type: ${config.promptType}`);
 		}
 		call = async (
 			promptOrMessageOrContext?: string | ModelMessage[] | Context,
