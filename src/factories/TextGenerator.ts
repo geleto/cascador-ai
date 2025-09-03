@@ -44,10 +44,9 @@ type FinalTextConfigShape = Partial<configs.GenerateTextConfig<any, any, any> & 
 
 // Generic validator for the `config` object passed to a factory function.
 type ValidateTextConfig<
-	TConfig extends Partial<configs.GenerateTextConfig<any, any, PROMPT>>,
+	TConfig extends Partial<configs.GenerateTextConfig<any, any, any>>,
 	TFinalConfig extends FinalTextConfigShape,
-	TShape extends configs.GenerateTextConfig<any, any, PROMPT>,
-	PROMPT extends types.AnyPromptSource = string,
+	TShape extends configs.GenerateTextConfig<any, any, any>,
 	TRequired =
 	& (TShape extends { inputSchema: any } ? { inputSchema: any, model: LanguageModel } : { model: LanguageModel })
 	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel }),
@@ -66,9 +65,8 @@ type ValidateTextConfig<
 
 // Generic validator for the `parent` config object.
 type ValidateTextParentConfig<
-	TParentConfig extends Partial<configs.GenerateTextConfig<any, any, PROMPT>>,
-	TShape extends configs.GenerateTextConfig<any, any, PROMPT>,
-	PROMPT extends types.AnyPromptSource = string
+	TParentConfig extends Partial<configs.GenerateTextConfig<any, any, any>>,
+	TShape extends configs.GenerateTextConfig<any, any, any>,
 > =
 	// Check for excess properties in the parent validated against TShape
 	keyof Omit<TParentConfig, keyof TShape> extends never
@@ -81,7 +79,7 @@ function withText<
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<
-		TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT
+		TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>
 	>
 ): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT>;
 
@@ -93,8 +91,8 @@ function withText<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT>>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', PROMPT>;
 
 function withText(
@@ -109,7 +107,7 @@ function withTextAsTool<
 	TOOLS extends ToolSet = ToolSet,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>>
 ): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 function withTextAsTool<
@@ -120,8 +118,8 @@ function withTextAsTool<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.ToolConfig<Record<string, never>, string>>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 // Implementation
@@ -134,7 +132,7 @@ function loadsText<
 	TOOLS extends ToolSet,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig, PROMPT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig>
 ): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT>;
 
 function loadsText<
@@ -145,8 +143,8 @@ function loadsText<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', PROMPT>;
 
 function loadsText(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
@@ -158,7 +156,7 @@ function loadsTextAsTool<
 	TOOLS extends ToolSet,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>
 ): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 function loadsTextAsTool<
@@ -169,8 +167,8 @@ function loadsTextAsTool<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, never, PROMPT> & configs.LoaderConfig & configs.ToolConfig<Record<string, never>, string>>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', PROMPT> & results.RendererTool<Record<string, never>, string>;
 
 //Implementation
@@ -396,7 +394,7 @@ function withFunction<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig,
-		configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig, PROMPT>
+		configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig>
 ): GenerateTextReturn<TConfig, TOOLS, 'function', PROMPT>;
 
 function withFunction<
@@ -410,8 +408,8 @@ function withFunction<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig,
-		configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig, PROMPT>>
+		configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'function', PROMPT>;
 
 function withFunction(config: configs.GenerateTextConfig<any, any, any>, parent?: ConfigProvider<configs.GenerateTextConfig<any, any, any>>) {
@@ -425,7 +423,7 @@ function withFunctionAsTool<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig,
-		configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, string>, PROMPT>
+		configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, string>>
 ): GenerateTextReturn<TConfig, TOOLS, 'function', PROMPT> & results.RendererTool<INPUT, string>;
 
 function withFunctionAsTool<
@@ -440,7 +438,7 @@ function withFunctionAsTool<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig,
-		configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<any, string>, PROMPT>,
+		configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<any, string>>,
 	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<any, string>>>
 ): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'function', PROMPT> & results.RendererTool<FINAL_INPUT, string>;
 
