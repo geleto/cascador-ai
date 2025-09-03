@@ -16,7 +16,7 @@ export type TextStreamerInstance<TOOLS extends ToolSet, INPUT extends Record<str
 // It correctly infers the TOOL and INPUT types from the final merged config.
 // Parameterize by the concrete promptType literal used by the implementation.
 type StreamTextReturn<
-	TConfig extends configs.BaseConfig, //& configs.OptionalPromptConfig,
+	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
 	PType extends types.RequiredPromptType,
 	PROMPT extends types.AnyPromptSource = string
@@ -25,14 +25,18 @@ type StreamTextReturn<
 // Version of the return type for when a parent config is present.
 // Ensure the final merged config reflects the concrete promptType at the type level.
 type StreamTextWithParentReturn<
-	TConfig extends Partial<configs.BaseConfig>, //& configs.OptionalPromptConfig,
-	TParentConfig extends Partial<configs.BaseConfig>, //& configs.OptionalPromptConfig,
+	TConfig extends Partial<configs.BaseConfig>, // configs.OptionalPromptConfig
+	TParentConfig extends Partial<configs.BaseConfig>, // configs.OptionalPromptConfig
 	TOOLS extends ToolSet, //@todo - merge tools
 	PARENT_TOOLS extends ToolSet, //@todo - merge tools
 	PType extends types.RequiredPromptType,
+
 	PROMPT extends types.AnyPromptSource = string,
+
+
 	FINAL_TOOLS extends ToolSet = utils.Override<PARENT_TOOLS, TOOLS>,
 	TFinalConfig extends configs.BaseConfig = utils.Override<TParentConfig, TConfig>,
+
 > = LLMCallSignature<TFinalConfig, Promise<results.StreamTextResultAugmented<FINAL_TOOLS>>, PType, PROMPT>;
 
 // The full shape of a final, merged config object, including required properties.
@@ -40,10 +44,9 @@ type FinalTextConfigShape = Partial<configs.StreamTextConfig<any, any, any> & { 
 
 // Generic validator for the `config` object passed to a factory function.
 type ValidateTextConfig<
-	TConfig extends Partial<configs.StreamTextConfig<any, any, PROMPT>>,
+	TConfig extends Partial<configs.StreamTextConfig<any, any, any>>,
 	TFinalConfig extends FinalTextConfigShape,
-	TShape extends configs.StreamTextConfig<any, any, PROMPT>,
-	PROMPT extends types.AnyPromptSource = string,
+	TShape extends configs.StreamTextConfig<any, any, any>,
 	TRequired =
 	& (TShape extends { inputSchema: any } ? { inputSchema: any, model: LanguageModel } : { model: LanguageModel })
 	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel }),
@@ -57,19 +60,18 @@ type ValidateTextConfig<
 		? TConfig // All checks passed.
 		: `Config Error: Missing required property '${keyof Omit<TRequired, keyof TFinalConfig> & string}' in the final configuration.`
 	)
-	: `Config Error: Unknown properties for this generator type: '${keyof Omit<TConfig, keyof TShape> & string}'`;
+	: `Config Error: Unknown properties for this Streamer type: '${keyof Omit<TConfig, keyof TShape> & string}'`;
 
 
 // Generic validator for the `parent` config object.
 type ValidateTextParentConfig<
-	TParentConfig extends Partial<configs.StreamTextConfig<any, any, PROMPT>>,
-	TShape extends configs.StreamTextConfig<any, any, PROMPT>,
-	PROMPT extends types.AnyPromptSource = string
+	TParentConfig extends Partial<configs.StreamTextConfig<any, any, any>>,
+	TShape extends configs.StreamTextConfig<any, any, any>,
 > =
 	// Check for excess properties in the parent validated against TShape
 	keyof Omit<TParentConfig, keyof TShape> extends never
 	? TParentConfig // The check has passed.
-	: `Parent Config Error: Parent has properties not allowed for the final generator type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
+	: `Parent Config Error: Parent has properties not allowed for the final Streamer type: '${keyof Omit<TParentConfig, keyof TShape> & string}'`;
 
 function withText<
 	const TConfig extends configs.StreamTextConfig<TOOLS, never, PROMPT>,
@@ -77,7 +79,7 @@ function withText<
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
 	config: TConfig & ValidateTextConfig<
-		TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT
+		TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>
 	>
 ): StreamTextReturn<TConfig, TOOLS, 'text', PROMPT>;
 
@@ -89,8 +91,8 @@ function withText<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<TOOLS, never, PROMPT>>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', PROMPT>;
 
 function withText(
@@ -105,7 +107,7 @@ function loadsText<
 	TOOLS extends ToolSet,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig, PROMPT>
+	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.StreamTextConfig<TOOLS, never, PROMPT> & configs.LoaderConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'text-name', PROMPT>;
 
 function loadsText<
@@ -116,8 +118,8 @@ function loadsText<
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[]
 >(
-	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig, PROMPT>>
+	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<any, never, PROMPT> & configs.LoaderConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', PROMPT>;
 
 function loadsText(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -234,7 +236,7 @@ function withFunction<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig,
-		configs.StreamTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig, PROMPT>
+		configs.StreamTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig>
 ): StreamTextReturn<TConfig, TOOLS, 'function', PROMPT>;
 
 function withFunction<
@@ -248,8 +250,8 @@ function withFunction<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig,
-		configs.StreamTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig, PROMPT>>
+		configs.StreamTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig>,
+	parent: ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.StreamTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig>>
 ): StreamTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'function', PROMPT>;
 
 function withFunction(config: configs.StreamTextConfig<any, any, any>, parent?: ConfigProvider<configs.StreamTextConfig<any, any, any>>) {
@@ -257,7 +259,7 @@ function withFunction(config: configs.StreamTextConfig<any, any, any>, parent?: 
 }
 
 function _createTextStreamer<
-	TConfig extends configs.StreamTextConfig<TOOLS, INPUT> & configs.OptionalPromptConfig,
+	TConfig extends configs.StreamTextConfig<TOOLS, INPUT>, // & configs.OptionalPromptConfig,
 	TOOLS extends ToolSet,
 	INPUT extends Record<string, any>,
 >(
@@ -281,7 +283,6 @@ function _createTextStreamer<
 		streamText
 	) as unknown as StreamTextReturn<TConfig, TOOLS, types.RequiredPromptType>;
 }
-
 
 export const TextStreamer = Object.assign(withText, { // default is withText
 	withTemplate,
