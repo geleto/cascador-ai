@@ -147,7 +147,7 @@ describe('create.TextGenerator', function () {
 			const generator = create.TextGenerator.withTemplate(
 				{
 					filters: { exclam: (s: string) => `${s}!` },
-					prompt: 'Reply verbatim and with no added punctuation, only with the following text: {{ item | parens | exclam }}.',
+					prompt: 'Reply verbatim, only with the following text: {{ item | parens | exclam }}',
 				},
 				parentConfig,
 			);
