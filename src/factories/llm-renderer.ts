@@ -139,9 +139,7 @@ export function _createLLMRenderer<
 
 	let call;
 	if (config.promptType !== 'text' && config.promptType !== undefined) {
-		// We have to run the prompt through a template or script first
-		// Create a new config containing only shared/Cascada properties to pass down,
-		// preventing validation errors from LLM-specific properties like 'model'.
+		// Dynamic Path - use Template/Script/Function to render the prompt
 		const commonConfigKeys = ['context', 'filters', 'options', 'loader', 'inputSchema', 'debug'] as const;
 		const baseCascadaConfig = {} as configs.CascadaConfig;
 		for (const key of commonConfigKeys) {
@@ -151,27 +149,15 @@ export function _createLLMRenderer<
 		}
 
 		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any> | FunctionCallSignature<any, any, any>;
-
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		const isScriptPrompt = config.promptType === 'script' || config.promptType === 'script-name' || config.promptType === 'async-script' || config.promptType === 'async-script-name';
 		const isFunctionPrompt = config.promptType === 'function';
 
 		if (isTemplatePrompt) {
-			// The prompt always renders a string
-			const promptType = config.promptType as TemplatePromptType;
-
-			// The LLM renderer's 'prompt' becomes the 'template' for the Template factory.
-			const templateConfig = {
-				...baseCascadaConfig,
-				template: config.prompt,
-			};
-
-			renderer = _createTemplate(templateConfig, promptType);
-
+			const templateConfig = { ...baseCascadaConfig, template: config.prompt };
+			renderer = _createTemplate(templateConfig, config.promptType as TemplatePromptType);
 		} else if (isScriptPrompt) {
-			// The script may render a string or messages; set a matching schema
 			type ScriptOutput = string | ModelMessage[];
-
 			// The LLM renderer's 'prompt' becomes the 'script' for the Script factory.
 			const scriptConfig = {
 				...baseCascadaConfig,
@@ -197,84 +183,60 @@ export function _createLLMRenderer<
 				console.log('[DEBUG] createLLMRenderer - template path called with:', { promptOrMessageOrContext, messagesOrContext, maybeContext });
 			}
 			validateLLMRendererCall(config, config.promptType!, promptOrMessageOrContext, messagesOrContext, maybeContext);
+
+			// Run the renderer to get the dynamic prompt content
 			const renderedPrompt = await renderer(promptOrMessageOrContext as string, messagesOrContext) as string | ModelMessage[];
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - rendered output:', Array.isArray(renderedPrompt) ? { type: 'messages', length: renderedPrompt.length } : { type: 'string', preview: String(renderedPrompt).slice(0, 120) });
 			}
 
-			// Extract messages from arguments
+			// 1. Normalize the rendered output into a consistent message array format.
+			const newMessagesFromPrompt: ModelMessage[] = Array.isArray(renderedPrompt)
+				? renderedPrompt
+				: (typeof renderedPrompt === 'string' && renderedPrompt.length > 0)
+					? [{ role: 'user', content: renderedPrompt }]//create a single message array from the rendered string prompt
+					: [];
+
+			// 2. Prepare the base messages from config and call arguments.
 			const { messages: messagesFromArgs } = extractCallArguments(promptOrMessageOrContext, messagesOrContext, maybeContext);
+			const configMessages = (config as unknown as { messages?: ModelMessage[] }).messages ?? [];
+			const callArgumentMessages = messagesFromArgs ?? [];
+			const combinedBaseMessages = [...configMessages, ...callArgumentMessages];
 
-			// Build base message lists from config and arguments
-			const configMessages = (config as unknown as { messages?: ModelMessage[] }).messages;
-			const callArgumentMessages = messagesFromArgs;
-			const combinedBaseMessages = [
-				...(configMessages ?? []),
-				...(callArgumentMessages ?? []),
-			];
+			// 3. Construct the final payload for the Vercel function.
+			const finalMessages = [...combinedBaseMessages, ...newMessagesFromPrompt];
+			let resultConfig: TFunctionConfig;
 
-			// Build messages based on renderer output
-			let result: Promise<TFunctionResult> | TFunctionResult;
-			if (Array.isArray(renderedPrompt)) {
-				// Renderer returned messages, merge them with existing messages (config + args)
-				const finalMessages = combinedBaseMessages.length > 0 ? combinedBaseMessages.concat(renderedPrompt) : renderedPrompt;
+			// Vercel AI SDK functions perform better when `prompt` is used for single, simple user inputs.
+			// We only use the `prompt` property if there are no base messages and the renderer returned a simple string.
+			const usePromptProperty = combinedBaseMessages.length === 0 && typeof renderedPrompt === 'string';
 
-				// Build payload for vercelFunc ensuring prompt is removed when sending messages
-				const resultConfig = {
-					...omitPrompt(config as unknown as TFunctionConfig),
-					messages: finalMessages,
-				} as TFunctionConfig;
-
-				result = await vercelFunc(resultConfig);
-				if (vercelFunc as unknown === generateText || vercelFunc as unknown === streamText) {
-					const messagesPrefix = renderedPrompt;
-					const historyPrefixFull = [
-						// Exclude config messages from messageHistory
-						...(callArgumentMessages ?? []),
-					];
-					if ((vercelFunc as unknown) === generateText) {
-						// Returned messages: prompt-derived messages + generated messages
-						result = augmentGenerateText(result as GenerateTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
-					} else {//streamText
-						result = augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
-					}
-				}// else - no augmentation for other functions
+			if (usePromptProperty) {
+				resultConfig = { ...config, prompt: renderedPrompt } as TFunctionConfig;
 			} else {
-				// Renderer returned a string prompt, append as a user message when base messages exist
-				const renderedString = typeof renderedPrompt === 'string' ? renderedPrompt : String(renderedPrompt);
-				const finalMessages = buildMessagesWithPrompt(combinedBaseMessages.length > 0 ? combinedBaseMessages : undefined, renderedString);
-
-				// If we appended messages, omit prompt; otherwise include prompt
-				const resultConfig = (
-					finalMessages
-						? (() => { const cfg = omitPrompt(config as unknown as TFunctionConfig); return { ...cfg, messages: finalMessages } as TFunctionConfig; })()
-						: { ...config, prompt: renderedString }
-				) as TFunctionConfig;
-
-				result = await vercelFunc(resultConfig);
-				// Always augment so response.messages contains the prompt-derived user message + reply
-				const userMessage: ModelMessage | undefined = renderedString.length > 0 ? ({ role: 'user', content: renderedString } as ModelMessage) : undefined;
-				const messagesPrefix = userMessage ? [userMessage] : [];
-				const historyPrefixFull = [
-					// Exclude config messages from messageHistory
-					...(callArgumentMessages ?? []),
-				];
-				if ((vercelFunc as unknown) === generateText) {
-					result = augmentGenerateText(result as GenerateTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
-				} else if ((vercelFunc as unknown) === streamText) {
-					result = augmentStreamText(result as StreamTextResult<any, any>, messagesPrefix, historyPrefixFull) as Awaited<TFunctionResult>;
-				} else {
-					// no augmentation for other functions
-				}
+				// In all other cases (base messages exist, or renderer returned an array), use the `messages` property.
+				const cfg = omitPrompt(config as unknown as TFunctionConfig);
+				resultConfig = { ...cfg, messages: finalMessages } as TFunctionConfig;
 			}
+
+			// 4. Execute the underlying Vercel AI function.
+			const result = await vercelFunc(resultConfig);
+
+			// 5. Augment the result for conversational history management.
+			let augmentedResult: TFunctionResult = result;
+			if ((vercelFunc as unknown) === generateText) {
+				augmentedResult = augmentGenerateText(result as GenerateTextResult<any, any>, newMessagesFromPrompt, callArgumentMessages) as Awaited<TFunctionResult>;
+			} else if ((vercelFunc as unknown) === streamText) {
+				augmentedResult = augmentStreamText(result as StreamTextResult<any, any>, newMessagesFromPrompt, callArgumentMessages) as Awaited<TFunctionResult>;
+			} //else - no augmentation for other functions
+
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', result);
+				console.log('[DEBUG] createLLMRenderer - vercelFunc result:', augmentedResult);
 			}
-			return result;
+			return augmentedResult;
 		};
 	} else {
-		// No need to run the prompt through a template/script and process a context
-		// depending on the vercelFunc, the result may be a promise or not
+		// Static Path - promptType is 'text' or undefined
 		call = (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): TFunctionResult => {
 			if (config.debug) {
 				console.log('[DEBUG] createLLMRenderer - text path called with:', { promptOrMessages, maybeMessages });
@@ -338,4 +300,3 @@ export function _createLLMRenderer<
 	const callSignature = Object.assign(call, { config, type });
 	return callSignature as LLMCallSignature<TConfig, TFunctionResult, PT>;
 }
-
