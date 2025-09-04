@@ -14,7 +14,7 @@ export const model = openai(modelName);
 */
 
 export const timeout = 10000;
-export const temperature = 0.1;
+export const temperature = 0.2;
 
 /**
  * StringLoader class for testing purposes.
