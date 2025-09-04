@@ -90,9 +90,9 @@ describe('create.ObjectGenerator', function () {
 			});
 
 			// Prompt is provided in the call
-			const { object } = await generator('Generate an object for "RuntimePrompt" with value 101.');
+			const { object } = await generator('Generate an object named "Prompt" with value 101.');
 			expect(object.value).to.equal(101);//check type
-			expect(object).to.deep.equal({ name: 'RuntimePrompt', value: 101 });
+			expect(object).to.deep.equal({ name: 'Prompt', value: 101 });
 		});
 	});
 

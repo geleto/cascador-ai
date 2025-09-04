@@ -86,7 +86,7 @@ describe('create.TextGenerator', function () {
 			);
 			const result = await generator();
 			expect(generator.config.model).to.be.ok;
-			expect(generator.config.temperature).to.equal(0.1);
+			expect(generator.config.temperature).to.equal(temperature);
 			expect(result.text).to.equal('(apples)');
 		});
 
@@ -146,15 +146,13 @@ describe('create.TextGenerator', function () {
 		it('should merge "filters" objects', async () => {
 			const generator = create.TextGenerator.withTemplate(
 				{
-					filters: {
-						stars: (s: string) => `*${s}*`,
-					},
-					prompt: 'Only write this and nothing else, including any parentheses: {{ item | parens | stars }}.',
+					filters: { exclam: (s: string) => `${s}!` },
+					prompt: 'Reply verbatim and with no added punctuation, only with the following text: {{ item | parens | exclam }}.',
 				},
 				parentConfig,
 			);
 			const result = await generator();
-			expect(result.text).to.equal('*(apples)*');
+			expect(result.text).to.equal('(apples)!');
 		});
 
 		it('should have correct type property', () => {

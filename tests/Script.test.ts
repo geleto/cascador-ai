@@ -337,7 +337,7 @@ describe('create.Script', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate an array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, do not create an array with just one item in it',
+				prompt: 'Generate an array with these exact two objects in it: {"id": 1} and {"id": 2}. Make sure the array size is exactly 2, do not create an array with just one item in it',
 			});
 			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },

@@ -234,14 +234,16 @@ describe('create.TextStreamer', function () {
 		it('should merge "filters" objects', async () => {
 			const streamer = create.TextStreamer.withTemplate(
 				{
-					filters: { stars: (s: string) => `*${s}*` },
-					prompt: 'Write only this and nothing else, including any parentheses: {{ item | parens | stars }}.',
+					filters: { exclam: (s: string) => `${s}!` },
+					prompt: 'Reply verbatim and with no added punctuation, only with the following text: {{ item | parens | exclam }}.',
 				},
 				parentConfig,
 			);
+
+
 			const result = await streamer();
 			const streamedText = await streamToString(result.textStream);
-			expect(streamedText).to.equal('*(apples)*');
+			expect(streamedText).to.equal('(apples)!');
 		});
 
 		it('should merge and deduplicate "loader" arrays', () => {
