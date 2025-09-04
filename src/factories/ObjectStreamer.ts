@@ -402,7 +402,7 @@ function _createObjectStreamer<
 		(merged as unknown as configs.StreamObjectObjectConfig<any, any>).output = 'object';
 	}
 
-	validateObjectLLMConfig(merged, promptType, isTool, false); // isStreamer = false
+	validateObjectLLMConfig(merged, promptType, isTool, true); // isStreamer = true
 
 	// Debug output if config.debug is true
 	if ('debug' in merged && merged.debug) {
