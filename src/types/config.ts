@@ -29,9 +29,11 @@ export interface BaseConfig {
 }
 
 // @todo - INPUT generic parameter for context
-export interface ContextConfig {
+export interface ContextConfig extends BaseConfig {
 	context?: Record<string, any>;
 }
+
+export const ContextConfigKeys: (keyof ContextConfig)[] = ['context', 'debug'] as const;
 
 // Shared for scripts and
 // @todo - INPUT generic parameter for context
@@ -40,6 +42,8 @@ export interface CascadaConfig extends ContextConfig {
 	options?: ConfigureOptions;
 	loader?: CascadaLoaders | null;
 }
+
+export const CascadaConfigKeys: (keyof CascadaConfig)[] = ['context', 'filters', 'options', 'loader', 'debug'] as const;
 
 export interface LoaderConfig {
 	loader: CascadaLoaders;
@@ -54,6 +58,8 @@ export interface TemplateConfig<
 	promptType?: TemplatePromptType;
 }
 
+export const TemplateConfigKeys = ['template', 'inputSchema', 'promptType', ...CascadaConfigKeys] as const;
+
 // Config for a Tool that uses the Template engine
 export interface TemplateToolConfig<
 	INPUT extends Record<string, any>,
@@ -62,7 +68,7 @@ export interface TemplateToolConfig<
 	description?: string;
 }
 
-// Config for prompts that are rendered with templates
+// Config for prompts that are rendered with templates (as part of the whole generate/stream Text/Object/Function config)
 export interface TemplatePromptConfig extends CascadaConfig {
 	prompt?: string;//the string containing the template, can be specified in the caller
 	messages?: ModelMessage[];
@@ -80,6 +86,8 @@ export interface ScriptConfig<
 	promptType?: ScriptPromptType;
 };
 
+export const ScriptConfigKeys = ['script', 'schema', 'inputSchema', 'promptType', ...CascadaConfigKeys] as const;
+
 // Config for a Tool that uses the Script engine
 export interface ScriptToolConfig<
 	INPUT extends Record<string, any>,
@@ -91,6 +99,7 @@ export interface ScriptToolConfig<
 
 export type OptionalTemplatePromptConfig = TemplatePromptConfig | { promptType: 'text' };
 
+// Config for prompts that are rendered with scripts (as part of the whole generate/stream Text/Object/Function config)
 export interface ScriptPromptConfig extends CascadaConfig {
 	prompt?: string;//the string containing the script, can be specified in the caller
 	messages?: ModelMessage[];
@@ -102,6 +111,7 @@ export type OptionalScriptPromptConfig = ScriptPromptConfig | { promptType: 'tex
 //@todo OptionalGeneratedPromptConfig
 export type OptionalPromptConfig = OptionalTemplatePromptConfig | OptionalScriptPromptConfig | OptionalFunctionPromptConfig;
 
+// Config for prompts that are rendered with functions (as part of the whole generate/stream Text/Object/Function config)
 export interface FunctionPromptConfig extends ContextConfig {
 	prompt: PromptFunction;//The prompt is a function that returns a string or ModelMessage[]
 	messages?: ModelMessage[];
@@ -255,8 +265,13 @@ export type StreamObjectNoSchemaConfig<
 	mode?: 'json';
 }
 
-export type FunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
-	({ execute: (context: INPUT) => PromiseLike<OUTPUT> }) & BaseConfig
+export interface FunctionConfig<INPUT extends Record<string, any>, OUTPUT> extends ContextConfig {
+	execute: (context: INPUT) => PromiseLike<OUTPUT>;
+	schema?: SchemaType<OUTPUT>;
+	inputSchema?: SchemaType<INPUT>;
+}
+
+export const FunctionConfigKeys: (keyof FunctionConfig<any, any>)[] = ['execute', 'schema', 'inputSchema', ...ContextConfigKeys] as const;
 
 export type FunctionToolConfig<INPUT extends Record<string, any>, OUTPUT> =
 	Tool<INPUT, OUTPUT> & BaseConfig
