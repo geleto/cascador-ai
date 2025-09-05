@@ -573,6 +573,8 @@ You can provide callbacks in the renderer's configuration to handle events as th
 **What it does**: Produces structured data with Vercel’s [`generateObject` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-object), validated by a Zod schema. It follows the same creation and calling patterns as `TextGenerator`.
 
 #### How to Create It
+Like `TextGenerator`, it can operate on a single `prompt` or be given a conversational history via the `messages` property, making it useful for extracting structured data from a dialogue.
+
 *   **Default (Plain Text)**: The `prompt` is a static string with no processing.
     ```typescript
     const staticObjGenerator = create.ObjectGenerator({ model: openai('gpt-4o'), schema: z.object({ ... }), prompt: 'Extract user data.' });
@@ -633,6 +635,15 @@ const extractorTool = create.ObjectGenerator.withTemplate.asTool({
   prompt: 'Extract the name and email from this text: {{ text }}',
 });
 ```
+
+#### Return Value
+When you `await` an `ObjectGenerator` call, it returns a promise that resolves to a result object from the Vercel AI SDK's [`generateObject`](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) function. Key properties include:
+*   **`object`**: The generated and validated JSON object.
+*   **`usage`**: Token usage information.
+*   **`finishReason`**: The reason the model stopped generating.
+
+**Important Note**: Unlike `TextGenerator`, the return value for `ObjectGenerator` **does not** include `messages` or `messageHistory`. Its purpose is to produce a final, structured data object, not to continue a conversation.
+
 **Use it for**: Data extraction, structured responses, or enum-based classification. [See Vercel docs on object generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) for return details.
 
 ### ObjectStreamer
@@ -641,6 +652,8 @@ const extractorTool = create.ObjectGenerator.withTemplate.asTool({
 > **Note**: Streaming renderers like `ObjectStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
 
 #### How to Create It
+Like `TextStreamer`, it can operate on a single `prompt` or be given a conversational history via the `messages` property, allowing for context-aware data streaming.
+
 *   **Default (Plain Text)**: The `prompt` is a static string with no processing.
     ```typescript
     const staticObjStreamer = create.ObjectStreamer({ model: openai('gpt-4o'), schema: z.object({ ... }), prompt: 'Generate a list of users.' });
@@ -689,6 +702,23 @@ You can also specify `schemaName` and `schemaDescription` for additional guidanc
     ```typescript
     const { elementStream: stream2 } = await characterStreamer('Generate 2 characters from {{ genre }}', { genre: 'sci-fi' });
     ```
+
+#### Return Value and Handling the Stream
+The result object from an `ObjectStreamer` call is returned **immediately** and contains streams for real-time consumption and promises for final data, mirroring the Vercel AI SDK's [`streamObject`](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) function.
+
+**Real-time Streams:**
+*   **`partialObjectStream`**: A stream of partial updates to the object being generated (for `output: 'object'`).
+*   **`elementStream`**: A stream that yields each complete element of an array as it's generated (for `output: 'array'`).
+*   **`textStream`**: A stream of text chunks (for `output: 'no-schema'`).
+
+**Promises for Final Data:**
+The result object also contains promises that resolve **after** the stream has finished.
+*   **`object`**: A promise that resolves to the full, validated JavaScript object.
+*   **`finishReason`**: A promise that resolves to the reason the model stopped generating.
+*   **`usage`**: A promise that resolves to the final token usage.
+
+**Important Note**: Unlike `TextStreamer`, the final resolved values from an `ObjectStreamer` **do not** include `messages` or `messageHistory`. The focus is on delivering the structured data, not managing conversational state.
+
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
 ### Function
