@@ -4,7 +4,7 @@ import { validateLLMRendererCall } from '../validate';
 import * as utils from '../types/utils';
 import { _createTemplate, TemplateCallSignature } from './Template';
 import { _createScript, ScriptCallSignature } from './Script';
-import { LanguageModel, ModelMessage, generateText, streamText } from 'ai';
+import { LanguageModel, ModelMessage, generateObject, generateText, streamObject, streamText } from 'ai';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from '../types/schemas';
@@ -137,7 +137,10 @@ export function _createLLMRenderer<
 		console.log('[DEBUG] LLMRenderer created with config:', JSON.stringify(config, null, 2));
 	}
 
-	const supportsMessages = (vercelFunc as unknown) === generateText || (vercelFunc as unknown) === streamText;
+	// The Vercel AI SDK functions for text and object generation accept a 'messages' array as input
+	// to provide conversational context. This is crucial for building chat agents and multi-step workflows.
+	const supportsMessages = (vercelFunc as unknown) === generateText || (vercelFunc as unknown) === streamText ||
+		(vercelFunc as unknown) === generateObject || (vercelFunc as unknown) === streamObject;
 
 	let call;
 	if (config.promptType !== 'text' && config.promptType !== undefined) {
