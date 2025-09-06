@@ -98,7 +98,7 @@ function asTool<
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
 	TFinalConfig extends FinalTextConfigShape = utils.Override<TParentConfig, TConfig>,
-	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT extends Record<string, any> = utils.Override<PARENT_INPUT, INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 >(
 	config: TConfig & ValidateConfig<TConfig, TFinalConfig, configs.FunctionToolConfig<INPUT, OUTPUT>>,

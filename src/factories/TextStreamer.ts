@@ -9,9 +9,6 @@ import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateTextLLMConfig } from "../validate";
 
-export type TextStreamerConfig<TOOLS extends ToolSet, INPUT extends Record<string, any>> = configs.CascadaConfig & configs.StreamTextConfig<TOOLS, INPUT>;
-export type TextStreamerInstance<TOOLS extends ToolSet, INPUT extends Record<string, any>, PType extends types.RequiredPromptType> = LLMCallSignature<TextStreamerConfig<TOOLS, INPUT>, Promise<results.StreamTextResultAugmented<TOOLS>>, PType>;
-
 // The generic return type for a TextStreamer instance.
 // It correctly infers the TOOL and INPUT types from the final merged config.
 // Parameterize by the concrete promptType literal used by the implementation.

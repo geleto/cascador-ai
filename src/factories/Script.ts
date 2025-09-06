@@ -7,12 +7,6 @@ import * as utils from '../types/utils';
 import { SchemaType, ScriptPromptType } from '../types/types';
 import { ToolCallOptions } from 'ai';
 
-export type ScriptInstance<
-	TConfig extends configs.ScriptConfig<INPUT, OUTPUT>,
-	INPUT extends Record<string, any>,
-	OUTPUT
-> = ScriptCallSignature<TConfig, INPUT, OUTPUT>;
-
 // The full shape of a final, merged Script config object, including required properties.
 type FinalScriptConfigShape = Partial<configs.ScriptConfig<any, any> & configs.ScriptToolConfig<any, any> & { loader?: any }>;
 
@@ -96,7 +90,7 @@ export type ScriptCallSignatureWithParent<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT extends Record<string, any> = utils.Override<PARENT_INPUT, INPUT>,
 	FinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	FinalConfig extends { script: string }
@@ -160,7 +154,7 @@ function asTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT extends Record<string, any> = utils.Override<PARENT_INPUT, INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
@@ -220,7 +214,7 @@ function loadsScriptAsTool<
 	OUTPUT,
 	PARENT_INPUT extends Record<string, any>,
 	PARENT_OUTPUT,
-	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT extends Record<string, any> = utils.Override<PARENT_INPUT, INPUT>,
 	FINAL_OUTPUT = OUTPUT extends never ? PARENT_OUTPUT : OUTPUT,
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(

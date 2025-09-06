@@ -7,12 +7,6 @@ import * as results from '../types/result';
 import { Context, SchemaType, TemplatePromptType } from '../types/types';
 import { ToolCallOptions } from 'ai';
 
-//@todo Simplify, may not need extends
-export type TemplateInstance<
-	TConfig extends configs.TemplateConfig<INPUT>,
-	INPUT extends Record<string, any>
-> = TemplateCallSignature<TConfig, INPUT>;
-
 export type TemplateCallSignature<
 	TConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>//only INPUT, the output is string
@@ -37,7 +31,7 @@ export type TemplateCallSignatureWithParent<
 	TParentConfig extends Partial<configs.TemplateConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>, //only INPUT, the output is string
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT = utils.Override<PARENT_INPUT, INPUT>,
 	FinalConfig = utils.Override<TParentConfig, TConfig>
 > =
 	FinalConfig extends { template: string }
@@ -164,7 +158,7 @@ function withTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT = utils.Override<PARENT_INPUT, INPUT>,
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT>>,
@@ -194,7 +188,7 @@ function loadsTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT = utils.Override<PARENT_INPUT, INPUT>,
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT> & configs.LoaderConfig>,
@@ -215,7 +209,7 @@ function _createTemplateAsTool<
 	TParentConfig extends Partial<configs.TemplateToolConfig<PARENT_INPUT>>,
 	INPUT extends Record<string, any>,
 	PARENT_INPUT extends Record<string, any>,
-	FINAL_INPUT extends Record<string, any> = utils.Override<INPUT, PARENT_INPUT>,
+	FINAL_INPUT extends Record<string, any> = utils.Override<PARENT_INPUT, INPUT>,
 >(
 	config: Partial<TConfig>,
 	promptType: TemplatePromptType,

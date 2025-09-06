@@ -1,9 +1,9 @@
-export { Template, TemplateInstance } from './factories/Template';
-export { Script, ScriptInstance } from './factories/Script';
-export { TextGenerator, TextGeneratorInstance, TextGeneratorConfig } from './factories/TextGenerator';
+export { Template } from './factories/Template';
+export { Script } from './factories/Script';
+export { TextGenerator } from './factories/TextGenerator';
 export { TextStreamer } from './factories/TextStreamer';
-export { ObjectGenerator, ObjectGeneratorInstance, LLMGeneratorConfig } from './factories/ObjectGenerator';
-export { ObjectStreamer, ObjectStreamerInstance, LLMStreamerConfig } from './factories/ObjectStreamer';
+export { ObjectGenerator } from './factories/ObjectGenerator';
+export { ObjectStreamer } from './factories/ObjectStreamer';
 export { Config } from './factories/Config';
 
 export { ConfigProvider, ConfigData } from './ConfigData';

@@ -11,25 +11,6 @@ import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 
-
-export type LLMStreamerConfig<
-	INPUT extends Record<string, any>,
-	OUTPUT,
-	PROMPT extends types.AnyPromptSource = string
-> = (
-	| configs.StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT>
-	| configs.StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT>
-	| configs.StreamObjectNoSchemaConfig<INPUT, PROMPT>
-) & configs.OptionalPromptConfig;
-
-export type ObjectStreamerInstance<
-	TConfig extends LLMStreamerConfig<INPUT, OUTPUT>,
-	PType extends types.RequiredPromptType,
-	INPUT extends Record<string, any>,
-	OUTPUT,
-
-> = LLMCallSignature<TConfig, Promise<results.StreamObjectResultAll<OUTPUT>>, PType>;
-
 type StreamObjectConfig<
 	INPUT extends Record<string, any>,
 	OUTPUT, //@out
@@ -41,7 +22,7 @@ type StreamObjectConfig<
 
 // Parameterize return types by concrete promptType literal used by implementation
 type StreamObjectReturn<
-	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
+	TConfig extends configs.BaseConfig,
 	PType extends types.RequiredPromptType,
 	OUTPUT, //@out
 	PROMPT extends types.AnyPromptSource = string
@@ -345,7 +326,7 @@ function withFunction<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.FunctionPromptConfig>,
-): StreamObjectReturn<TConfig, 'async-script', OUTPUT, PROMPT>;
+): StreamObjectReturn<TConfig, 'function', OUTPUT, PROMPT>;
 
 // Overload 2: With parent parameter
 function withFunction<
@@ -363,7 +344,7 @@ function withFunction<
 	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.FunctionPromptConfig>>,
 
-): StreamObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT, PROMPT>;
+): StreamObjectWithParentReturn<TConfig, TParentConfig, 'function', OUTPUT, PARENT_OUTPUT, PROMPT>;
 
 // Implementation signature that handles both cases
 function withFunction<
@@ -377,8 +358,8 @@ function withFunction<
 >(
 	config: TConfig,
 	parent?: ConfigProvider<TParentConfig>
-): StreamObjectReturn<TConfig, 'async-script', OUTPUT, PROMPT> {
-	return _createObjectStreamer(config, 'async-script', parent, false) as unknown as StreamObjectReturn<TConfig, 'async-script', OUTPUT, PROMPT>;
+): StreamObjectReturn<TConfig, 'function', OUTPUT, PROMPT> {
+	return _createObjectStreamer(config, 'function', parent, false) as unknown as StreamObjectReturn<TConfig, 'function', OUTPUT, PROMPT>;
 }
 
 //common function for the specialized from/loads Template/Script/Text
