@@ -96,13 +96,3 @@ export function augmentStreamText<TOOLS extends ToolSet = ToolSet, PARTIAL = str
 
 	return result as StreamTextResultAugmented<TOOLS, PARTIAL>;
 }
-
-// Helper to create a copy of messages and append the prompt as a user message when available
-export function buildMessagesWithPrompt(existing: ModelMessage[] | undefined, promptToAppend?: string): ModelMessage[] | undefined {
-	if (!existing) return undefined;
-	const messagesCopy = existing.slice();
-	if (typeof promptToAppend === 'string' && promptToAppend.length > 0) {
-		messagesCopy.push({ role: 'user', content: promptToAppend } as ModelMessage);
-	}
-	return messagesCopy;
-}
