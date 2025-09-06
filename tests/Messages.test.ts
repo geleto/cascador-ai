@@ -11,7 +11,7 @@ import {
 	// The augment functions are tested through the public API, so direct import is not needed.
 	// augmentGenerateText,
 	// augmentStreamText,
-} from '../src/factories/llm-renderer';
+} from '../src/llm-renderer';
 import { ModelMessage, stepCountIs } from 'ai';
 import { streamToString } from './TextStreamer.test';
 

@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
-import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
+import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 

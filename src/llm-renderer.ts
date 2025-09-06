@@ -1,16 +1,16 @@
-import { Context, ScriptPromptType, TemplatePromptType } from '../types/types';
-import * as configs from '../types/config';
-import { validateLLMRendererCall } from '../validate';
-import * as utils from '../types/utils';
-import { _createTemplate, TemplateCallSignature } from './Template';
-import { _createScript, ScriptCallSignature } from './Script';
+import { Context, ScriptPromptType, TemplatePromptType } from './types/types';
+import * as configs from './types/config';
+import { validateLLMRendererCall } from './validate';
+import * as utils from './types/utils';
+import { _createTemplate, TemplateCallSignature } from './factories/Template';
+import { _createScript, ScriptCallSignature } from './factories/Script';
 import { LanguageModel, ModelMessage, generateObject, generateText, streamObject, streamText } from 'ai';
 import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
-import { PromptStringOrMessagesSchema } from '../types/schemas';
-import { RequiredPromptType, AnyPromptSource } from '../types/types';
-import { _createFunction, FunctionCallSignature } from './Function';
-import { augmentGenerateText, augmentStreamText } from '../messages';
+import { PromptStringOrMessagesSchema } from './types/schemas';
+import { RequiredPromptType, AnyPromptSource } from './types/types';
+import { _createFunction, FunctionCallSignature } from './factories/Function';
+import { augmentGenerateText, augmentStreamText } from './messages';
 
 //@todo - INPUT like in template
 export type LLMCallSignature<

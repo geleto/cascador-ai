@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import * as types from '../types/types';
 
-import { LLMCallSignature, _createLLMRenderer } from "./llm-renderer";
+import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
 import { ConfigProvider, mergeConfigs } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 
