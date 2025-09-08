@@ -850,18 +850,58 @@ const renderer = create.Template({
 ```
 
 ### loader
-Provides a loader that retrieves the prompt using it's name. Pull templates or scripts from resources (like files or database) using a Nunjucks-compatible loader. Used when composing scripts and templates with `import`, `include`, `extend/block` as well as when the renderer uses `.loadsTemplate` or `.loadsScript`.
+Provides a loader that retrieves templates or scripts by name from an external source, like the filesystem or a database. Loaders are essential when using modifiers like `.loadsTemplate` or `.loadsScript`, and they also power compositional features within your scripts and templates, such as `import`, `include`, and `extend`.
 
 ```typescript
 import { create, FileSystemLoader } from 'cascador-ai';
 
+// Use the built-in FileSystemLoader to load from a local directory
 const fileLoader = new FileSystemLoader('./templates');
-// Use the .loadsTemplate modifier to load from an external file
 const renderer = create.Template.loadsTemplate({
   loader: fileLoader,
-  template: 'main.njk', // Just the filename
+  template: 'main.njk', // The filename to load
 });
 ```
+
+*Cascador-AI* uses the Nunjucks/Cascada loader system, which offers several options:
+
+*   **Built-in Loaders**:
+    *   **`FileSystemLoader`**: (Node.js only) Loads files from the local filesystem.
+    *   **`WebLoader`**: (Browser only) Loads files over HTTP from a given base URL.
+    *   **`PrecompiledLoader`**: Loads assets from a precompiled JavaScript object for optimal performance.
+
+*   **Custom Loaders**: You can create a custom loader by providing either a simple asynchronous function or a class with a `load` method. If a loader can't find a template, it should return `null`.
+
+    **Example: Functional Loader**
+    ```javascript
+    // A custom loader that fetches templates from a network
+    const networkLoader = async (name) => {
+      const response = await fetch(`https://my-cdn.com/templates/${name}`);
+      return response.ok ? response.text() : null;
+    };
+
+    const renderer = create.Template.loadsTemplate({
+      loader: networkLoader,
+      template: 'main.html'
+    });
+    ```
+
+    **Example: Class-based Loader**
+    ```javascript
+    // A custom loader that fetches scripts from a database
+    class DatabaseLoader {
+      constructor(db) { this.db = db; }
+      async load(name) {
+        const scriptRecord = await this.db.scripts.findByName(name);
+        return scriptRecord?.sourceCode || null;
+      }
+    }
+
+    const renderer = create.Script.loadsScript({
+      loader: new DatabaseLoader(myDbConnection),
+      script: 'onboarding_agent.csc'
+    });
+    ```
 
 ### options
 Fine-tune the Cascada engine with extras like `autoescape` or `trimBlocks`:
