@@ -8,8 +8,8 @@ import { LanguageModel, ModelMessage, generateObject, generateText, streamObject
 import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
-import { RequiredPromptType, AnyPromptSource } from './types/types';
-import * as cascada from 'cascada-engine';
+import { RequiredPromptType, AnyPromptSource, CascadaLoaders } from './types/types';
+import { loadString } from 'cascada-engine';
 import { _createFunction, FunctionCallSignature } from './factories/Function';
 import { augmentGenerateText, augmentStreamText } from './messages';
 
@@ -126,6 +126,11 @@ function copyConfigProperties(config: Record<string, any>, keys: readonly string
 	return dst;
 }
 
+async function loadText(key: string, loader: CascadaLoaders): Promise<string> {
+	const result = loadString(key, loader);
+	// Handle both sync and async returns from loadString
+	return result instanceof Promise ? await result : result;
+}
 
 //@todo - the promptRenderer shall use a precompiled template/script when created with a template/script promptType
 export function _createLLMRenderer<
@@ -296,18 +301,14 @@ export function _createLLMRenderer<
 			}
 
 			if (config.prompt) {
-				// Using cascada.loadString function - types may not be properly defined in cascada-engine
-				const result = cascada.loadString(config.prompt, loaderConfig.loader);
-				configPrompt = typeof result === 'string' ? Promise.resolve(result) : result;
+				configPrompt = loadText(config.prompt, loaderConfig.loader);
 			}
 			const syncCall = call;
 			call = async (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): Promise<TFunctionResult> => {
 				let prompt: string | undefined;
 				try {
 					if (promptOrMessages && typeof promptOrMessages === 'string') {
-						// Using cascada.loadString function - types may not be properly defined in cascada-engine
-						const result = cascada.loadString(promptOrMessages, loaderConfig.loader);
-						prompt = typeof result === 'string' ? result : await result;
+						prompt = await loadText(promptOrMessages, loaderConfig.loader);
 						messages = maybeMessages;
 					} else if (configPrompt) {
 						if (typeof configPrompt === 'string') {
