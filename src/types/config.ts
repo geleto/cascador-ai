@@ -97,7 +97,7 @@ export interface ScriptToolConfig<
 	description?: string;
 }
 
-export type OptionalTemplatePromptConfig = TemplatePromptConfig | { promptType: 'text' };
+export type OptionalTemplatePromptConfig = TemplatePromptConfig | { promptType: 'text' | 'text-name' };
 
 // Config for prompts that are rendered with scripts (as part of the whole generate/stream Text/Object/Function config)
 export interface ScriptPromptConfig extends CascadaConfig {
@@ -106,9 +106,9 @@ export interface ScriptPromptConfig extends CascadaConfig {
 	promptType?: ScriptPromptType;
 }
 
-export type OptionalScriptPromptConfig = ScriptPromptConfig | { promptType: 'text' };
+export type OptionalScriptPromptConfig = ScriptPromptConfig | { promptType: 'text' | 'text-name' };
 
-//@todo OptionalGeneratedPromptConfig
+//@todo OptionalGeneratedPromptConfig or OptionalRenderedPromptConfig
 export type OptionalPromptConfig = OptionalTemplatePromptConfig | OptionalScriptPromptConfig | OptionalFunctionPromptConfig;
 
 // Config for prompts that are rendered with functions (as part of the whole generate/stream Text/Object/Function config)
@@ -118,7 +118,7 @@ export interface FunctionPromptConfig extends ContextConfig {
 	promptType?: FunctionPromptType;
 }
 
-export type OptionalFunctionPromptConfig = FunctionPromptConfig | { promptType: 'text' };
+export type OptionalFunctionPromptConfig = FunctionPromptConfig | { promptType: 'text' | 'text-name' };
 
 export type PromptConfig = TemplatePromptConfig | ScriptPromptConfig | FunctionPromptConfig;
 

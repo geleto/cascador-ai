@@ -9,6 +9,7 @@ import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
 import { RequiredPromptType, AnyPromptSource } from './types/types';
+import * as cascada from 'cascada-engine';
 import { _createFunction, FunctionCallSignature } from './factories/Function';
 import { augmentGenerateText, augmentStreamText } from './messages';
 
@@ -125,6 +126,7 @@ function copyConfigProperties(config: Record<string, any>, keys: readonly string
 	return dst;
 }
 
+
 //@todo - the promptRenderer shall use a precompiled template/script when created with a template/script promptType
 export function _createLLMRenderer<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig> & { context?: Context }
@@ -147,7 +149,7 @@ export function _createLLMRenderer<
 		(vercelFunc as unknown) === generateObject || (vercelFunc as unknown) === streamObject;
 
 	let call;
-	if (config.promptType !== 'text' && config.promptType !== undefined) {
+	if (config.promptType !== 'text' && config.promptType !== 'text-name' && config.promptType !== undefined) {
 		// Dynamic Path - use Template/Script/Function to render the prompt
 
 		let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any> | FunctionCallSignature<any, any, any>;
@@ -281,6 +283,57 @@ export function _createLLMRenderer<
 				return result;
 			}
 		};
+		if (config.promptType === 'text-name') {
+			// wrap the call in a promise that waits for the prompt to be loaded
+			// from loaders and only when it is ready - calls the original prompt
+			let configPrompt: Promise<string> | string | undefined;
+			let messages: ModelMessage[] | undefined;
+
+			// Validate loader exists
+			const loaderConfig = config as configs.LoaderConfig;
+			if (!('loader' in loaderConfig)) {
+				throw new Error("A 'loader' is required for 'text-name' prompt type");
+			}
+
+			if (config.prompt) {
+				// Using cascada.loadString function - types may not be properly defined in cascada-engine
+				const result = cascada.loadString(config.prompt, loaderConfig.loader);
+				configPrompt = typeof result === 'string' ? Promise.resolve(result) : result;
+			}
+			const syncCall = call;
+			call = async (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): Promise<TFunctionResult> => {
+				let prompt: string | undefined;
+				try {
+					if (promptOrMessages && typeof promptOrMessages === 'string') {
+						// Using cascada.loadString function - types may not be properly defined in cascada-engine
+						const result = cascada.loadString(promptOrMessages, loaderConfig.loader);
+						prompt = typeof result === 'string' ? result : await result;
+						messages = maybeMessages;
+					} else if (configPrompt) {
+						if (typeof configPrompt === 'string') {
+							prompt = configPrompt;
+						} else {
+							// Cache the resolved promise to avoid re-awaiting
+							prompt = await configPrompt;
+							configPrompt = prompt; // Store resolved value for future calls
+						}
+						if (promptOrMessages) {
+							messages = promptOrMessages as ModelMessage[];
+						} else {
+							messages = maybeMessages;
+						}
+					} else {
+						throw new Error('No prompt provided. Either configure a prompt in the config or provide one at call time.');
+					}
+				} catch (error) {
+					if (error instanceof Error && error.message.includes('not found')) {
+						throw new Error(`Failed to load prompt: ${error.message}`);
+					}
+					throw error;
+				}
+				return syncCall(prompt, messages);
+			}
+		}
 	}
 	// Get the function name and capitalize it to create the type
 	const functionName = vercelFunc.name;
