@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SchemaType } from './types';
+import { Schema } from 'ai';
 
 //export type Override<A, B> = Omit<A, keyof B> & B;
 export type Override<A, B> = {
@@ -27,11 +28,18 @@ export type StrictType<T, Shape> = T extends Shape
 export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F & string, ...KeysToStringArray<R>] : [];
 
 // Helper to infer inputSchema from the schema
-export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
+/*export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 	? z.infer<T>
 	: T extends { inputSchema: z.ZodTypeAny }
 	? z.infer<T['inputSchema']>
-	: any;
+	: any;*/
+
+// Helper to infer the output type from a Zod or Vercel AI Schema, the vercel
+export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
+	? z.infer<T> // It's a Zod schema, use z.infer
+	: T extends Schema<infer U> // It's a Vercel AI Schema, infer the inner type U
+	? U
+	: unknown; // Fallback to a safe unknown type
 
 export type EnsurePromise<T> = T extends Promise<any> ? T : Promise<T>;
 
