@@ -856,51 +856,74 @@ Provides a loader that retrieves templates or scripts by name from an external s
 import { create, FileSystemLoader } from 'cascador-ai';
 
 // Use the built-in FileSystemLoader to load from a local directory
-const fileLoader = new FileSystemLoader('./templates');
 const renderer = create.Template.loadsTemplate({
-  loader: fileLoader,
+  loader: new FileSystemLoader('./templates'),
   template: 'main.njk', // The filename to load
 });
 ```
 
-*Cascador-AI* uses the Nunjucks/Cascada loader system, which offers several options:
+*Cascador-AI* offers several loading options:
 
 *   **Built-in Loaders**:
     *   **`FileSystemLoader`**: (Node.js only) Loads files from the local filesystem.
     *   **`WebLoader`**: (Browser only) Loads files over HTTP from a given base URL.
     *   **`PrecompiledLoader`**: Loads assets from a precompiled JavaScript object for optimal performance.
 
-*   **Custom Loaders**: You can create a custom loader by providing either a simple asynchronous function or a class with a `load` method. If a loader can't find a template, it should return `null`.
+Of course. Here is the updated **Custom Loaders** section with more detailed explanations for `isRelative`, `resolve`, and a mention of the event system, all while keeping the style concise and developer-focused.
+
+***
+
+*   **Custom Loaders**: You can create a custom loader by providing either a simple asynchronous function or a more structured class. If a loader can't find an asset, it should return `null` to allow fallback to the next loader in the chain.
 
     **Example: Functional Loader**
-    ```javascript
-    // A custom loader that fetches templates from a network
-    const networkLoader = async (name) => {
+    A loader can be a simple function. For more control, it can return a `LoaderSource` object (`{ src, path, noCache }`) to provide metadata for caching and error reporting.
+    ```typescript
+    // A custom loader that fetches templates from a network.
+    const networkLoader = async (name: string) => {
       const response = await fetch(`https://my-cdn.com/templates/${name}`);
-      return response.ok ? response.text() : null;
+      if (!response.ok) return null;
+      const src = await response.text();
+      // Return a LoaderSource for better debugging and caching control
+      return { src, path: name, noCache: false };
     };
-
-    const renderer = create.Template.loadsTemplate({
-      loader: networkLoader,
-      template: 'main.html'
-    });
     ```
 
     **Example: Class-based Loader**
-    ```javascript
-    // A custom loader that fetches scripts from a database
+    For advanced features like relative paths (`import`, `include`) and event-driven caching, use a class. A loader class has one required method and several optional ones for advanced functionality:
+
+    | Method | Description | Required? |
+    |---|---|:---:|
+    | `load(name)` | The core method. Loads an asset by name and returns its content (as a string or `LoaderSource` object), or `null` if not found. Can be async. | **Yes** |
+    | `isRelative(name)` | Returns `true` if a filename is relative (e.g., `./component.script`). This tells the engine that the path needs to be resolved. | No |
+    | `resolve(from, to)`| Resolves a relative path (`to`) based on the path of a parent script (`from`). This is crucial for making features like `include "./child.csc"` work correctly. | No |
+    | `on(event, handler)` | Listens for environment events (`'load'`, `'update'`). Useful for advanced, event-driven cache invalidation strategies. | No |
+
+    Here is a class-based loader that supports relative paths:
+    ```typescript
     class DatabaseLoader {
-      constructor(db) { this.db = db; }
-      async load(name) {
+      constructor(private db: MyDatabaseClient) { }
+
+      // The required 'load' method can be synchronous or asynchronous
+      async load(name: string) {
         const scriptRecord = await this.db.scripts.findByName(name);
-        return scriptRecord?.sourceCode || null;
+        return scriptRecord
+          ? { src: scriptRecord.sourceCode, path: name, noCache: false }
+          : null;
+      }
+
+      // Optional method to identify relative paths
+      isRelative(filename: string): boolean {
+        return filename.startsWith('./') || filename.startsWith('../');
+      }
+
+      // Optional method to resolve relative paths
+      resolve(from: string, to: string): string {
+        // A real implementation would use a robust path-joining library.
+        // This is a simplified example.
+        const fromDir = from.substring(0, from.lastIndexOf('/'));
+        return `${fromDir}/${to}`;
       }
     }
-
-    const renderer = create.Script.loadsScript({
-      loader: new DatabaseLoader(myDbConnection),
-      script: 'onboarding_agent.csc'
-    });
     ```
 
 ### options
