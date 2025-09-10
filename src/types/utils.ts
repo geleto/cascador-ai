@@ -35,6 +35,7 @@ export type KeysToStringArray<T> = T extends readonly [infer F, ...infer R] ? [F
 	: any;*/
 
 // Helper to infer the output type from a Zod or Vercel AI Schema, the vercel
+// @todo - rename to InferFromSchema
 export type InferParameters<T extends SchemaType<any>> = T extends z.ZodTypeAny
 	? z.infer<T> // It's a Zod schema, use z.infer
 	: T extends Schema<infer U> // It's a Vercel AI Schema, infer the inner type U

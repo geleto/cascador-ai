@@ -40,7 +40,7 @@ export const ContextConfigKeys: (keyof ContextConfig)[] = ['context', 'debug'] a
 export interface CascadaConfig extends ContextConfig {
 	filters?: CascadaFilters;
 	options?: ConfigureOptions;
-	loader?: CascadaLoaders | null;
+	loader?: CascadaLoaders;
 }
 
 export const CascadaConfigKeys: (keyof CascadaConfig)[] = ['context', 'filters', 'options', 'loader', 'debug'] as const;
