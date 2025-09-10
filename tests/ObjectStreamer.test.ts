@@ -3,7 +3,7 @@ import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
 import type { StreamObjectOnFinishEvent } from '../src/index';
-import { model, temperature, StringLoader, timeout, modelName, createProvider } from './common';
+import { model, temperature, StringLoader, AsyncStringLoader, timeout, modelName, createProvider } from './common';
 import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import type { DeepPartial } from 'ai';
@@ -217,15 +217,15 @@ describe('create.ObjectStreamer', function () {
 
 		it('should merge and deduplicate loader arrays from parent configs and use a named template', async () => {
 			const loader1 = new StringLoader();
-			loader1.addTemplate('stream1.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
+			loader1.addString('stream1.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
 			const loader2 = new StringLoader();
-			loader2.addTemplate('stream2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
+			loader2.addString('stream2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
 
 			const parent = create.Config({ loader: [loader1] });
 			const streamer = create.ObjectStreamer.loadsTemplate({
-				model, temperature,
+				model,
 				schema: simpleSchema,
-				loader: [loader2]
+				loader: [loader1]
 			}, parent);
 
 			expect(streamer.config.loader).to.be.an('array').with.lengthOf(2);
@@ -378,6 +378,226 @@ describe('create.ObjectStreamer', function () {
 				ConfigError,
 				'Either \'prompt\' (string or messages array) or \'messages\' must be provided',
 			);
+		});
+	});
+
+	describe('.loadsText functionality', () => {
+		const stringLoader = new StringLoader();
+		stringLoader.addString('simple.txt', 'Generate an object with name "Test" and value 42.');
+		stringLoader.addString('complex.txt', 'Generate an object with name "Runtime" and value 100.');
+
+		it('should load and stream plain text from a loader', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				schema: simpleSchema,
+				prompt: 'simple.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'Test');
+			expect(finalObject).to.have.property('value', 42);
+		});
+
+		it('should load text at runtime with one-off prompt', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				schema: simpleSchema
+			});
+
+			const result = await streamer('complex.txt');
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'Runtime');
+			expect(finalObject).to.have.property('value', 100);
+		});
+
+		it('should handle multiple loaders in array', async () => {
+			const loader1 = new StringLoader();
+			loader1.addString('test1.txt', 'Generate an object with name "First" and value 1.');
+
+			const loader2 = new StringLoader();
+			loader2.addString('test2.txt', 'Generate an object with name "Second" and value 2.');
+
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				schema: simpleSchema,
+				prompt: 'test2.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'Second');
+			expect(finalObject).to.have.property('value', 2);
+		});
+
+		it('should throw ConfigError if no loader is provided', () => {
+			expect(() =>
+				// @ts-expect-error - no loader provided
+				create.ObjectStreamer.loadsText({
+					model,
+					temperature,
+					schema: simpleSchema,
+					prompt: 'file.txt'
+				})
+			).to.throw(
+				ConfigError,
+				"A 'loader' is required for this operation"
+			);
+		});
+
+		it('should throw if loader fails to find text at creation time', () => {
+			expect(() => {
+				create.ObjectStreamer.loadsText({
+					model,
+					temperature,
+					loader: new StringLoader(),
+					schema: simpleSchema,
+					prompt: 'nonexistent.txt'
+				});
+			}).to.throw(/not found/);
+		});
+
+		it('should throw if loader fails to find text at runtime', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: new StringLoader(),
+				schema: simpleSchema
+			});
+
+			const result = streamer('nonexistent.txt');
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+	});
+
+	describe('Async Loader Functionality', () => {
+		const asyncStringLoader = new AsyncStringLoader();
+		asyncStringLoader.addString('async-simple.txt', 'Generate an object with name "AsyncTest" and value 42.');
+		asyncStringLoader.addString('async-complex.txt', 'Generate an object with name "AsyncRuntime" and value 100.');
+
+		it('should load and stream plain text from an async loader', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				schema: simpleSchema,
+				prompt: 'async-simple.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'AsyncTest');
+			expect(finalObject).to.have.property('value', 42);
+		});
+
+		it('should load text at runtime with one-off prompt using async loader', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				schema: simpleSchema
+			});
+
+			const result = await streamer('async-complex.txt');
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'AsyncRuntime');
+			expect(finalObject).to.have.property('value', 100);
+		});
+
+		it('should handle multiple async loaders in array', async () => {
+			const loader1 = new AsyncStringLoader();
+			loader1.addString('async-test1.txt', 'Generate an object with name "AsyncFirst" and value 1.');
+
+			const loader2 = new AsyncStringLoader();
+			loader2.addString('async-test2.txt', 'Generate an object with name "AsyncSecond" and value 2.');
+
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				schema: simpleSchema,
+				prompt: 'async-test2.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'AsyncSecond');
+			expect(finalObject).to.have.property('value', 2);
+		});
+
+		it('should throw if async loader fails to find text at creation time', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				schema: simpleSchema,
+				prompt: 'nonexistent-async.txt'
+			});
+
+			const result = streamer();
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+
+		it('should throw if async loader fails to find text at runtime', async () => {
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				schema: simpleSchema
+			});
+
+			const result = streamer('nonexistent-async.txt');
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with functional async loaders', async () => {
+			const functionalAsyncLoader = (name: string): Promise<string> => {
+				const templates: Record<string, string> = {
+					'async-func.txt': 'Generate an object with name "AsyncFunctional" and value 99.'
+				};
+				return Promise.resolve(templates[name] || '');
+			};
+
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: functionalAsyncLoader,
+				schema: simpleSchema,
+				prompt: 'async-func.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'AsyncFunctional');
+			expect(finalObject).to.have.property('value', 99);
+		});
+
+		it('should handle mixed sync and async loaders', async () => {
+			const syncLoader = new StringLoader();
+			syncLoader.addString('mixed.txt', 'Generate an object with name "Mixed" and value 50.');
+
+			const asyncLoader = new AsyncStringLoader();
+			asyncLoader.addString('mixed.txt', 'Generate an object with name "AsyncMixed" and value 75.');
+
+			// Async loader should take precedence when listed first
+			const streamer = create.ObjectStreamer.loadsText({
+				model,
+				temperature,
+				loader: [asyncLoader, syncLoader],
+				schema: simpleSchema,
+				prompt: 'mixed.txt'
+			});
+
+			const result = await streamer();
+			const finalObject = await result.object;
+			expect(finalObject).to.have.property('name', 'AsyncMixed');
+			expect(finalObject).to.have.property('value', 75);
 		});
 	});
 });

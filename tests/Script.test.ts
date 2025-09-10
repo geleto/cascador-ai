@@ -441,7 +441,7 @@ describe('create.Script', function () {
 
 	describe('Script Loader', () => {
 		const stringLoader = new StringLoader();
-		stringLoader.addTemplate('s1', `
+		stringLoader.addString('s1', `
 			:data
 			var msg = greeting + " " + subject
 			@data.out = msg

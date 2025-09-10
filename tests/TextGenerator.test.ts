@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index';
-import { model, temperature, StringLoader, timeout } from './common';
+import { model, temperature, StringLoader, AsyncStringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
 
 // Configure chai-as-promised
@@ -294,8 +294,8 @@ describe('create.TextGenerator', function () {
 		const stringLoader = new StringLoader();
 
 		// Add templates to the StringLoader
-		stringLoader.addTemplate('simple.njk', 'Only write the number in "" quotes and nothing else. The number is {{ number }}.');
-		stringLoader.addTemplate('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
+		stringLoader.addString('simple.njk', 'Only write the number in "" quotes and nothing else. The number is {{ number }}.');
+		stringLoader.addString('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
 
 		it('should load and render a template from a named prompt', async () => {
 			const generator = create.TextGenerator.loadsTemplate({
@@ -310,7 +310,7 @@ describe('create.TextGenerator', function () {
 
 		it('should load from StringLoader using a named prompt', async () => {
 			const testLoader = new StringLoader();
-			testLoader.addTemplate('my-prompt', 'Write this and nothing else, keep it exactly as shown: This is a test with {{ name }}.');
+			testLoader.addString('my-prompt', 'Write this and nothing else, keep it exactly as shown: This is a test with {{ name }}.');
 
 			const generator = create.TextGenerator.loadsTemplate({
 				model,
@@ -490,6 +490,298 @@ describe('create.TextGenerator', function () {
 			});
 			// The error from cascada-engine is now wrapped.
 			await expect(generator()).to.be.rejectedWith('Context failed');
+		});
+	});
+
+	describe('.loadsText functionality', () => {
+		const stringLoader = new StringLoader();
+		stringLoader.addString('simple.txt', 'Output only the number 2.');
+		stringLoader.addString('complex.txt', 'Write a short story about a robot.');
+
+		it('should load and use plain text from a loader', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				prompt: 'simple.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('2');
+		});
+
+		it('should load text at runtime with one-off prompt', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: stringLoader
+			});
+
+			const result = await generator('complex.txt');
+			expect(result.text).to.be.a('string').with.length.above(0);
+		});
+
+		it('should handle multiple loaders in array', async () => {
+			const loader1 = new StringLoader();
+			loader1.addString('test1.txt', 'Output only the number 1.');
+
+			const loader2 = new StringLoader();
+			loader2.addString('test2.txt', 'Output only the number 2.');
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				prompt: 'test2.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('2');
+		});
+
+		it('should fallback to first loader if second fails', async () => {
+			const loader1 = new StringLoader();
+			loader1.addString('fallback.txt', 'Output only the number 3.');
+
+			const loader2 = new StringLoader();
+			// loader2 has no templates
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: [loader2, loader1],
+				prompt: 'fallback.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('3');
+		});
+
+		it('should throw ConfigError if no loader is provided', () => {
+			expect(() =>
+				// @ts-expect-error - no loader provided
+				create.TextGenerator.loadsText({
+					model,
+					temperature,
+					prompt: 'file.txt'
+				})
+			).to.throw(
+				ConfigError,
+				"A 'loader' is required for this operation"
+			);
+		});
+
+		it('should throw if loader fails to find text at creation time', () => {
+			expect(() => {
+				create.TextGenerator.loadsText({
+					model,
+					temperature,
+					loader: new StringLoader(),
+					prompt: 'nonexistent.txt'
+				});
+			}).to.throw(/not found/);
+		});
+
+		it('should throw if loader fails to find text at runtime', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: new StringLoader()
+			});
+
+			await expect(generator('nonexistent.txt')).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with inheritance from parent config', async () => {
+			const parentLoader = new StringLoader();
+			parentLoader.addString('parent.txt', 'Output only the number 4.');
+
+			const parent = create.Config({
+				loader: parentLoader,
+				temperature: 0.1
+			});
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				prompt: 'parent.txt'
+			}, parent);
+
+			const result = await generator();
+			expect(result.text).to.equal('4');
+		});
+
+		it('should override parent loader with child loader', async () => {
+			const parentLoader = new StringLoader();
+			parentLoader.addString('override.txt', 'Output only the number 5.');
+
+			const childLoader = new StringLoader();
+			childLoader.addString('override.txt', 'Output only the number 6.');
+
+			const parent = create.Config({ loader: parentLoader });
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: childLoader,
+				prompt: 'override.txt'
+			}, parent);
+
+			const result = await generator();
+			expect(result.text).to.equal('6');
+		});
+
+		it('should work with functional loaders', async () => {
+			const functionalLoader = (name: string): string => {
+				const templates: Record<string, string> = {
+					'func.txt': 'Output only the number 7.'
+				};
+				return templates[name] || '';
+			};
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: functionalLoader,
+				prompt: 'func.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('7');
+		});
+
+		it('should handle loader caching', async () => {
+			let loadCount = 0;
+			const countingLoader = new StringLoader();
+			countingLoader.addString('count.txt', 'Output only the number 8.');
+
+			// Mock the load method to count calls
+			const originalLoad = countingLoader.load.bind(countingLoader);
+			countingLoader.load = function (name: string) {
+				loadCount++;
+				return originalLoad(name);
+			};
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: countingLoader,
+				prompt: 'count.txt'
+			});
+
+			// First call
+			const result1 = await generator();
+			expect(loadCount).to.equal(1);
+
+			// Second call should use cache
+			const result2 = await generator();
+			expect(loadCount).to.equal(1); // Should not increment
+			expect(result1.text).to.equal(result2.text);
+		});
+	});
+
+	describe('Async Loader Functionality', () => {
+		const asyncStringLoader = new AsyncStringLoader();
+		asyncStringLoader.addString('async-simple.txt', 'Output only the number 2.');
+		asyncStringLoader.addString('async-complex.txt', 'Write a short story about a robot.');
+
+		it('should load and use plain text from an async loader', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				prompt: 'async-simple.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('2');
+		});
+
+		it('should load text at runtime with one-off prompt using async loader', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader
+			});
+
+			const result = await generator('async-complex.txt');
+			expect(result.text).to.be.a('string').with.length.above(0);
+		});
+
+		it('should handle multiple async loaders in array', async () => {
+			const loader1 = new AsyncStringLoader();
+			loader1.addString('async-test1.txt', 'Output only the number 1.');
+
+			const loader2 = new AsyncStringLoader();
+			loader2.addString('async-test2.txt', 'Output only the number 2.');
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				prompt: 'async-test2.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('2');
+		});
+
+		it('should throw if async loader fails to find text at creation time', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				prompt: 'nonexistent-async.txt'
+			});
+
+			await expect(generator()).to.be.rejectedWith(/not found/);
+		});
+
+		it('should throw if async loader fails to find text at runtime', async () => {
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader()
+			});
+
+			await expect(generator('nonexistent-async.txt')).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with functional async loaders', async () => {
+			const functionalAsyncLoader = (name: string): Promise<string> => {
+				const templates: Record<string, string> = {
+					'async-func.txt': 'Output only the number 7.'
+				};
+				return Promise.resolve(templates[name] || '');
+			};
+
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: functionalAsyncLoader,
+				prompt: 'async-func.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('7');
+		});
+
+		it('should handle mixed sync and async loaders', async () => {
+			const syncLoader = new StringLoader();
+			syncLoader.addString('mixed.txt', 'Output only the number 5.');
+
+			const asyncLoader = new AsyncStringLoader();
+			asyncLoader.addString('mixed.txt', 'Output only the number 6.');
+
+			// The first loader to return a value will be used
+			const generator = create.TextGenerator.loadsText({
+				model,
+				temperature,
+				loader: [asyncLoader, syncLoader],
+				prompt: 'mixed.txt'
+			});
+
+			const result = await generator();
+			expect(result.text).to.equal('5');
 		});
 	});
 });

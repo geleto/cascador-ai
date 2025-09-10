@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create, StreamTextResult } from '../src/index';
-import { model, temperature, modelName, StringLoader, createProvider, timeout } from './common';
+import { model, temperature, modelName, StringLoader, AsyncStringLoader, createProvider, timeout } from './common';
 import { ConfigError } from '../src/validate';
 import { streamText } from 'ai';
 
@@ -341,8 +341,8 @@ describe('create.TextStreamer', function () {
 
 	describe('Loader Functionality', () => {
 		const stringLoader = new StringLoader();
-		stringLoader.addTemplate('simple.njk', 'Write only the number {{ number }} and nothing else.');
-		stringLoader.addTemplate('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
+		stringLoader.addString('simple.njk', 'Write only the number {{ number }} and nothing else.');
+		stringLoader.addString('filtered.njk', 'Write the following text exactly as shown, preserving all punctuation and the original case of each letter: {{ text | shout }}');
 
 		it('should load and render a template from a loader', async () => {
 			const streamer = create.TextStreamer.loadsTemplate({
@@ -431,6 +431,224 @@ describe('create.TextStreamer', function () {
 			});
 			const result = streamer();
 			await expect(result).to.be.rejectedWith('Filter failed');
+		});
+	});
+
+	describe('.loadsText functionality', () => {
+		const stringLoader = new StringLoader();
+		stringLoader.addString('simple.txt', 'Output only the number 2.');
+		stringLoader.addString('story.txt', 'Write a short story about a {{ character }}.');
+
+		it('should load and stream plain text from a loader', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				prompt: 'simple.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('2');
+		});
+
+		it('should load text at runtime with one-off prompt', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: stringLoader
+			});
+
+			const result = await streamer('story.txt');
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.be.a('string').with.length.above(0);
+		});
+
+		it('should handle multiple loaders in array', async () => {
+			const loader1 = new StringLoader();
+			loader1.addString('test1.txt', 'Output only the number 1.');
+
+			const loader2 = new StringLoader();
+			loader2.addString('test2.txt', 'Output only the number 2.');
+
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				prompt: 'test2.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('2');
+		});
+
+		it('should throw ConfigError if no loader is provided', () => {
+			expect(() =>
+				// @ts-expect-error - no loader provided
+				create.TextStreamer.loadsText({
+					model,
+					temperature,
+					prompt: 'file.txt'
+				})
+			).to.throw(
+				ConfigError,
+				"A 'loader' is required for this operation"
+			);
+		});
+
+		it('should throw if loader fails to find text at creation time', () => {
+			expect(() => {
+				create.TextStreamer.loadsText({
+					model,
+					temperature,
+					loader: new StringLoader(),
+					prompt: 'nonexistent.txt'
+				});
+			}).to.throw(/not found/);
+		});
+
+		it('should throw if loader fails to find text at runtime', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: new StringLoader()
+			});
+
+			const result = streamer('nonexistent.txt');
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with inheritance from parent config', async () => {
+			const parentLoader = new StringLoader();
+			parentLoader.addString('parent.txt', 'Parent loader content');
+
+			const parent = create.Config({
+				loader: parentLoader,
+				temperature: 0.1
+			});
+
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				prompt: 'parent.txt'
+			}, parent);
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('Parent loader content');
+		});
+	});
+
+	describe('Async Loader Functionality', () => {
+		const asyncStringLoader = new AsyncStringLoader();
+		asyncStringLoader.addString('async-simple.txt', 'Output only the number 2.');
+		asyncStringLoader.addString('async-story.txt', 'Write a short story about a {{ character }}.');
+
+		it('should load and stream plain text from an async loader', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				prompt: 'async-simple.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('2');
+		});
+
+		it('should load text at runtime with one-off prompt using async loader', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader
+			});
+
+			const result = await streamer('async-story.txt');
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.be.a('string').with.length.above(0);
+		});
+
+		it('should handle multiple async loaders in array', async () => {
+			const loader1 = new AsyncStringLoader();
+			loader1.addString('async-test1.txt', 'Output only the number 1.');
+
+			const loader2 = new AsyncStringLoader();
+			loader2.addString('async-test2.txt', 'Output only the number 2.');
+
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				prompt: 'async-test2.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('2');
+		});
+
+		it('should throw if async loader fails to find text at creation time', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				prompt: 'nonexistent-async.txt'
+			});
+
+			const result = streamer();
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+
+		it('should throw if async loader fails to find text at runtime', async () => {
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader()
+			});
+
+			const result = streamer('nonexistent-async.txt');
+			await expect(result).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with functional async loaders', async () => {
+			const functionalAsyncLoader = (name: string): Promise<string> => {
+				const templates: Record<string, string> = {
+					'async-func.txt': 'Output only the number 7.'
+				};
+				return Promise.resolve(templates[name] || '');
+			};
+
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: functionalAsyncLoader,
+				prompt: 'async-func.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('7');
+		});
+
+		it('should handle mixed sync and async loaders', async () => {
+			const syncLoader = new StringLoader();
+			syncLoader.addString('mixed.txt', 'Output only the number 5.');
+
+			const asyncLoader = new AsyncStringLoader();
+			asyncLoader.addString('mixed.txt', 'Output only the number 6.');
+
+			// The first loader to return a value will be used
+			const streamer = create.TextStreamer.loadsText({
+				model,
+				temperature,
+				loader: [asyncLoader, syncLoader],
+				prompt: 'mixed.txt'
+			});
+
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal('5');
 		});
 	});
 });

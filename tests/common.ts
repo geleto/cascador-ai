@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ILoader, LoaderSource } from 'cascada-engine';
+import { LoaderInterface } from 'cascada-engine';
 import { LanguageModel } from 'ai';
 
 import { anthropic, createAnthropic } from '@ai-sdk/anthropic';
@@ -20,22 +20,33 @@ export const temperature = 0.2;
  * StringLoader class for testing purposes.
  * Manages templates in memory for test scenarios.
  */
-export class StringLoader implements ILoader {
-	private templates = new Map<string, string>();
+export class StringLoader implements LoaderInterface {
+	private texts = new Map<string, string>();
 
-	getSource(name: string): LoaderSource | null {
-		if (!this.templates.has(name)) {
-			return null; // return null rather than throw an error so that ignore missing works
-		}
-
-		return {
-			src: this.templates.get(name)!,
-			path: name,
-			noCache: false,
-		};
+	load(name: string): string | null {
+		return this.texts.get(name) ?? null;
 	}
 
-	addTemplate(name: string, content: string) {
-		this.templates.set(name, content);
+	addString(name: string, content: string) {
+		this.texts.set(name, content);
+	}
+}
+
+/**
+ * AsyncStringLoader class for testing async loader functionality.
+ * Returns Promise<LoaderSource> from getSource to simulate async loading.
+ */
+export class AsyncStringLoader implements LoaderInterface {
+	private texts = new Map<string, string>();
+
+	async load(name: string): Promise<string | null> {
+		//wait 1 ms
+		await new Promise(resolve => setTimeout(resolve, 1));
+		// return the value
+		return this.texts.get(name) ?? null;
+	}
+
+	addString(name: string, content: string) {
+		this.texts.set(name, content);
 	}
 }

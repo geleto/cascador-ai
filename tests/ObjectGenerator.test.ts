@@ -4,8 +4,9 @@ import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { create } from '../src/index'; // Adjust path to your 'index.ts'
 
-import { model, temperature, StringLoader, timeout } from './common';
+import { model, temperature, StringLoader, AsyncStringLoader, timeout } from './common';
 import { ConfigError } from '../src/validate';
+import { LoaderInterface } from 'cascada-engine';
 import { z } from 'zod';
 
 // Configure chai-as-promised
@@ -257,9 +258,9 @@ describe('create.ObjectGenerator', function () {
 
 		it('should merge and deduplicate loader arrays from parent configs', async () => {
 			const loader1 = new StringLoader();
-			loader1.addTemplate('object1.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
+			loader1.addString('object1.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
 			const loader2 = new StringLoader();
-			loader2.addTemplate('object2.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
+			loader2.addString('object2.njk', 'Generate an object with these exact properties - name: "{{ name }}" and value: {{ value }}.');
 
 			const parent = create.Config({ loader: [loader1] });
 			const generator = create.ObjectGenerator.loadsTemplate({
@@ -327,7 +328,7 @@ describe('create.ObjectGenerator', function () {
 
 	describe('Loader Functionality', () => {
 		const stringLoader = new StringLoader();
-		stringLoader.addTemplate('object.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
+		stringLoader.addString('object.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
 
 		it('should load a template using .loadsTemplate modifier', async () => {
 			const generator = create.ObjectGenerator.loadsTemplate({
@@ -455,6 +456,266 @@ describe('create.ObjectGenerator', function () {
 					output: 'invalid-type',
 				}),
 			).to.throw(ConfigError, `Invalid 'output' mode: 'invalid-type'`);
+		});
+	});
+
+	describe('.loadsText functionality', () => {
+		const stringLoader = new StringLoader();
+		stringLoader.addString('simple.txt', 'Generate an object with name "Test" and value 42.');
+		stringLoader.addString('complex.txt', 'Generate an object with name "Runtime" and value 100.');
+
+		it('should load and use plain text from a loader', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				schema: simpleSchema,
+				prompt: 'simple.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'Test');
+			expect(result.object).to.have.property('value', 42);
+		});
+
+		it('should load text at runtime with one-off prompt', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: stringLoader,
+				schema: simpleSchema
+			});
+
+			const result = await generator('complex.txt');
+			expect(result.object).to.have.property('name', 'Runtime');
+			expect(result.object).to.have.property('value', 100);
+		});
+
+		it('should handle multiple loaders in array', async () => {
+			const loader1 = new StringLoader();
+			loader1.addString('test1.txt', 'Generate an object with name "First" and value 1.');
+
+			const loader2 = new StringLoader();
+			loader2.addString('test2.txt', 'Generate an object with name "Second" and value 2.');
+
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				schema: simpleSchema,
+				prompt: 'test2.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'Second');
+			expect(result.object).to.have.property('value', 2);
+		});
+
+		it('should throw ConfigError if no loader is provided', () => {
+			expect(() =>
+				// @ts-expect-error - no loader provided
+				create.ObjectGenerator.loadsText({
+					model,
+					temperature,
+					schema: simpleSchema,
+					prompt: 'file.txt'
+				})
+			).to.throw(
+				ConfigError,
+				"A 'loader' is required for this operation"
+			);
+		});
+
+		it('should throw if loader fails to find text at creation time', () => {
+			expect(() => {
+				create.ObjectGenerator.loadsText({
+					model,
+					temperature,
+					loader: new StringLoader(),
+					schema: simpleSchema,
+					prompt: 'nonexistent.txt'
+				});
+			}).to.throw(/not found/);
+		});
+
+		it('should throw if loader fails to find text at runtime', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: new StringLoader(),
+				schema: simpleSchema
+			});
+
+			await expect(generator('nonexistent.txt')).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with functional loaders', async () => {
+			const functionalLoader = (name: string): string => {
+				const templates: Record<string, string> = {
+					'func.txt': 'Generate an object with name "Functional" and value 99.'
+				};
+				return templates[name] || '';
+			};
+
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: functionalLoader,
+				schema: simpleSchema,
+				prompt: 'func.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'Functional');
+			expect(result.object).to.have.property('value', 99);
+		});
+
+		it('should handle complex loader scenarios', async () => {
+			// Test with a loader that throws errors for specific files
+			class ErrorLoader implements LoaderInterface {
+				load(name: string) {
+					if (name === 'error.txt') {
+						throw new Error('Loader error');
+					}
+					return null;
+				}
+			}
+
+			const successLoader = new StringLoader();
+			successLoader.addString('error.txt', 'Generate an object with name "Success" and value 200.');
+
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: [new ErrorLoader(), successLoader],
+				schema: simpleSchema,
+				prompt: 'error.txt'
+			});
+
+			// Should fallback to successLoader even if first loader throws
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'Success');
+			expect(result.object).to.have.property('value', 200);
+		});
+	});
+
+	describe('Async Loader Functionality', () => {
+		const asyncStringLoader = new AsyncStringLoader();
+		asyncStringLoader.addString('async-simple.txt', 'Generate an object with name "AsyncTest" and value 42.');
+		asyncStringLoader.addString('async-complex.txt', 'Generate an object with name "AsyncRuntime" and value 100.');
+
+		it('should load and use plain text from an async loader', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				schema: simpleSchema,
+				prompt: 'async-simple.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'AsyncTest');
+			expect(result.object).to.have.property('value', 42);
+		});
+
+		it('should load text at runtime with one-off prompt using async loader', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: asyncStringLoader,
+				schema: simpleSchema
+			});
+
+			const result = await generator('async-complex.txt');
+			expect(result.object).to.have.property('name', 'AsyncRuntime');
+			expect(result.object).to.have.property('value', 100);
+		});
+
+		it('should handle multiple async loaders in array', async () => {
+			const loader1 = new AsyncStringLoader();
+			loader1.addString('async-test1.txt', 'Generate an object with name "AsyncFirst" and value 1.');
+
+			const loader2 = new AsyncStringLoader();
+			loader2.addString('async-test2.txt', 'Generate an object with name "AsyncSecond" and value 2.');
+
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: [loader1, loader2],
+				schema: simpleSchema,
+				prompt: 'async-test2.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'AsyncSecond');
+			expect(result.object).to.have.property('value', 2);
+		});
+
+		it('should throw if async loader fails to find text at creation time', async () => {
+			// The error is actually thrown at runtime when the generator is called, not at creation time
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				schema: simpleSchema,
+				prompt: 'nonexistent-async.txt'
+			});
+
+			// The generator is created successfully, but fails when called
+			await expect(generator()).to.be.rejectedWith(/not found/);
+		});
+
+		it('should throw if async loader fails to find text at runtime', async () => {
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: new AsyncStringLoader(),
+				schema: simpleSchema
+			});
+
+			await expect(generator('nonexistent-async.txt')).to.be.rejectedWith(/not found/);
+		});
+
+		it('should work with functional async loaders', async () => {
+			const functionalAsyncLoader = (name: string): Promise<string> => {
+				const templates: Record<string, string> = {
+					'async-func.txt': 'Generate an object with name "AsyncFunctional" and value 99.'
+				};
+				return Promise.resolve(templates[name] || '');
+			};
+
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: functionalAsyncLoader,
+				schema: simpleSchema,
+				prompt: 'async-func.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'AsyncFunctional');
+			expect(result.object).to.have.property('value', 99);
+		});
+
+		it('should handle mixed sync and async loaders', async () => {
+			const syncLoader = new StringLoader();
+			syncLoader.addString('mixed.txt', 'Generate an object with name "Mixed" and value 50.');
+
+			const asyncLoader = new AsyncStringLoader();
+			asyncLoader.addString('mixed.txt', 'Generate an object with name "AsyncMixed" and value 75.');
+
+			// The first loader to return a value will be used
+			const generator = create.ObjectGenerator.loadsText({
+				model,
+				temperature,
+				loader: [asyncLoader, syncLoader],
+				schema: simpleSchema,
+				prompt: 'mixed.txt'
+			});
+
+			const result = await generator();
+			expect(result.object).to.have.property('name', 'AsyncMixed');
+			expect(result.object).to.have.property('value', 50);
 		});
 	});
 });
