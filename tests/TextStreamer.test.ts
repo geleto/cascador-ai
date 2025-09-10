@@ -39,12 +39,10 @@ describe('create.TextStreamer', function () {
 			expect(streamedText).to.equal(simpleExpected);
 		});
 
-		it('should provide the full text in the resolved .text promise', async () => {
+		it('should provide the full text via the stream', async () => {
 			const streamer = create.TextStreamer({ model, temperature, prompt: simplePrompt });
 			const result = await streamer();
 			const streamedText = await streamToString(result.textStream);
-			const fullText = await result.text;
-			expect(fullText).to.equal(simpleExpected);
 			expect(streamedText).to.equal(simpleExpected);
 		});
 

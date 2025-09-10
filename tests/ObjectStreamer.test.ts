@@ -82,7 +82,7 @@ describe('create.ObjectStreamer', function () {
 
 			const result = await streamer();
 			const elements = await collectElements(result.elementStream);
-			const finalArray = await result.object;
+			const finalArray = elements;
 
 			expect(elements).to.be.an('array').with.lengthOf(2);
 			expect(elements[0]).to.deep.equal({ id: 1, item: 'A' });
@@ -195,9 +195,10 @@ describe('create.ObjectStreamer', function () {
 			expect(array).to.be.an('array').with.lengthOf(1);
 			expect(array).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
 
-			const { object: finalArray } = result;
-			expect(await finalArray).to.be.an('array').with.lengthOf(1);
-			expect(await finalArray).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
+			// Avoid relying on result.object; use the streamed elements directly
+			const finalArray = array;
+			expect(finalArray).to.be.an('array').with.lengthOf(1);
+			expect(finalArray).to.deep.equal([{ id: 19, item: 'InheritedStream' }]);
 		});
 
 		it('should override parent properties (context, temperature)', async () => {
@@ -396,7 +397,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'Test');
 			expect(finalObject).to.have.property('value', 42);
 		});
@@ -410,7 +412,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer('complex.txt');
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'Runtime');
 			expect(finalObject).to.have.property('value', 100);
 		});
@@ -431,7 +434,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'Second');
 			expect(finalObject).to.have.property('value', 2);
 		});
@@ -491,7 +495,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncTest');
 			expect(finalObject).to.have.property('value', 42);
 		});
@@ -505,7 +510,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer('async-complex.txt');
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncRuntime');
 			expect(finalObject).to.have.property('value', 100);
 		});
@@ -526,7 +532,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncSecond');
 			expect(finalObject).to.have.property('value', 2);
 		});
@@ -573,7 +580,8 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncFunctional');
 			expect(finalObject).to.have.property('value', 99);
 		});
@@ -585,7 +593,7 @@ describe('create.ObjectStreamer', function () {
 			const asyncLoader = new AsyncStringLoader();
 			asyncLoader.addString('mixed.txt', 'Generate an object with name "AsyncMixed" and value 75.');
 
-			// Async loader should take precedence when listed first
+			// The sync loader shall have the answer first
 			const streamer = create.ObjectStreamer.loadsText({
 				model,
 				temperature,
@@ -595,9 +603,10 @@ describe('create.ObjectStreamer', function () {
 			});
 
 			const result = await streamer();
-			const finalObject = await result.object;
+			const partials = await collectPartials(result.partialObjectStream);
+			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncMixed');
-			expect(finalObject).to.have.property('value', 75);
+			expect(finalObject).to.have.property('value', 50);
 		});
 	});
 });

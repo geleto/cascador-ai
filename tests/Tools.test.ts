@@ -32,7 +32,7 @@ chai.use(chaiAsPromised);
 
 const { expect } = chai;
 
-describe('create.Tool', function () {
+describe('asTool', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	const toolCallOptions = {
