@@ -407,7 +407,7 @@ function _createObjectStreamer<
 	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
 
 	// Set default output value to make the config explicit.
-	// This simplifies downstream logic (e.g., in `create.Tool`).
+	// This simplifies downstream logic (e.g., in validation).
 	if ((merged as unknown as configs.StreamObjectObjectConfig<any, any>).output === undefined) {
 		(merged as unknown as configs.StreamObjectObjectConfig<any, any>).output = 'object';
 	}

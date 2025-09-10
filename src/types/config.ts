@@ -134,7 +134,7 @@ export interface ToolConfig<INPUT extends Record<string, any>, OUTPUT> {
 }
 
 /**
- * The output of the `create.Tool` factory.
+ * The output of an .asTool() factory.
  * This is a complete, executable tool object that is compatible with the Vercel AI SDK's `ToolSet`.
  * @deprecated
  */
