@@ -519,7 +519,7 @@ describe('create.TextStreamer', function () {
 
 		it('should work with inheritance from parent config', async () => {
 			const parentLoader = new StringLoader();
-			parentLoader.addString('parent.txt', 'Parent loader content');
+			parentLoader.addString('parent.txt', 'Output only this text and nothing else: Parent loader content');
 
 			const parent = create.Config({
 				loader: parentLoader,
