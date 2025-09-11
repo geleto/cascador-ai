@@ -8,7 +8,7 @@ import { LanguageModel, ModelMessage, generateObject, generateText, streamObject
 import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
-import { RequiredPromptType, AnyPromptSource, CascadaLoaders } from './types/types';
+import { RequiredPromptType, AnyPromptSource } from './types/types';
 import { loadString } from 'cascada-engine';
 import { _createFunction, FunctionCallSignature } from './factories/Function';
 import { augmentGenerateText, augmentStreamText } from './messages';
@@ -124,12 +124,6 @@ function copyConfigProperties(config: Record<string, any>, keys: readonly string
 		}
 	}
 	return dst;
-}
-
-async function loadText(key: string, loader: CascadaLoaders): Promise<string> {
-	const result = loadString(key, loader);
-	// Handle both sync and async returns from loadString
-	return result instanceof Promise ? await result : result;
 }
 
 //@todo - the promptRenderer shall use a precompiled template/script when created with a template/script promptType
@@ -291,8 +285,6 @@ export function _createLLMRenderer<
 		if (config.promptType === 'text-name') {
 			// wrap the call in a promise that waits for the prompt to be loaded
 			// from loaders and only when it is ready - calls the original prompt
-			let configPrompt: Promise<string> | string | undefined;
-			let messages: ModelMessage[] | undefined;
 
 			// Validate loader exists
 			const loaderConfig = config as configs.LoaderConfig;
@@ -300,23 +292,23 @@ export function _createLLMRenderer<
 				throw new Error("A 'loader' is required for 'text-name' prompt type");
 			}
 
-			if (config.prompt) {
-				configPrompt = loadText(config.prompt, loaderConfig.loader);
-			}
+			let loadedPrompt: Promise<string> | string | undefined = config.prompt ? loadString(config.prompt, loaderConfig.loader) : undefined;
+			let messages: ModelMessage[] | undefined = config.messages;
+
 			const syncCall = call;
 			call = async (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): Promise<TFunctionResult> => {
 				let prompt: string | undefined;
 				try {
 					if (promptOrMessages && typeof promptOrMessages === 'string') {
-						prompt = await loadText(promptOrMessages, loaderConfig.loader);
+						prompt = await loadString(promptOrMessages, loaderConfig.loader);
 						messages = maybeMessages;
-					} else if (configPrompt) {
-						if (typeof configPrompt === 'string') {
-							prompt = configPrompt;
+					} else if (loadedPrompt) {
+						if (typeof loadedPrompt === 'string') {
+							prompt = loadedPrompt;
 						} else {
 							// Cache the resolved promise to avoid re-awaiting
-							prompt = await configPrompt;
-							configPrompt = prompt; // Store resolved value for future calls
+							prompt = await loadedPrompt;
+							loadedPrompt = prompt; // Store resolved value for future calls
 						}
 						if (promptOrMessages) {
 							messages = promptOrMessages as ModelMessage[];
