@@ -2,7 +2,7 @@ import { ILoaderAny, raceLoaders } from 'cascada-engine';
 
 // Use a Symbol for tagging to avoid property collisions.
 const RACE_GROUP_TAG = Symbol.for('cascador-ai.raceGroup');
-const MERGED_GROUP_TAG = Symbol.for('cascador-ai.mergedGroup');
+export const MERGED_GROUP_TAG = Symbol.for('cascador-ai.mergedGroup');
 
 export interface RaceGroup {
 	[RACE_GROUP_TAG]: true;
@@ -39,24 +39,21 @@ function race(loaders: ILoaderAny[], groupName?: string): RaceGroup {
 	};
 }
 
+
 /**
- * Merges parent and child loader chains, handling the composition of named
+ * Processes a single array of loaders, handling the composition of named
  * and anonymous race groups.
  *
- * @param parentLoaders The loader array from the parent config/renderer.
- * @param childLoaders The loader array from the child renderer.
+ * @param loaders The loader array to process.
  * @returns A final, processed array of loader instances ready to be passed to the Cascada engine.
  */
-function mergeLoaders(parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[], childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
-	// Child loaders have precedence.
-	const fullChain = [...childLoaders, ...parentLoaders];
-
+function processLoaders(loaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
 	const namedGroups = new Map<string, NamedGroup>(); // Tracks collected loaders for named groups.
 	const processedChain: (ILoaderAny | RaceGroup | MergedGroup | null)[] = []; // The chain being built, with placeholders.
 
 	// First pass: identify groups, collect loaders, and place placeholders.
-	for (let i = 0; i < fullChain.length; i++) {
-		const loader = fullChain[i];
+	for (let i = 0; i < loaders.length; i++) {
+		const loader = loaders[i];
 
 		if (typeof loader === 'object' && RACE_GROUP_TAG in loader) {
 			const raceGroup = loader as unknown as RaceGroup;
@@ -155,4 +152,18 @@ function mergeLoaders(parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[], c
 	});
 }
 
-export { race, mergeLoaders };
+/**
+ * Merges parent and child loader chains, handling the composition of named
+ * and anonymous race groups.
+ *
+ * @param parentLoaders The loader array from the parent config/renderer.
+ * @param childLoaders The loader array from the child renderer.
+ * @returns A final, processed array of loader instances ready to be passed to the Cascada engine.
+ */
+function mergeLoaders(parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[], childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
+	// Child loaders have precedence.
+	const fullChain = [...childLoaders, ...parentLoaders];
+	return processLoaders(fullChain);
+}
+
+export { race, mergeLoaders, processLoaders };
