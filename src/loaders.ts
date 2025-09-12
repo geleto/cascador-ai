@@ -4,7 +4,7 @@ import { ILoaderAny, raceLoaders } from 'cascada-engine';
 const RACE_GROUP_TAG = Symbol.for('cascador-ai.raceGroup');
 const MERGED_GROUP_TAG = Symbol.for('cascador-ai.mergedGroup');
 
-interface RaceGroup {
+export interface RaceGroup {
 	[RACE_GROUP_TAG]: true;
 	loaders: ILoaderAny[];
 	groupName: string | null;

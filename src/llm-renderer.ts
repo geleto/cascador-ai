@@ -9,7 +9,7 @@ import type { GenerateTextResult, StreamTextResult } from 'ai';
 import { z } from 'zod';
 import { PromptStringOrMessagesSchema } from './types/schemas';
 import { RequiredPromptType, AnyPromptSource } from './types/types';
-import { loadString } from 'cascada-engine';
+import { ILoaderAny, loadString } from 'cascada-engine';
 import { _createFunction, FunctionCallSignature } from './factories/Function';
 import { augmentGenerateText, augmentStreamText } from './messages';
 
@@ -292,7 +292,7 @@ export function _createLLMRenderer<
 				throw new Error("A 'loader' is required for 'text-name' prompt type");
 			}
 
-			let loadedPrompt: Promise<string> | string | undefined = config.prompt ? loadString(config.prompt, loaderConfig.loader) : undefined;
+			let loadedPrompt: Promise<string> | string | undefined = config.prompt ? loadString(config.prompt, loaderConfig.loader as (ILoaderAny | ILoaderAny[])) : undefined;
 			let messages: ModelMessage[] | undefined = config.messages;
 
 			const syncCall = call;
@@ -300,7 +300,7 @@ export function _createLLMRenderer<
 				let prompt: string | undefined;
 				try {
 					if (promptOrMessages && typeof promptOrMessages === 'string') {
-						prompt = await loadString(promptOrMessages, loaderConfig.loader);
+						prompt = await loadString(promptOrMessages, loaderConfig.loader as (ILoaderAny | ILoaderAny[]));
 						messages = maybeMessages;
 					} else if (loadedPrompt) {
 						if (typeof loadedPrompt === 'string') {
