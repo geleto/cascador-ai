@@ -38,10 +38,14 @@ export class StringLoader implements LoaderInterface {
  */
 export class AsyncStringLoader implements LoaderInterface {
 	private texts = new Map<string, string>();
+	constructor(private delay = 1) {
+	}
 
 	async load(name: string): Promise<string | null> {
 		//wait 1 ms
-		await new Promise(resolve => setTimeout(resolve, 1));
+		if (this.delay) {
+			await new Promise(resolve => setTimeout(resolve, this.delay));
+		}
 		// return the value
 		return this.texts.get(name) ?? null;
 	}
