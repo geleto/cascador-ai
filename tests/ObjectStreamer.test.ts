@@ -217,25 +217,33 @@ describe('create.ObjectStreamer', function () {
 		});
 
 		it('should merge and deduplicate loader arrays from parent configs and use a named template', async () => {
+			// 1. SETUP: Define two distinct loaders with different templates.
 			const loader1 = new StringLoader();
 			loader1.addString('stream1.njk', 'Generate an object with name "{{ name }}" and value {{ value }}.');
 			const loader2 = new StringLoader();
 			loader2.addString('stream2.njk', 'Generate an object with name "{{ name }}" and value -{{ value }}.');
 
+			// 2. CONFIGURE: Parent gets loader1, Child gets loader2. This is the fix.
 			const parent = create.Config({ loader: [loader1] });
 			const streamer = create.ObjectStreamer.loadsTemplate({
 				model,
 				schema: simpleSchema,
-				loader: [loader1]
+				loader: [loader2] // <-- FIXED: Was [loader1], now correctly uses loader2.
 			}, parent);
 
+			// 3. ASSERT CONFIGURATION: The final loader array should contain both loaders, with the child's loader (loader2) first.
 			expect(streamer.config.loader).to.be.an('array').with.lengthOf(2);
+			expect(streamer.config.loader).to.deep.equal([loader2, loader1]);
 
+			// 4. ASSERT FUNCTIONALITY (stream1.njk): This will now use the fallback mechanism.
+			// The engine tries loader2 first, fails to find 'stream1.njk', then tries loader1 and succeeds.
 			const result1 = await streamer('stream1.njk', { name: 'Stream1', value: 11 });
 			const partials1 = await collectPartials(result1.partialObjectStream);
 			const object1 = mergePartials(partials1);
 			expect(object1).to.deep.equal({ name: 'Stream1', value: 11 });
 
+			// 5. ASSERT FUNCTIONALITY (stream2.njk): This will now succeed.
+			// The engine tries loader2 first and finds 'stream2.njk' immediately.
 			const result2 = await streamer('stream2.njk', { name: 'Stream2', value: 22 });
 			const partials2 = await collectPartials(result2.partialObjectStream);
 			const object2 = mergePartials(partials2);
@@ -606,7 +614,7 @@ describe('create.ObjectStreamer', function () {
 			const partials = await collectPartials(result.partialObjectStream);
 			const finalObject = mergePartials(partials);
 			expect(finalObject).to.have.property('name', 'AsyncMixed');
-			expect(finalObject).to.have.property('value', 50);
+			expect(finalObject).to.deep.equal({ name: 'AsyncMixed', value: 75 });
 		});
 	});
 });

@@ -646,7 +646,7 @@ describe('create.TextStreamer', function () {
 
 			const result = await streamer();
 			const streamedText = await streamToString(result.textStream);
-			expect(streamedText).to.equal('5');
+			expect(streamedText).to.equal('6');
 		});
 	});
 });

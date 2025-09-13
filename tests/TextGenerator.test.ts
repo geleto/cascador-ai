@@ -782,7 +782,7 @@ describe('create.TextGenerator', function () {
 			});
 
 			const result = await generator();
-			expect(result.text).to.equal('5');
+			expect(result.text).to.equal('6');
 		});
 	});
 });

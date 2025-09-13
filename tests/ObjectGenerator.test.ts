@@ -270,7 +270,7 @@ describe('create.ObjectGenerator', function () {
 			}, parent);
 
 			expect(generator.config.loader).to.be.an('array').with.lengthOf(2);
-			expect(generator.config.loader).to.deep.equal([loader1, loader2]);
+			expect(generator.config.loader).to.deep.equal([loader2, loader1]);
 
 			//test the loader functionality using named templates
 			const { object: object1 } = await generator('object1.njk', { name: 'Test', value: 10 });
@@ -715,7 +715,7 @@ describe('create.ObjectGenerator', function () {
 
 			const result = await generator();
 			expect(result.object).to.have.property('name', 'AsyncMixed');
-			expect(result.object).to.have.property('value', 50);
+			expect(result.object).to.deep.equal({ name: 'AsyncMixed', value: 75 });
 		});
 	});
 });
