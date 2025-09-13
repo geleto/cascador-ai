@@ -138,7 +138,7 @@ function _processAndDeduplicate(
 export function mergeLoaders(
 	parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[],
 	childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]
-): any[] {
+): (ILoaderAny | RaceGroup | MergedGroup)[] {
 	const combined = [...childLoaders, ...parentLoaders];
 	return _processAndDeduplicate(combined);
 }
