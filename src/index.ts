@@ -8,6 +8,9 @@ export { Config } from './factories/Config';
 
 export { ConfigProvider, ConfigData } from './ConfigData';
 
+// Loader utilities
+export { race, mergeLoaders, processLoaders } from './loaders';
+
 export {
 	TemplatePromptConfig as TemplateConfig, ScriptConfig,
 	GenerateTextConfig, StreamTextConfig,

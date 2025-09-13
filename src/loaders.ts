@@ -109,8 +109,13 @@ function processLoaders(load: (ILoaderAny | RaceGroup | MergedGroup)[] | ILoader
 	// Second pass: create the final merged loaders and place them correctly.
 	for (const [groupName, { firstIndex, collectedLoaders }] of namedGroups.entries()) {
 		if (collectedLoaders.length > 0) {
+			// Deduplicate loaders within each named group
+			const deduplicatedLoaders = collectedLoaders.filter((loader, index, array) =>
+				array.indexOf(loader) === index
+			);
+
 			// Use Cascada's raceLoaders to create the final merged loader instance.
-			const mergedLoader = raceLoaders(collectedLoaders);
+			const mergedLoader = raceLoaders(deduplicatedLoaders);
 			// Create a wrapper that preserves group metadata for future inheritance levels.
 			const mergedGroupWrapper: MergedGroup = {
 				[MERGED_GROUP_TAG]: true,
@@ -122,20 +127,60 @@ function processLoaders(load: (ILoaderAny | RaceGroup | MergedGroup)[] | ILoader
 		}
 	}
 
-	// Final pass: clean up the chain.
+	// Final pass: clean up the chain and deduplicate
+	const seen = new Set<ILoaderAny>();
+
+	// Track which loaders are consumed by merged groups
+	const consumedByMergedGroups = new Set<ILoaderAny>();
+	for (const [_groupName, { collectedLoaders }] of namedGroups.entries()) {
+		for (const loader of collectedLoaders) {
+			consumedByMergedGroups.add(loader);
+		}
+	}
+
+	// Track which loaders have been seen as regular loaders first
+	const seenAsRegularFirst = new Set<ILoaderAny>();
+
 	const filtered = processedChain.filter((item): item is ILoaderAny | RaceGroup | MergedGroup => {
 		// Filter out any null placeholders for the merged groups.
 		if (item === null) return false;
-		// If it's an anonymous race group, keep it for processing.
+
+		// If it's an anonymous race group, deduplicate within it and check if it should be kept
 		if (typeof item === 'object' && RACE_GROUP_TAG in item) {
 			const raceGroup = item as unknown as RaceGroup;
-			return raceGroup.groupName === null && raceGroup.loaders.length > 0;
+			if (raceGroup.groupName === null && raceGroup.loaders.length > 0) {
+				// Deduplicate loaders within the race group
+				const deduplicatedLoaders = raceGroup.loaders.filter((loader, index, array) =>
+					array.indexOf(loader) === index
+				);
+				if (deduplicatedLoaders.length > 0) {
+					// Update the race group with deduplicated loaders
+					raceGroup.loaders = deduplicatedLoaders;
+					return true;
+				}
+			}
+			return false;
 		}
+
 		// Keep merged groups for final processing.
 		if (typeof item === 'object' && MERGED_GROUP_TAG in item) {
 			return true;
 		}
-		return true;
+
+		// For regular loaders, check if we've already seen this instance
+		if (!seen.has(item as ILoaderAny)) {
+			// If this loader is consumed by a merged group but hasn't been seen as regular first, exclude it
+			if (consumedByMergedGroups.has(item as ILoaderAny) && !seenAsRegularFirst.has(item as ILoaderAny)) {
+				return false;
+			}
+			seen.add(item as ILoaderAny);
+			// Only add to seenAsRegularFirst if this is actually a regular loader (not a race group or merged group)
+			seenAsRegularFirst.add(item as ILoaderAny);
+			return true;
+		}
+
+		// If we've seen this loader before, exclude it
+		return false;
 	});
 
 	return filtered.map(item => {
@@ -163,10 +208,59 @@ function processLoaders(load: (ILoaderAny | RaceGroup | MergedGroup)[] | ILoader
  * @returns A final, processed array of loader instances ready to be passed to the Cascada engine.
  */
 function mergeLoaders(parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[], childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
-	// Parent loaders come first, then child loaders (child loaders have precedence in resolution order).
-	const fullChain = [...parentLoaders, ...childLoaders];
-	const result = processLoaders(fullChain);
-	return Array.isArray(result) ? result : [result];
+	// Separate regular loaders from race groups/merged groups
+	const regularParentLoaders: ILoaderAny[] = [];
+	const specialParentLoaders: (RaceGroup | MergedGroup)[] = [];
+	const regularChildLoaders: ILoaderAny[] = [];
+	const specialChildLoaders: (RaceGroup | MergedGroup)[] = [];
+
+	// Categorize parent loaders
+	for (const loader of parentLoaders) {
+		if (typeof loader === 'object' && ((RACE_GROUP_TAG in loader) || (MERGED_GROUP_TAG in loader))) {
+			specialParentLoaders.push(loader);
+		} else {
+			regularParentLoaders.push(loader);
+		}
+	}
+
+	// Categorize child loaders
+	for (const loader of childLoaders) {
+		if (typeof loader === 'object' && ((RACE_GROUP_TAG in loader) || (MERGED_GROUP_TAG in loader))) {
+			specialChildLoaders.push(loader);
+		} else {
+			regularChildLoaders.push(loader);
+		}
+	}
+
+	const result: ILoaderAny[] = [];
+
+	// Add child regular loaders first (they have precedence)
+	const seen = new Set<ILoaderAny>();
+	for (const loader of regularChildLoaders) {
+		if (!seen.has(loader)) {
+			seen.add(loader);
+			result.push(loader);
+		}
+	}
+
+	// Process special loaders (race groups and merged groups) together
+	const specialLoaders = [...specialChildLoaders, ...specialParentLoaders];
+	if (specialLoaders.length > 0) {
+		const processedSpecial = processLoaders(specialLoaders);
+		for (const loader of processedSpecial) {
+			result.push(loader);
+		}
+	}
+
+	// Add parent regular loaders last
+	for (const loader of regularParentLoaders) {
+		if (!seen.has(loader)) {
+			seen.add(loader);
+			result.push(loader);
+		}
+	}
+
+	return result;
 }
 
 export { race, mergeLoaders, processLoaders };
