@@ -38,7 +38,7 @@ function _processAndDeduplicate(
 	const namedGroups = new Map<string, NamedGroup>();
 	const processedChain: (ILoaderAny | RaceGroup | MergedGroup | null)[] = [];
 
-	// Pass 1: Identify groups and build a preliminary chain with placeholders for named groups.
+	// Pass 1: Identify groups and build a preliminary chain with placeholders.
 	for (let i = 0; i < loaders.length; i++) {
 		const loader = loaders[i];
 		if (typeof loader === 'object' && RACE_GROUP_TAG in loader) {
@@ -74,7 +74,7 @@ function _processAndDeduplicate(
 		}
 	}
 
-	// Pass 2: Create the MergedGroup wrappers and place them in the chain.
+	// Pass 2: Create the MergedGroup wrappers.
 	for (const [groupName, { firstIndex, collectedLoaders }] of namedGroups.entries()) {
 		if (collectedLoaders.length > 0) {
 			// Deduplication within the group itself happens here.
@@ -89,7 +89,7 @@ function _processAndDeduplicate(
 		}
 	}
 
-	// Final Pass: Build the final list with correct, robust deduplication.
+	// Final Pass: Build the final list with correct deduplication and order.
 	const finalResult: (ILoaderAny | MergedGroup | RaceGroup)[] = [];
 	const seen = new Set<ILoaderAny>();
 
@@ -99,34 +99,27 @@ function _processAndDeduplicate(
 		if (typeof item === 'object' && MERGED_GROUP_TAG in item) {
 			const mergedGroup = item;
 			const groupInfo = namedGroups.get(mergedGroup.groupName)!;
-
-			// ** THE FIX IS HERE **
 			// Check the group's original constituents against what has already been seen.
 			const uniqueConstituents = groupInfo.collectedLoaders.filter(l => !seen.has(l));
 
 			if (uniqueConstituents.length > 0) {
 				// If the group still has unique loaders, keep it.
 				// We must create a new loader if the contents have changed.
-				const newOriginalLoader = uniqueConstituents.length === groupInfo.collectedLoaders.length
-					? mergedGroup.originalLoader // No change, use existing
+				const newOriginalLoader = uniqueConstituents.length === groupInfo.collectedLoaders.length && uniqueConstituents.length > 1
+					? mergedGroup.originalLoader
 					: raceLoaders(uniqueConstituents);
 
-				finalResult.push({
-					...mergedGroup,
-					originalLoader: newOriginalLoader,
-				});
-
+				finalResult.push({ ...mergedGroup, originalLoader: newOriginalLoader });
 				// Mark the loaders that were just used as "seen".
 				uniqueConstituents.forEach(l => seen.add(l));
 			}
-			// If uniqueConstituents is empty, the group is discarded.
 		} else if (typeof item === 'object' && RACE_GROUP_TAG in item) {
 			// Anonymous race group
 			const raceGroup = item;
 			const uniqueLoaders = raceGroup.loaders.filter(l => !seen.has(l));
 			if (uniqueLoaders.length > 0) {
 				uniqueLoaders.forEach(l => seen.add(l));
-				// The tests expect the anonymous group to be returned as a real loader, not a wrapper.
+				// The tests expect this to become a real loader, not a wrapper.
 				finalResult.push(raceLoaders(uniqueLoaders));
 			}
 		} else {
@@ -141,7 +134,7 @@ function _processAndDeduplicate(
 	return finalResult;
 }
 
-// The public functions are wrappers that return the format the tests expect.
+// Public functions remain wrappers that return what the test suite expects.
 export function mergeLoaders(
 	parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[],
 	childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]
