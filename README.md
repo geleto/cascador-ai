@@ -882,8 +882,6 @@ const renderer = create.Template.loadsTemplate({
 
 Of course. Here is the updated **Custom Loaders** section with more detailed explanations for `isRelative`, `resolve`, and a mention of the event system, all while keeping the style concise and developer-focused.
 
-***
-
 *   **Custom Loaders**: You can create a custom loader by providing either a simple asynchronous function or a more structured class. If a loader can't find an asset, it should return `null` to allow fallback to the next loader in the chain.
 
     **Example: Functional Loader**
@@ -936,6 +934,33 @@ Of course. Here is the updated **Custom Loaders** section with more detailed exp
       }
     }
     ```
+
+*   **Declarative Loader Concurrency with `race()`**:
+
+By default, child loaders are placed before parent loaders to create a sequential fallback chain. The `race()` function inverts this by running multiple loaders concurrently—the first to successfully find a resource wins.
+
+When you give `race()` a name (e.g., `race(..., 'cdn')`), you create a **named race group**. All loaders in groups with the same name across parent and child configurations are automatically merged into a single, combined race. This allows a child to add loaders to a parent's concurrent loading strategy instead of simply prepending to it.
+
+```typescript
+import { create, race, WebLoader, FileSystemLoader } from 'cascador-ai';
+
+// Parent config defines a named race group for CDN loaders.
+const parentConfig = create.Config({
+  loader: race([
+    new WebLoader('https://cdn.example.com/prompts/')
+  ], 'cdn')
+});
+
+// Child generator ADDS a local loader to the 'cdn' race group.
+const generator = create.TextGenerator({
+  loader: race([
+    new FileSystemLoader('./local_prompts/')
+  ], 'cdn')
+}, parentConfig);
+
+// Result: The final generator has one loader that runs the WebLoader
+// and FileSystemLoader in parallel, using the first successful result.
+```
 
 ### options
 Fine-tune the Cascada engine with extras like `autoescape` or `trimBlocks`:
