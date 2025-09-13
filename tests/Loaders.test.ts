@@ -1,16 +1,18 @@
-
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { timeout, StringLoader } from './common';
-import { race, mergeLoaders, MergedGroup } from '../src/loaders';
+import { create } from '../src/index';
+import { model, temperature, timeout, StringLoader, AsyncStringLoader } from './common';
+import { race, mergeLoaders, processLoaders, MergedGroup, MERGED_GROUP_TAG } from '../src/loaders';
 import { LoaderInterface, LoaderSource } from 'cascada-engine';
+import { streamToString } from './TextStreamer.test';
+import { z } from 'zod';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-describe.only('Race & Merge Loaders', function () {
+describe('Race & Merge Loaders - Unit Tests', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
 
 	describe('mergeLoaders function', () => {
@@ -627,6 +629,511 @@ describe.only('Race & Merge Loaders', function () {
 
 			const result = mergeLoaders(parentLoaders, childLoaders);
 			expect(result).to.have.length(1);
+		});
+
+		it('should deduplicate loaders in mergeLoaders', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+
+			// Parent and child have overlapping loaders
+			const parentLoaders = [loader1, loader2];
+			const childLoaders = [loader2, loader3, loader1]; // duplicates of parent loaders
+
+			const result = mergeLoaders(parentLoaders, childLoaders);
+
+			expect(result).to.have.length(3);
+			// Child loaders come first, so order should be: loader2, loader3, loader1
+			expect(result[0]).to.equal(loader2);
+			expect(result[1]).to.equal(loader3);
+			expect(result[2]).to.equal(loader1);
+		});
+
+		it('should deduplicate loaders within race groups during merge', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+
+			// Parent and child race groups have overlapping loaders
+			const parentLoaders = [race([loader1, loader2], 'groupA')];
+			const childLoaders = [race([loader2, loader3, loader1], 'groupA')]; // duplicates
+
+			const result = mergeLoaders(parentLoaders, childLoaders);
+
+			expect(result).to.have.length(1);
+			expect(result[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+		});
+	});
+
+	describe('processLoaders function', () => {
+		it('should process single array with regular loaders', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loaders = [loader1, loader2];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.equal(loader2);
+		});
+
+		it('should deduplicate regular loaders', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loaders = [loader1, loader2, loader1, loader2];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.equal(loader2);
+		});
+
+		it('should process single array with anonymous race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [loader1, race([loader2, loader3])];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.equal(loader1);
+			// The second item should be a race loader (not a race group)
+			expect(result[1]).to.not.have.property(Symbol.for('cascador-ai.raceGroup'));
+		});
+
+		it('should process single array with named race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [race([loader1], 'groupA'), race([loader2, loader3], 'groupA')];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(1);
+			expect(result[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+		});
+
+		it('should process single array with mixed content', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loader4 = new StringLoader();
+			const loader5 = new StringLoader();
+			const loaders = [
+				loader1,
+				race([loader2], 'groupA'),
+				race([loader3], 'groupB'),
+				race([loader4], 'groupA'), // Same group as second item
+				loader5
+			];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(4);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+			expect(result[2]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+			expect(result[3]).to.equal(loader5);
+		});
+
+		it('should handle merged groups in single array', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const mergedGroup: MergedGroup = {
+				[MERGED_GROUP_TAG]: true,
+				groupName: 'existingGroup',
+				originalLoader: loader2
+			};
+			const loaders = [loader1, mergedGroup];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+		});
+
+		it('should merge multiple merged groups with same name', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const mergedGroup1: MergedGroup = {
+				[MERGED_GROUP_TAG]: true,
+				groupName: 'existingGroup',
+				originalLoader: loader1
+			};
+			const mergedGroup2: MergedGroup = {
+				[MERGED_GROUP_TAG]: true,
+				groupName: 'existingGroup',
+				originalLoader: loader2
+			};
+			const loaders = [mergedGroup1, mergedGroup2, loader3];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+			expect(result[1]).to.equal(loader3);
+		});
+
+		it('should handle empty array', () => {
+			const result = processLoaders([]);
+			expect(result).to.have.length(0);
+		});
+
+		it('should handle array with only race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [race([loader1, loader2]), race([loader3])];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			// Both should be converted to race loaders (not race groups)
+			expect(result[0]).to.not.have.property(Symbol.for('cascador-ai.raceGroup'));
+			expect(result[1]).to.not.have.property(Symbol.for('cascador-ai.raceGroup'));
+		});
+
+		it('should deduplicate loaders within named race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [
+				race([loader1, loader2, loader1], 'groupA'), // loader1 appears twice
+				race([loader3, loader2], 'groupA') // loader2 appears again
+			];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(1);
+			expect(result[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+		});
+
+		it('should deduplicate loaders within anonymous race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [race([loader1, loader2, loader1, loader3])]; // loader1 appears twice
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(1);
+			expect(result[0]).to.not.have.property(Symbol.for('cascador-ai.raceGroup'));
+		});
+
+		it('should deduplicate loaders across regular loaders and race groups', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [
+				loader1,
+				race([loader2, loader3]),
+				loader1, // duplicate of first loader
+				race([loader1, loader2]) // all loaders here are duplicates and this group should be removed
+			];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2); // <<< CORRECT
+			expect(result[0]).to.equal(loader1);
+			// The second item should be a real raceLoader, not a RaceGroup wrapper
+			expect(result[1]).to.not.have.property(Symbol.for('cascador-ai.raceGroup'));
+		});
+
+		it('should deduplicate complex scenario with mixed groups and regular loaders', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loader4 = new StringLoader();
+			const loaders = [
+				loader1,
+				race([loader2, loader1], 'groupA'), // loader1 appears again
+				race([loader3, loader4], 'groupB'),
+				loader2, // duplicate of loader in groupA
+				race([loader1, loader3], 'groupA') // both loaders already seen
+			];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(3);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+			expect(result[2]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
+		});
+
+		it('should preserve order while deduplicating', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loader3 = new StringLoader();
+			const loaders = [loader2, loader1, loader3, loader2, loader1];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(3);
+			expect(result[0]).to.equal(loader2);
+			expect(result[1]).to.equal(loader1);
+			expect(result[2]).to.equal(loader3);
+		});
+
+		it('should handle empty race groups after deduplication', () => {
+			const loader1 = new StringLoader();
+			const loader2 = new StringLoader();
+			const loaders = [
+				loader1,
+				race([loader1, loader1], 'groupA'), // all duplicates
+				loader2
+			];
+
+			const result = processLoaders(loaders);
+
+			expect(result).to.have.length(2);
+			expect(result[0]).to.equal(loader1);
+			expect(result[1]).to.equal(loader2);
+		});
+	});
+});
+
+describe.skip('Loader Integration Tests (Race & Merge)', function () {
+	this.timeout(timeout);
+
+	// --- Test Utilities ---
+
+	// For Template/Script renderers, the content is the final output.
+	const templateContentFast = 'from fast';
+	const templateContentMedium = 'from medium';
+	const templateContentSlow = 'from slow';
+
+	// For LLM-based renderers, the loaded content is a prompt.
+	const llmPromptFast = 'Write only this single word in lowercase: fast';
+	const llmExpectedFast = 'fast';
+	const llmPromptMedium = 'Write only this single word in lowercase: medium';
+	const llmExpectedMedium = 'medium';
+	const llmPromptSlow = 'Write only this single word in lowercase: slow';
+	const llmExpectedSlow = 'slow';
+
+	// Standardized async loaders with predictable delays.
+	// Fast loader (5ms delay)
+	const fastLoader = new AsyncStringLoader(5);
+	fastLoader.addString('prompt.txt', llmPromptFast);
+	fastLoader.addString('template.txt', templateContentFast);
+
+	// Medium loader (10ms delay)
+	const mediumLoader = new AsyncStringLoader(10);
+	mediumLoader.addString('prompt.txt', llmPromptMedium);
+	mediumLoader.addString('template.txt', templateContentMedium);
+
+	// Slow loader (20ms delay)
+	const slowLoader = new AsyncStringLoader(20);
+	slowLoader.addString('prompt.txt', llmPromptSlow);
+	slowLoader.addString('template.txt', templateContentSlow);
+
+	// Failing loader (returns null for the requested template)
+	const failingLoader = new AsyncStringLoader(5);
+	// Does not contain 'prompt.txt' or 'template.txt'
+
+	// --- Test Scenarios ---
+
+	describe('Category 1: Single Configuration (No Inheritance)', () => {
+		it('1.1: Named race groups should merge and the fastest loader should win', async () => {
+			const renderer = create.Template.loadsTemplate({
+				loader: [
+					race([slowLoader], 'templates'), // This one is slower
+					race([fastLoader], 'templates'), // This one is faster
+				],
+				template: 'template.txt',
+			});
+			const result = await renderer();
+			expect(result).to.equal(templateContentFast);
+		});
+
+		it('1.2: Anonymous race groups should remain separate and execute sequentially', async () => {
+			const renderer = create.Template.loadsTemplate({
+				// The first loader in the chain is the slow one, but it will succeed.
+				loader: [race([slowLoader]), race([fastLoader])],
+				template: 'template.txt',
+			});
+			const result = await renderer();
+			// Because they are executed sequentially, the slow loader wins as it's first.
+			expect(result).to.equal(templateContentSlow);
+		});
+
+		it('1.3: Mixed sequential and raced loaders should respect sequential precedence', async () => {
+			const scriptRenderer = create.Script.loadsScript({
+				// The mediumLoader is first in the sequential chain and will succeed.
+				loader: [mediumLoader, race([slowLoader, fastLoader])],
+				script: 'template.txt', // Using a template file as script content for simplicity
+			});
+			const result = await scriptRenderer();
+			// The race group is never reached.
+			expect(result).to.equal(templateContentMedium);
+		});
+	});
+
+	describe('Category 2: Single-Level Inheritance (Parent/Child)', () => {
+		it('2.1: Child should add to a parent race group, and the fastest loader should win', async () => {
+			const baseConfig = create.Config({
+				loader: [race([slowLoader], 'templates')],
+			});
+
+			const generator = create.TextGenerator.loadsTemplate(
+				{
+					model,
+					temperature,
+					loader: [race([fastLoader], 'templates')], // Child adds a faster loader
+					prompt: 'prompt.txt',
+				},
+				baseConfig,
+			);
+
+			const { text } = await generator();
+			// Proves both were merged and raced, with the fast one winning.
+			expect(text).to.equal(llmExpectedFast);
+		});
+
+		it('2.2: Child sequential loaders should have precedence over parent sequential loaders', async () => {
+			const baseConfig = create.Config({
+				loader: [slowLoader], // Parent loader
+			});
+
+			const generator = create.TextGenerator.loadsTemplate(
+				{
+					model,
+					temperature,
+					loader: [fastLoader], // Child loader
+					prompt: 'prompt.txt',
+				},
+				baseConfig,
+			);
+
+			const { text } = await generator();
+			// Final chain is [fastLoader, slowLoader]. The fast loader is tried first and succeeds.
+			expect(text).to.equal(llmExpectedFast);
+		});
+	});
+
+	describe('Category 3: Concurrency and Failure Modes', () => {
+		it('3.1a: [RACE] The fastest loader in a race group should win', async () => {
+			const streamer = create.TextStreamer.loadsTemplate({
+				model,
+				temperature,
+				loader: [race([slowLoader, fastLoader], 'templates')],
+				prompt: 'prompt.txt',
+			});
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			expect(streamedText).to.equal(llmExpectedFast);
+		});
+
+		it('3.1b: [SEQUENTIAL] The first successful loader in a sequential chain should win', async () => {
+			const streamer = create.TextStreamer.loadsTemplate({
+				model,
+				temperature,
+				// No race wrapper, this is a standard sequential chain.
+				loader: [slowLoader, fastLoader],
+				prompt: 'prompt.txt',
+			});
+			const result = await streamer();
+			const streamedText = await streamToString(result.textStream);
+			// The slow loader is first in the array and succeeds, so it wins.
+			expect(streamedText).to.equal(llmExpectedSlow);
+		});
+
+		it('3.2: A race group should succeed even if one loader fails', async () => {
+			const generator = create.ObjectGenerator.loadsTemplate({
+				model,
+				temperature,
+				schema: z.object({ result: z.string() }),
+				loader: [race([failingLoader, mediumLoader], 'templates')],
+				prompt: 'prompt.txt',
+			});
+			const { object } = await generator();
+			expect(object.result).to.equal(llmExpectedMedium);
+		});
+
+		it('3.3: A race group should fail if all its loaders fail', async () => {
+			const renderer = create.Template.loadsTemplate({
+				loader: [race([failingLoader], 'templates')],
+				template: 'template.txt',
+			});
+			await expect(renderer()).to.be.rejectedWith(/Resource 'template.txt' not found/);
+		});
+	});
+
+	describe('Category 4: Multi-Level Inheritance (Grandparent/Parent/Child)', () => {
+		it('4.1: Loaders from all 3 levels should be merged and raced, with the fastest winning', async () => {
+			// 1. Grandparent has the slowest loader
+			const grandparentConfig = create.Config({
+				loader: [race([slowLoader], 'templates')],
+			});
+
+			// 2. Parent inherits and adds a medium loader
+			const parentConfig = create.Config(
+				{
+					loader: [race([mediumLoader], 'templates')],
+				},
+				grandparentConfig,
+			);
+
+			// 3. Child inherits and adds the fastest loader
+			const renderer = create.Template.loadsTemplate(
+				{
+					loader: [race([fastLoader], 'templates')],
+					template: 'template.txt',
+				},
+				parentConfig,
+			);
+
+			const result = await renderer();
+			// This proves all three were aggregated into one race, and the fastest won.
+			expect(result).to.equal(templateContentFast);
+		});
+	});
+
+	describe('Category 5: Real-World Renderer Integration', () => {
+		it('5.1: Renderer-to-renderer inheritance should merge race groups correctly', async () => {
+			const baseGenerator = create.TextGenerator.loadsTemplate({
+				model,
+				temperature,
+				loader: [race([slowLoader], 'prompts')],
+			});
+
+			// Inherit directly from the other generator
+			const childGenerator = create.TextGenerator.loadsTemplate(
+				{
+					loader: [race([fastLoader], 'prompts')],
+					prompt: 'prompt.txt',
+				},
+				baseGenerator,
+			);
+
+			const { text } = await childGenerator();
+			expect(text).to.equal(llmExpectedFast);
+		});
+
+		it('5.2: A script should correctly use a generator with raced loaders from its context', async () => {
+			const summaryGenerator = create.TextGenerator.loadsTemplate({
+				model,
+				temperature,
+				loader: [race([slowLoader, fastLoader], 'prompts')],
+				// The prompt is NOT set here, it will be provided by the script
+			});
+
+			const mainScript = create.Script({
+				context: { summaryGenerator },
+				script: `:text
+          // Call the generator from context, providing the template name to load
+          var result = summaryGenerator({ prompt: 'prompt.txt' })
+          @text = result.text`,
+			});
+
+			const result = await mainScript();
+			// This proves the generator, when called from the script's context,
+			// still used its own raced loaders correctly.
+			expect(result).to.equal(llmExpectedFast);
 		});
 	});
 });
