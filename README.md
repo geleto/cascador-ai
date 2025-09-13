@@ -2,15 +2,15 @@
 
 ## What is Cascador-AI?
 
-Building sophisticated AI systems - from multi-step agents and RAG pipelines to complex tool-use chains - requires orchestrating numerous asynchronous tasks. **Cascador-AI is an AI orchestration library that makes this radically simpler and more intuitive.** Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the powerful [Cascada Template and Scripting Engine](https://github.com/geleto/cascada), it allows you to define these workflows with clean, declarative, synchronous-style code and templates. The engine automatically parallelizes asynchronous operations, giving you the performance of concurrent execution without the complexity of managing it.
+Building sophisticated AI systems - from multi-step agents and RAG pipelines to complex tool-use chains - requires orchestrating numerous asynchronous tasks. **Cascador-AI is an AI orchestration library that makes this radically simpler and more intuitive.** Built on the [Vercel AI SDK Core](https://sdk.vercel.ai/docs/ai-sdk-core) and the powerful [Cascada Scripting and Templating Engine](https://github.com/geleto/cascada), it allows you to define these workflows with clean, declarative, synchronous-style code and templates. The engine automatically parallelizes asynchronous operations, giving you the performance of concurrent execution without the complexity of managing it.
 
 ### 🔀 A Code-First Philosophy: Write Logic, Not Graphs
 
-Cascador-AI is built for developers who prefer expressing complex logic as **code, not as a graph of boilerplate nodes**. Instead of forcing you to learn a rigid, declarative API to define nodes and edges, it lets you write your workflows using familiar patterns like variables, functions, loops, and conditionals. You write the logic; the engine handles the complex orchestration and parallel execution for you.
+Cascador-AI is built for developers who prefer expressing complex logic as **code, not as a graph of boilerplate nodes and edges**. Instead of forcing you to learn a rigid, declarative API to define nodes and edges, it lets you write your workflows using familiar patterns like variables, functions, loops, and conditionals. You write the logic; the engine handles the complex orchestration and parallel execution for you.
 
 ### ⚡ Parallel by Default, Data-Flow guided execution
 
-The core of Cascador-AI is a **data-flow execution model**. Instead of running line-by-line, operations run as soon as their data dependencies are met. This means independent LLM calls or API requests in your script automatically run in parallel without any extra effort. For stateful operations where order is critical (e.g., database writes), you can easily enforce a strict sequential execution, giving you the best of both worlds. This powerful combination means that instead of wrestling with computation graphs, message queues, or async boilerplate, you just write the logic - the engine handles the rest.
+The core of Cascador-AI is a **data-flow execution model**. Instead of running line-by-line, operations run as soon as their data dependencies are met. This means independent LLM calls or API requests in your script automatically run in parallel without any extra effort. For stateful operations where order is critical (like database writes), you can easily enforce a strict sequential execution, giving you the best of both worlds. This powerful combination means that instead of wrestling with computation graphs, message queues, or async boilerplate, you just write the logic - the engine handles the rest.
 
 ### 💡 Logic vs. Capabilities: A Clear Separation of Concerns
 
@@ -19,14 +19,14 @@ The library encourages a powerful separation between the *what* (the orchestrati
 *   **The Logic (The "What"):** This is the high-level plan defined in a renderer. It's a readable, self-contained script or template that orchestrates the workflow, defining the steps and data flow.
     *   *Examples:* A script that first generates a draft, then sends it for critique, and finally revises it based on feedback; a template that fetches user data and product recommendations in parallel to render a personalized welcome email.
 
-*   **The Capabilities (The "How"):** These are the concrete tools and data sources your logic uses to get the job done. You provide them in the `context` object, making them available to your scripts and templates. The engine automatically handles resolving promises, allowing you to focus on your workflow logic without async boilerplate.
-    *   *Examples:* Seamlessly access asynchronous data and functionality—from static values (`{ qualityThreshold: 8 }`) and dynamic JavaScript functions (`(name) => name.toUpperCase()`) to external API calls (`fetchWeatherAPI`), database queries (`db.getUser`), custom service integrations, and even other `Cascador-AI` renderers.
+*   **The Capabilities (The "How"):** These are the concrete tools, APIs and data sources your logic uses to get the job done. You provide them in the `context` object, making them available to your scripts and templates. The engine automatically handles resolving promises, allowing you to focus on your workflow logic without async boilerplate.
+    *   *Examples:* Seamlessly access asynchronous data and functionality - from static values (`{ qualityThreshold: 8 }`) and dynamic JavaScript functions (`(name) => name.toUpperCase()`) to external API calls (`fetchWeatherAPI(location)`), database queries (`db.getUser(id)`), custom service integrations, and other `Cascador-AI` renderers (`generateDraft(topic)`).
 
 ### 🧩 Composable & Reusable Components
 
-Cascador-AI treats every piece of your AI workflow—from a simple text generator to a complex multi-step agent—as a modular, reusable component. Because you define logic as code, you can encapsulate functionality into distinct `TextGenerator`, `ObjectGenerator`, or `Script` instances.
+Cascador-AI treats every piece of your AI workflow—from a simple text generator to a complex multi-step agent - as a modular, reusable component. Because you define logic as code, you can encapsulate functionality into distinct `TextGenerator/Streamer`, `ObjectGenerator/Streamer`, or `Script` and `Template` instances.
 
-These components are not just static definitions; they are callable functions that can be passed around, nested, and composed. You can call one component from within another's script or template by simply adding it to the `context`. This allows you to build sophisticated systems from smaller, testable, and self-contained parts, promoting clean architecture and avoiding monolithic, hard-to-maintain agent definitions. For even more powerful composition, Cascada templates and scripts can also `include` files, `import` macros, and `extend` parent templates and scripts.
+These components are not just static definitions; they are callable functions that can be passed around, nested, and composed. You can expose one component from within another's script or template by simply adding it to the `context`. This allows you to build sophisticated systems from smaller, testable, and self-contained parts, promoting clean architecture and avoiding monolithic, hard-to-maintain agent definitions. For even more powerful composition, Cascada templates and scripts can also `include` files, `import` macros, and `extend` parent templates and scripts.
 
 ### 🛠️ Full-Spectrum AI Functionality
 
@@ -34,7 +34,7 @@ Cascador-AI combines its unique orchestration capabilities with the robust featu
 
 #### Powered by Cascada
 *   **Declarative Agent Orchestration:** Define sophisticated, multi-step agent logic using clean, readable scripts. The engine automatically parallelizes independent operations, data-flows and piepeline steps while transparently managing data dependencies, letting you focus on the "what" instead of the "how."
-*   **Dynamic Prompt Engineering:** Craft powerful, adaptive prompts by composing templates, embedding the results from other LLM calls, and injecting data from asynchronous sources like APIs or databases, all within a single, coherent workflow.
+*   **Dynamic Prompt Engineering:** Craft powerful, adaptive prompts by composing templates and scripts, embedding the results from other LLM calls, and injecting data from asynchronous sources like APIs or databases, all within a single, coherent workflow.
 *   **Seamless Custom Integrations:** Easily plug any custom service, utility, or external API into your workflows. By adding them to the `context` object, they become available as simple function calls within your scripts and templates.
 
 #### Powered by the Vercel AI SDK Core
@@ -68,7 +68,7 @@ Cascador-AI is a new project and is evolving quickly! This is exciting, but it a
 
 ## Installation
 
-Install the Vercel AI SDK
+Install any Vercel AI SDK 5.x version
 ```bash
 npm install ai
 ```
@@ -179,24 +179,38 @@ By default, LLM renderers (`TextGenerator`, `ObjectGenerator`, `TextStreamer`, `
 ```typescript
 // The prompt is treated as static text, with no template processing.
 const plainTextRenderer = create.TextGenerator({
+    model: openai('gpt-4o-mini'),
     prompt: 'Write a poem about the sea.'
 });
 ```
 
 ### Adding Capabilities with Modifiers
 
-To add dynamic processing capabilities like templating or scripting, you use explicit modifiers on the base factory function. These modifiers "enhance" the base renderer with specific capabilities, and they accept all the standard Cascada configuration properties (`context`, `filters`, `options`, and `loader`).
+To add dynamic processing capabilities like generating prompts with templates or scripts, or creating a tool - you use explicit modifiers on the base factory function. These modifiers "enhance" the base renderer with specific capabilities.
 
 #### The `.with...` Family for Inline Content:
-These modifiers create a renderer that adds a specific processing capability for the `prompt` or `script` string provided in the configuration.
-*   `.withTemplate(...)`: Adds Cascada templating capability.
-*   `.withScript(...)`: Adds Cascada scripting capability (used for LLM-based agents that execute internal logic).
+These modifiers create a renderer that adds the capability to render the prompt by processing it as a template or script.
+*   `default` with no modifier : the `prompt` property is a plain text.
+*   `.withTemplate(...)`: the `prompt` property is a template.
+*   `.withScript(...)`: the `prompt` property is a script
 
 #### The `.loads...` Family for External Content:
 These modifiers create a renderer designed to load its prompt or script from an external source via a `loader`.
-*   `.loadsText(...)`: Loads a resource and treats it as plain text.
-*   `.loadsTemplate(...)`: Loads a resource and treats it as a template.
-*   `.loadsScript(...)`: Loads a resource and treats it as a script.
+
+A loader, provided in the configuration objects, can be any of the built-in loaders - like FileSystemLoader (for Node.js), WebLoader (for browsers), or your own custom implementation.
+
+*   `.loadsText(...)`: Loads the `prompt` and treats it as plain text.
+*   `.loadsTemplate(...)`: Loads the `prompt` and treats it as a template.
+*   `.loadsScript(...)`: Loads the `prompt` and treats it as a script.
+
+#### The `.asTool` Modifier: Instantly Create LLM-Callable Tools
+Turn non-streaming renderers into a powerful, model-driven tool by simply appending the `.asTool` modifier. This upgrades your renderer into a hybrid object: it remains a callable function for you to use directly in your code, while also becoming a fully-formed tool that an LLM can understand and decide to call.
+
+To make this happen, just add two properties to your configuration:
+*   `description`: A clear, natural language explanation of what the tool does. This is the LLM's guide.
+*   `inputSchema`: A Zod schema defining the arguments the tool accepts, ensuring type-safe inputs from the model.
+
+This modifier can be chained with any content loader, allowing you to create sophisticated tools from templates or scripts: `create.TextGenerator.withTemplate.asTool(...)`.
 
 Here's a quick overview of the primary renderers you'll use:
 *   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects.
@@ -208,8 +222,7 @@ Here's a quick overview of the primary renderers you'll use:
 
 ### Callable Interface:
 
-Every renderer can be invoked in two ways: with its built-in prompt if such was specified or with one-off inputs. Prompts/scripts defined at creation are pre-compiled for performance.
-
+Every renderer can be invoked in two ways: with its built-in prompt if such was specified at creation time or with one-off inputs (prompt and/or context) provided with the call arguments.
 ```typescript
 // Created with a templating modifier
 const dynamicRenderer = create.TextGenerator.withTemplate({
@@ -228,7 +241,7 @@ const result2 = await dynamicRenderer('Hi {{ user }}', { user: 'Alice' });
 console.log(result2.text); // "Hi Alice"
 ```
 
-Prompts defined during creation are precompiled for efficiency, while prompts provided at runtime (one-off prompts) are compiled each time they are used, offering flexibility for dynamic scenarios.
+Template and script prompts defined at creation are pre-compiled for efficiency, while prompts provided at runtime (one-off prompts) are compiled each time they are used, offering flexibility for dynamic scenarios.
 
 ## Configuration Management
 
@@ -255,7 +268,7 @@ const renderer = create.TextGenerator.withTemplate({
 // The renderer inherits model, temperature, and context from baseConfig
 ```
 ### Property Inheritance Explained
-Properties in *Cascador-AI* flow through a chain of configurations - starting from any `Config` object (or multiple), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` get overridden entirely, while objects like `filters` and `loader` merge their contents, preserving and combining values.
+Properties in *Cascador-AI* flow through a chain of configurations - starting from initial `Config` object (or multiple configs in a parent hierarchy), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` get overridden entirely, while objects like `filters` and `loader` merge their contents, preserving and combining values.
 For the `context` object a child renderer's context keeps all the parent root properties but overrides the ones with matching names
 
 Here’s how it plays out:
@@ -296,7 +309,7 @@ const childRenderer = create.TextGenerator.withTemplate({
 
 ### Your Toolkit for Every Task
 
-*Cascador-AI* offers a suite of renderers, each tailored to a specific job—whether it’s executing scripts, rendering templates, generating text, or streaming data. Built on the Vercel AI SDK, they share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function.
+*Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating or streaming text and data. The LLM renderers (Generate/Stream Object/Text), built on the Vercel AI SDK, share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function.
 
 Let's explore each renderer in detail.
 
@@ -691,8 +704,6 @@ The `output` property in the configuration determines the structure of the strea
 
 The `enum` strategy is not supported for streaming.
 
-You can also specify `schemaName` and `schemaDescription` for additional guidance.
-
 #### How to Call It
 *   **With pre-configured input**:
     ```typescript
@@ -790,7 +801,7 @@ const agent = create.TextGenerator({
   prompt: "Please summarize this for me: 'Cascador-AI is an AI orchestration library...'",
 });
 
-// The LLM will decide to call the tool to fulfill the request
+// The LLM will decide whether to call the tool to fulfill the request
 (async () => {
     const chatResult = await agent();
     console.log('Model-Driven Result:', chatResult.toolCalls);
@@ -1258,12 +1269,12 @@ In *Cascador-AI*, you have several powerful mechanisms to build workflows. Choos
 These are the fundamental JS/TS functions you provide to *both* scripts and templates. They are the efficient, predictable actions that your orchestrator calls.
 
 **Use When:**
--   **You need raw performance:** A plain JavaScript/TypeScript function is always faster than an LLM call.
+-   **You need raw performance:** A plain local JavaScript/TypeScript function is always faster than an LLM call.
 -   **The logic is deterministic:** You need to fetch data from a known API endpoint, query a database, or perform a specific data transformation.
 -   **You want to expose utilities:** Provide helper functions (e.g., `formatDate`, `calculateTotal`) to your scripts and templates.
 
 ### `Tools`: For Developer-Defined Functionality
-Using `.asTool` (on `create.Function` or another renderer) provides a clean, type-safe way to expose custom functionality to an LLM.
+Using `.asTool` (on `create.Function`, `script`, `template` or LLM generator provides a clean, type-safe way to expose custom functionality to an LLM.
 
 **Use When:**
 -   **The workflow is unpredictable**: You can't know ahead of time what the user will ask. The LLM must infer intent and select the appropriate tool (e.g., `getWeather` vs. `sendEmail`).
