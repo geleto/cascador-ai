@@ -1,6 +1,6 @@
 {
 	"name": "cascador-ai",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Orchestrate AI agent workflows with Nunjucks-style text templates that implicitly run async tasks in parallel",
 	"author": "Angel Popov<geleto@gmail.com>",
 	"license": "Apache-2.0",
