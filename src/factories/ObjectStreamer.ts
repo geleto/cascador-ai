@@ -8,7 +8,7 @@ import * as types from '../types/types';
 import { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
 import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
-import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { ConfigProvider, mergeConfigs, processConfig } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 
 type StreamObjectConfig<
@@ -404,7 +404,7 @@ function _createObjectStreamer<
 	isTool = false,
 ): StreamObjectPromiseReturn<TConfig, 'async-template', OUTPUT, PROMPT> {
 
-	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
+	const merged = { ...(parent ? mergeConfigs(parent.config, config) : processConfig(config)), promptType };
 
 	// Set default output value to make the config explicit.
 	// This simplifies downstream logic (e.g., in validation).

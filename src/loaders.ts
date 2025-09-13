@@ -47,7 +47,9 @@ function race(loaders: ILoaderAny[], groupName?: string): RaceGroup {
  * @param loaders The loader array to process.
  * @returns A final, processed array of loader instances ready to be passed to the Cascada engine.
  */
-function processLoaders(loaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
+function processLoaders(load: (ILoaderAny | RaceGroup | MergedGroup)[] | ILoaderAny | RaceGroup | MergedGroup): ILoaderAny[] {
+	const loaders = (!Array.isArray(load) ? [load] : load);
+
 	const namedGroups = new Map<string, NamedGroup>(); // Tracks collected loaders for named groups.
 	const processedChain: (ILoaderAny | RaceGroup | MergedGroup | null)[] = []; // The chain being built, with placeholders.
 
@@ -161,9 +163,10 @@ function processLoaders(loaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoa
  * @returns A final, processed array of loader instances ready to be passed to the Cascada engine.
  */
 function mergeLoaders(parentLoaders: (ILoaderAny | RaceGroup | MergedGroup)[], childLoaders: (ILoaderAny | RaceGroup | MergedGroup)[]): ILoaderAny[] {
-	// Child loaders have precedence.
-	const fullChain = [...childLoaders, ...parentLoaders];
-	return processLoaders(fullChain);
+	// Parent loaders come first, then child loaders (child loaders have precedence in resolution order).
+	const fullChain = [...parentLoaders, ...childLoaders];
+	const result = processLoaders(fullChain);
+	return Array.isArray(result) ? result : [result];
 }
 
 export { race, mergeLoaders, processLoaders };

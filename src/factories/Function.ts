@@ -1,7 +1,7 @@
 import { ToolCallOptions } from 'ai';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
-import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { ConfigProvider, mergeConfigs, processConfig } from "../ConfigData";
 import { validateFunctionConfig, validateScriptOrFunctionCall, validateAndParseOutput } from "../validate";
 
 type ToolOrFunctionConfig<INPUT extends Record<string, any>, OUTPUT> =
@@ -122,7 +122,7 @@ export function _createFunction(
 	if (parent) {
 		merged = mergeConfigs(('config' in parent ? (parent).config : parent), config);
 	} else {
-		merged = config;
+		merged = processConfig(config);
 	}
 
 	validateFunctionConfig(merged, isTool);

@@ -6,7 +6,7 @@ import * as utils from '../types/utils';
 import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
-import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { ConfigProvider, mergeConfigs, processConfig } from "../ConfigData";
 import { validateObjectLLMConfig } from "../validate";
 
 type GenerateObjectConfig<
@@ -858,7 +858,7 @@ function _createObjectGenerator<
 	isTool = false,
 ): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM, PROMPT> {
 
-	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
+	const merged = { ...(parent ? mergeConfigs(parent.config, config) : processConfig(config)), promptType };
 
 	// Set default output value to make the config explicit.
 	// This simplifies downstream logic

@@ -1,9 +1,11 @@
 import { Context } from 'mocha';
 import { Override } from './types/utils';
 import * as configs from './types/config';
-import { Loader } from 'cascada-engine';
-import { CascadaLoaders, CascadaFilters } from './types/types';
+import * as types from './types/types';
 import { ToolSet } from 'ai';
+import { mergeLoaders, processLoaders, RaceGroup, MergedGroup } from './loaders';
+import { ILoaderAny } from 'cascada-engine';
+
 
 export interface ConfigProvider<T> {
 	readonly config: T;
@@ -11,6 +13,16 @@ export interface ConfigProvider<T> {
 
 export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
 	constructor(public readonly config: ConfigType) { }
+}
+
+export function processConfig<T extends Partial<configs.LoaderConfig> & Record<string, any>>(
+	config: T
+): Omit<T, 'loader'> & { loader?: ReturnType<typeof processLoaders> } {
+	if ('loader' in config && config.loader) {
+		const loader = processLoaders(config.loader as ILoaderAny[]);
+		return { ...config, loader };
+	}
+	return config as Omit<T, 'loader'> & { loader?: ReturnType<typeof processLoaders> };
 }
 
 /**
@@ -48,24 +60,27 @@ export function mergeConfigs<
 		merged.filters = {
 			...(parentConfig as unknown as configs.CascadaConfig).filters ?? {},
 			...(childConfig as unknown as configs.CascadaConfig).filters ?? {},
-		} as CascadaFilters;
+		} as types.CascadaFilters;
 	}
 
-	if ('loader' in parentConfig && 'loader' in childConfig) {
-		const parentLoaders = (parentConfig.loader
-			? Array.isArray(parentConfig.loader)
-				? parentConfig.loader
-				: [parentConfig.loader]
-			: []) as Loader[];
-		const childLoaders = (childConfig.loader
-			? Array.isArray(childConfig.loader)
-				? childConfig.loader
-				: [childConfig.loader]
-			: []) as Loader[];
+	const parentLoaders = ('loader' in parentConfig) ? (parentConfig.loader
+		? Array.isArray(parentConfig.loader)
+			? parentConfig.loader
+			: [parentConfig.loader]
+		: []) as (ILoaderAny | RaceGroup | MergedGroup)[] : undefined;
 
-		merged.loader = Array.from(
-			new Set([...parentLoaders, ...childLoaders].filter(Boolean))
-		) as CascadaLoaders;
+	const childLoaders = ('loader' in childConfig) ? (childConfig.loader
+		? Array.isArray(childConfig.loader)
+			? childConfig.loader
+			: [childConfig.loader]
+		: []) as (ILoaderAny | RaceGroup | MergedGroup)[] : undefined;
+
+	if (parentLoaders && childLoaders) {
+		merged.loader = mergeLoaders(parentLoaders, childLoaders);
+	} else if (childLoaders) {
+		merged.loader = processLoaders(childLoaders);
+	} else if (parentLoaders) {
+		merged.loader = processLoaders(parentLoaders);
 	}
 
 	if ('messages' in parentConfig && 'messages' in childConfig) {

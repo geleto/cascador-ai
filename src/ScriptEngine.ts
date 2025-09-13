@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Context, SchemaType, ScriptPromptType } from './types/types';
 import { ScriptConfig } from './types/config';
 import * as results from './types/result';
+import * as types from './types/types';
 import { JSONValue } from 'ai';
 
 class ScriptError extends Error {
@@ -49,12 +50,12 @@ export class ScriptEngine<
 		try {
 			if (this.config.promptType === 'script' || this.config.promptType === 'script-name') {
 				this.env = new cascada.Environment(
-					('loader' in this.config ? this.config.loader : null) ?? null,
+					('loader' in this.config ? this.config.loader as types.CascadaLoaders | undefined : null) ?? null,
 					('options' in this.config ? this.config.options : undefined)
 				);
 			} else {
 				this.env = new cascada.AsyncEnvironment(
-					('loader' in this.config ? this.config.loader : null) ?? null,
+					('loader' in this.config ? this.config.loader as types.CascadaLoaders | undefined : null) ?? null,
 					('options' in this.config ? this.config.options : undefined)
 				);
 			}

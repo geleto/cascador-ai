@@ -41,6 +41,6 @@ export type EmptyObject = Record<string, never>;
 
 export type CascadaFilters = Record<string, (input: any, ...args: any[]) => any>;
 
-//@todo - rename to CascadorAILoaders and Keep CascadaLoaders as ILoaderAny | ILoaderAny[]
-export type CascadaLoaders = ILoaderAny | RaceGroup | MergedGroup | (ILoaderAny | RaceGroup | MergedGroup)[];
+export type CascadaLoaders = ILoaderAny | ILoaderAny[];
+export type CascadorAILoaders = ILoaderAny | RaceGroup | MergedGroup | (ILoaderAny | RaceGroup | MergedGroup)[];
 

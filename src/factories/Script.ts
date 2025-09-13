@@ -1,4 +1,4 @@
-import { ConfigProvider, mergeConfigs } from '../ConfigData';
+import { ConfigProvider, mergeConfigs, processConfig } from '../ConfigData';
 import { validateScriptConfig, validateScriptOrFunctionCall, validateAndParseOutput, ConfigError } from '../validate';
 import { ScriptEngine } from '../ScriptEngine';
 import * as configs from '../types/config';
@@ -243,7 +243,7 @@ export function _createScript<
 	//, add promptType to the config
 	const merged = parent
 		? { ...mergeConfigs(parent.config, config), promptType: scriptType }
-		: { ...config, promptType: scriptType };
+		: { ...processConfig(config), promptType: scriptType };
 
 	validateScriptConfig(merged, scriptType, isTool);
 

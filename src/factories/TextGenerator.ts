@@ -6,7 +6,7 @@ import * as utils from '../types/utils';
 import * as types from '../types/types';
 
 import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
-import { ConfigProvider, mergeConfigs } from "../ConfigData";
+import { ConfigProvider, mergeConfigs, processConfig } from "../ConfigData";
 import { validateTextLLMConfig } from "../validate";
 
 // The generic return type for a TextGenerator instance.
@@ -462,7 +462,7 @@ function _createTextGenerator<
 	isTool = false,
 ): GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType> {
 
-	const merged = { ...(parent ? mergeConfigs(parent.config, config) : config), promptType };
+	const merged = { ...(parent ? mergeConfigs(parent.config, config) : processConfig(config)), promptType };
 
 	validateTextLLMConfig(merged, promptType, isTool);
 

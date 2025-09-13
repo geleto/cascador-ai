@@ -1,5 +1,5 @@
 import { TemplateEngine } from '../TemplateEngine';
-import { ConfigProvider, mergeConfigs } from '../ConfigData';
+import { ConfigProvider, mergeConfigs, processConfig } from '../ConfigData';
 import { validateTemplateConfig, validateTemplateCall, ConfigError } from '../validate';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
@@ -247,7 +247,7 @@ export function _createTemplate<
 	//, add promptType to the config
 	const merged = parent
 		? { ...mergeConfigs(parent.config, config), promptType: promptType }
-		: { ...config, promptType: promptType };
+		: { ...processConfig(config), promptType: promptType };
 
 	validateTemplateConfig(merged, promptType, isTool);
 

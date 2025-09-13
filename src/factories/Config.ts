@@ -1,4 +1,4 @@
-import { ConfigData, mergeConfigs } from '../ConfigData';
+import { ConfigData, mergeConfigs, processConfig } from '../ConfigData';
 import { ConfigProvider } from '../ConfigData';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
@@ -70,5 +70,5 @@ export function Config<
 		return new ConfigData(merged) as ConfigData<TFinalConfig>;
 	}
 
-	return new ConfigData(config) as unknown as ConfigData<TFinalConfig>;
+	return new ConfigData(processConfig(config)) as unknown as ConfigData<TFinalConfig>;
 }

@@ -1,6 +1,7 @@
 import * as cascada from 'cascada-engine';
 import { Context } from './types/types';
 import { TemplateConfig } from './types/config';
+import * as types from './types/types';
 
 export class TemplateError extends Error {
 	cause?: Error;
@@ -44,9 +45,9 @@ export class TemplateEngine<
 		// Initialize appropriate environment based on promptType
 		try {
 			if (this.config.promptType === 'template' || this.config.promptType === 'template-name') {
-				this.env = new cascada.Environment(this.config.loader ?? null, this.config.options);
+				this.env = new cascada.Environment((this.config.loader as types.CascadaLoaders | undefined) ?? null, this.config.options);
 			} else {
-				this.env = new cascada.AsyncEnvironment(this.config.loader ?? null, this.config.options);
+				this.env = new cascada.AsyncEnvironment((this.config.loader as types.CascadaLoaders | undefined) ?? null, this.config.options);
 			}
 
 			// Add filters if provided
