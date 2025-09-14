@@ -2,10 +2,9 @@
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { create } from '../src/index'; // Adjust path to your 'index.ts'
+import { create, ConfigError } from './cascada'; // Adjust path to your 'index.ts'
 
 import { model, temperature, StringLoader, AsyncStringLoader, timeout } from './common';
-import { ConfigError } from '../src/validate';
 import { LoaderInterface } from 'cascada-engine';
 import { z } from 'zod';
 

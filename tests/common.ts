@@ -7,6 +7,7 @@ export const modelName = 'claude-3-5-haiku-latest';
 export const model: LanguageModel = anthropic(modelName);
 export const createProvider = createAnthropic;
 
+
 /*import { openai, createOpenAI, OpenAIProviderSettings } from '@ai-sdk/openai';
 export const modelName = 'gpt-5-nano';
 export const createProvider = createOpenAI;

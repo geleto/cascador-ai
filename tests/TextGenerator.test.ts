@@ -2,9 +2,8 @@
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { create } from '../src/index';
 import { model, temperature, StringLoader, AsyncStringLoader, timeout } from './common';
-import { ConfigError } from '../src/validate';
+import { create, ConfigError } from './cascada';
 
 // Configure chai-as-promised
 chai.use(chaiAsPromised);

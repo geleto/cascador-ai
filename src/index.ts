@@ -1,39 +1,84 @@
+// --- Core Factories ---
 export { Template } from './factories/Template';
 export { Script } from './factories/Script';
+export { Function } from './factories/Function'; // Added missing factory
 export { TextGenerator } from './factories/TextGenerator';
 export { TextStreamer } from './factories/TextStreamer';
 export { ObjectGenerator } from './factories/ObjectGenerator';
 export { ObjectStreamer } from './factories/ObjectStreamer';
 export { Config } from './factories/Config';
 
-export { ConfigProvider, ConfigData } from './ConfigData';
+// --- The 'create' Namespace (Excellent DX Pattern) ---
+import * as factories from './factories/factories';
+export const create = factories;
 
-// Loader utilities
-export { race, mergeLoaders, processLoaders } from './loaders';
+// --- Third-Party Re-exports (For User Convenience) ---
+export type { ModelMessage, ToolSet } from 'ai';
+export { z } from 'zod';
 
-export {
-	TemplatePromptConfig as TemplateConfig, ScriptConfig,
-	GenerateTextConfig, StreamTextConfig,
-	GenerateObjectObjectConfig, GenerateObjectArrayConfig, GenerateObjectEnumConfig, GenerateObjectNoSchemaConfig,
-	StreamObjectObjectConfig, StreamObjectArrayConfig, StreamObjectNoSchemaConfig,
+// --- Configuration Types ---
+export type {
+	// Standalone Renderer Configs
+	TemplateConfig, // Correctly exporting the main TemplateConfig
+	ScriptConfig,
+	FunctionConfig,
+	FunctionToolConfig,
+	// LLM Renderer Configs
+	GenerateTextConfig,
+	StreamTextConfig,
+	GenerateObjectObjectConfig,
+	GenerateObjectArrayConfig,
+	GenerateObjectEnumConfig,
+	GenerateObjectNoSchemaConfig,
+	StreamObjectObjectConfig,
+	StreamObjectArrayConfig,
+	StreamObjectNoSchemaConfig,
+	// Prompt-specific Configs for LLM Renderers
+	TemplatePromptConfig,
+	ScriptPromptConfig,
+	FunctionPromptConfig,
+	// Other
 	ToolConfig
 } from './types/config';
 
-// Core types
-export { Context, SchemaType, TemplatePromptType, ScriptPromptType/*, LLMPromptType */, StreamObjectOnFinishEvent, StreamTextOnFinishEvent } from './types/types';
+// --- Core Library Types ---
+export type {
+	Context,
+	SchemaType,
+	TemplatePromptType,
+	ScriptPromptType,
+	FunctionPromptType,
+	StreamObjectOnFinishEvent,
+	StreamTextOnFinishEvent
+} from './types/types';
 export { ModelMessageSchema, PromptStringOrMessagesSchema } from './types/schemas';
-// Result types
-export {
+
+// --- Result Types ---
+export type {
 	ScriptResult,
+	// Augmented results renamed for clean public API
 	GenerateTextResultAugmented as GenerateTextResult,
 	StreamTextResultAugmented as StreamTextResult,
-	GenerateObjectResultAll, GenerateObjectObjectResult, GenerateObjectArrayResult, GenerateObjectEnumResult, GenerateObjectNoSchemaResult,
-	StreamObjectResultAll, StreamObjectObjectResult, StreamObjectArrayResult, StreamObjectNoSchemaResult
+	// Object Generation Results
+	GenerateObjectResultAll,
+	GenerateObjectObjectResult,
+	GenerateObjectArrayResult,
+	GenerateObjectEnumResult,
+	GenerateObjectNoSchemaResult,
+	// Object Streaming Results
+	StreamObjectResultAll,
+	StreamObjectObjectResult,
+	StreamObjectArrayResult,
+	StreamObjectNoSchemaResult
 } from './types/result';
 
-// Type utilities
-// export * from './type-utils';
+// --- Error Types ---
+export { TemplateError } from './TemplateEngine';
+export { ScriptError } from './ScriptEngine';
+export { ConfigError } from './validate';
 
-//export the factory create namespace
-import * as factories from './factories/factories';
-export const create = factories;
+
+// --- Public Utilities & Associated Types ---
+export type { ConfigProvider } from './ConfigData'; // Removed ConfigData class
+export { race, type RaceGroup, type MergedGroup } from './loaders'; // Removed internal helpers
+export { FileSystemLoader, WebLoader } from 'cascada-engine'; // Added missing loader classes (adjust path as needed)

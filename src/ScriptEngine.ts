@@ -6,7 +6,7 @@ import * as results from './types/result';
 import * as types from './types/types';
 import { JSONValue } from 'ai';
 
-class ScriptError extends Error {
+export class ScriptError extends Error {
 	cause?: Error;
 	name: string;
 	constructor(message: string, cause?: Error) {

@@ -1,10 +1,9 @@
 import 'dotenv/config';
 import * as chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { create } from '../src/index';
-import type { StreamObjectOnFinishEvent } from '../src/index';
+import { create, ConfigError } from './cascada';
+import type { StreamObjectOnFinishEvent } from './cascada';
 import { model, temperature, StringLoader, AsyncStringLoader, timeout, modelName, createProvider } from './common';
-import { ConfigError } from '../src/validate';
 import { z } from 'zod';
 import type { DeepPartial } from 'ai';
 
