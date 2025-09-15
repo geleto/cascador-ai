@@ -1,5 +1,5 @@
 import { TemplateEngine } from '../TemplateEngine';
-import { ConfigProvider, mergeConfigs, processConfig } from '../ConfigData';
+import { mergeConfigs, processConfig } from '../config-utils';
 import { validateTemplateConfig, validateTemplateCall, ConfigError } from '../validate';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
@@ -105,12 +105,12 @@ function withTemplate<
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateConfig<INPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT>>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 function withTemplate(
 	config: configs.TemplateConfig<any>,
-	parent?: ConfigProvider<configs.TemplateConfig<any>>
+	parent?: configs.ConfigProvider<configs.TemplateConfig<any>>
 ): any {
 	return _createTemplate(config, 'async-template', parent, false);
 }
@@ -133,12 +133,12 @@ function loadsTemplate<
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateConfig<INPUT> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT> & configs.LoaderConfig>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateConfig<PARENT_INPUT> & configs.LoaderConfig>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
 function loadsTemplate(
 	config: Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>,
-	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>
+	parent?: configs.ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>
 ): any {
 	return _createTemplate(config, 'async-template-name', parent, false);
 }
@@ -162,12 +162,12 @@ function withTemplateAsTool<
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT>>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT>>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
 function withTemplateAsTool(
 	config: Partial<configs.TemplateToolConfig<any>>,
-	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any>>>,
+	parent?: configs.ConfigProvider<Partial<configs.TemplateToolConfig<any>>>,
 ): any {
 	return _createTemplateAsTool(config, 'async-template', parent);
 }
@@ -192,13 +192,13 @@ function loadsTemplateAsTool<
 	TFinalConfig extends FinalTemplateConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>>
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
 
 // Implementation
 function loadsTemplateAsTool(
 	config: Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>,
-	parent?: ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>,
+	parent?: configs.ConfigProvider<Partial<configs.TemplateToolConfig<any> & configs.LoaderConfig>>,
 ): any {
 	return _createTemplateAsTool(config, 'async-template-name', parent);
 }
@@ -213,7 +213,7 @@ function _createTemplateAsTool<
 >(
 	config: Partial<TConfig>,
 	promptType: TemplatePromptType,
-	parent?: ConfigProvider<TParentConfig>,
+	parent?: configs.ConfigProvider<TParentConfig>,
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string> {
 	const renderer = _createTemplate(config, promptType, parent, true) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
@@ -239,7 +239,7 @@ export function _createTemplate<
 >(
 	config: TConfig,
 	promptType: TemplatePromptType,
-	parent?: ConfigProvider<TParentConfig>,
+	parent?: configs.ConfigProvider<TParentConfig>,
 	isTool = false,
 ): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> {
 

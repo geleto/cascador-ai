@@ -1,9 +1,12 @@
-import { ConfigData, mergeConfigs, processConfig } from '../ConfigData';
-import { ConfigProvider } from '../ConfigData';
+import { mergeConfigs, processConfig } from '../config-utils';
 import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import { ToolSet } from 'ai';
 import { validateAnyConfig } from '../validate';
+
+class ConfigData<ConfigType> implements configs.ConfigProvider<ConfigType> {
+	constructor(public readonly config: ConfigType) { }
+}
 
 // Single config overload
 export function Config<
@@ -14,7 +17,7 @@ export function Config<
 	ENUM extends string = string
 >(
 	config: utils.StrictUnionSubtype<TConfig, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>>,
-): ConfigProvider<TConfig>;
+): configs.ConfigProvider<TConfig>;
 
 // Config with parent overload
 export function Config<
@@ -24,7 +27,7 @@ export function Config<
 	TCombined = utils.StrictUnionSubtype<utils.Override<TParentConfig, TConfig>, Partial<configs.AnyConfig<TOOLS, INPUT, OUTPUT, ENUM>>>
 >(
 	config: TConfig,
-	parent: ConfigProvider<
+	parent: configs.ConfigProvider<
 		TCombined extends never ? never : TParentConfig
 	>
 ): ConfigData<TCombined>;
@@ -52,7 +55,7 @@ export function Config<
 	TFinalConfig = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ):
 	| ConfigData<TFinalConfig>
 	| ConfigData<utils.StrictUnionSubtype<TFinalConfig, Partial<configs.AnyConfig<FINAL_TOOLS, FINAL_INPUT, FINAL_OUTPUT, FINAL_ENUM>>>> {

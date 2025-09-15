@@ -6,15 +6,6 @@ import { ToolSet } from 'ai';
 import { mergeLoaders, processLoaders, RaceGroup, MergedGroup } from './loaders';
 import { ILoaderAny } from 'cascada-engine';
 
-
-export interface ConfigProvider<T> {
-	readonly config: T;
-}
-
-export class ConfigData<ConfigType> implements ConfigProvider<ConfigType> {
-	constructor(public readonly config: ConfigType) { }
-}
-
 export function processConfig<T extends Partial<configs.LoaderConfig> & Record<string, any>>(
 	config: T
 ): Omit<T, 'loader'> & { loader?: ReturnType<typeof processLoaders> } {

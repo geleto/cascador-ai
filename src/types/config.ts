@@ -28,6 +28,10 @@ export interface BaseConfig {
 	description?: string;//useful for future OpenTelemetry, error logging, etc.
 }
 
+export interface ConfigProvider<T> {
+	readonly config: T;
+}
+
 // @todo - INPUT generic parameter for context
 export interface ContextConfig extends BaseConfig {
 	context?: Record<string, any>;

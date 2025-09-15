@@ -1,4 +1,4 @@
-import { ConfigProvider, mergeConfigs, processConfig } from '../ConfigData';
+import { mergeConfigs, processConfig } from '../config-utils';
 import { validateScriptConfig, validateScriptOrFunctionCall, validateAndParseOutput, ConfigError } from '../validate';
 import { ScriptEngine } from '../ScriptEngine';
 import * as configs from '../types/config';
@@ -128,12 +128,12 @@ function baseScript<
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
 
 function baseScript(
 	config: configs.ScriptConfig<any, any>,
-	parent?: ConfigProvider<configs.ScriptConfig<any, any>>
+	parent?: configs.ConfigProvider<configs.ScriptConfig<any, any>>
 ): any {
 	return _createScript(config, 'async-script', parent, false);
 }
@@ -159,12 +159,12 @@ function asTool<
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptToolConfig<INPUT, OUTPUT>>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function asTool(
 	config: Partial<configs.ScriptToolConfig<any, any>>,
-	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any>>>
+	parent?: configs.ConfigProvider<Partial<configs.ScriptToolConfig<any, any>>>
 ): any {
 	return _createScriptAsTool(config, 'async-script', parent);
 }
@@ -188,12 +188,12 @@ function loadsScript<
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT>;
 
 function loadsScript(
 	config: configs.ScriptConfig<any, any> & configs.LoaderConfig,
-	parent?: ConfigProvider<configs.ScriptConfig<any, any> & configs.LoaderConfig>
+	parent?: configs.ConfigProvider<configs.ScriptConfig<any, any> & configs.LoaderConfig>
 ): any {
 	return _createScript(config, 'async-script-name', parent, false);
 }
@@ -219,12 +219,12 @@ function loadsScriptAsTool<
 	TFinalConfig extends FinalScriptConfigShape = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateScriptConfig<TConfig, TFinalConfig, configs.ScriptToolConfig<INPUT, OUTPUT> & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
+	parent: configs.ConfigProvider<TParentConfig & ValidateScriptParentConfig<TParentConfig, configs.ScriptToolConfig<PARENT_INPUT, PARENT_OUTPUT> & configs.LoaderConfig>>
 ): ScriptCallSignatureWithParent<TConfig, TParentConfig, INPUT, OUTPUT, PARENT_INPUT, PARENT_OUTPUT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsScriptAsTool(
 	config: Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>,
-	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>>
+	parent?: configs.ConfigProvider<Partial<configs.ScriptToolConfig<any, any> & configs.LoaderConfig>>
 ): any {
 	return _createScriptAsTool(config, 'async-script-name', parent);
 }
@@ -236,7 +236,7 @@ export function _createScript<
 >(
 	config: configs.ScriptConfig<INPUT, OUTPUT>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>,
+	parent?: configs.ConfigProvider<configs.ScriptConfig<INPUT, OUTPUT>>,
 	isTool = false,
 ): ScriptCallSignature<configs.ScriptConfig<INPUT, OUTPUT>, INPUT, OUTPUT> {
 	// Merge configs if parent exists, otherwise use provided config
@@ -302,7 +302,7 @@ export function _createScriptAsTool<
 >(
 	config: Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>,
 	scriptType: ScriptPromptType,
-	parent?: ConfigProvider<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>>,
+	parent?: configs.ConfigProvider<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>>,
 ): ScriptCallSignatureWithParent<Partial<configs.ScriptToolConfig<INPUT, OUTPUT>>, Partial<configs.ScriptToolConfig<any, any>>, INPUT, OUTPUT, any, any>
 	& results.RendererTool<INPUT, OUTPUT> {
 

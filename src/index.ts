@@ -8,12 +8,13 @@ export { ObjectGenerator } from './factories/ObjectGenerator';
 export { ObjectStreamer } from './factories/ObjectStreamer';
 export { Config } from './factories/Config';
 
-// --- The 'create' Namespace (Excellent DX Pattern) ---
+// --- The 'create' Namespace  ---
 import * as factories from './factories/factories';
 export const create = factories;
 
 // --- Third-Party Re-exports (For User Convenience) ---
 export type { ModelMessage, ToolSet } from 'ai';
+export { FileSystemLoader, WebLoader } from 'cascada-engine';
 export { z } from 'zod';
 
 // --- Configuration Types ---
@@ -38,7 +39,8 @@ export type {
 	ScriptPromptConfig,
 	FunctionPromptConfig,
 	// Other
-	ToolConfig
+	ToolConfig,
+	ConfigProvider
 } from './types/config';
 
 // --- Core Library Types ---
@@ -79,6 +81,4 @@ export { ConfigError } from './validate';
 
 
 // --- Public Utilities & Associated Types ---
-export type { ConfigProvider } from './ConfigData'; // Removed ConfigData class
-export { race, type RaceGroup, type MergedGroup } from './loaders'; // Removed internal helpers
-export { FileSystemLoader, WebLoader } from 'cascada-engine'; // Added missing loader classes (adjust path as needed)
+export { race, type RaceGroup, type MergedGroup } from './loaders';

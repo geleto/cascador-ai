@@ -8,7 +8,7 @@ import * as types from '../types/types';
 import { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
 import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
-import { ConfigProvider, mergeConfigs, processConfig } from "../ConfigData";
+import { mergeConfigs, processConfig } from "../config-utils";
 import { validateObjectLLMConfig } from "../validate";
 
 type StreamObjectConfig<
@@ -115,7 +115,7 @@ function withText<
 	TFinalConfig extends AllSpecializedProperties = utils.Override<TParentConfig, TConfig>
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig>>,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig>>,
 ): StreamObjectWithParentReturn<TConfig, TParentConfig, 'text',
 	OUTPUT, PARENT_OUTPUT, PROMPT>
 
@@ -127,10 +127,10 @@ function withText<
 	PARENT_OUTPUT,
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectReturn<TConfig, 'text', OUTPUT> {
 	return _createObjectStreamer(config as StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig, 'text',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
+		parent as configs.ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
 	) as unknown as StreamObjectReturn<TConfig, 'text', OUTPUT>
 }
 
@@ -156,7 +156,7 @@ function loadsText<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.LoaderConfig>>,
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'text-name', OUTPUT, PARENT_OUTPUT, PROMPT>;
@@ -171,12 +171,12 @@ function loadsText<
 	PROMPT extends string | ModelMessage[] = string | ModelMessage[],
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'text-name', OUTPUT> {
 	return _createObjectStreamer(
 		config,
 		'text-name',
-		parent as ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
+		parent as configs.ConfigProvider<StreamObjectConfig<never, OUTPUT> & configs.OptionalPromptConfig>, false
 	) as unknown as StreamObjectPromiseReturn<TConfig, 'text-name', OUTPUT>;
 }
 
@@ -201,7 +201,7 @@ function withTemplate<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.TemplatePromptConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.TemplatePromptConfig>>
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'async-template', OUTPUT, PARENT_OUTPUT>;
@@ -216,7 +216,7 @@ function withTemplate<
 	PARENT_OUTPUT,
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'async-template', OUTPUT> {
 	return _createObjectStreamer(config, 'async-template', parent, false) as unknown as StreamObjectPromiseReturn<TConfig, 'async-template', OUTPUT>;
 }
@@ -243,7 +243,7 @@ function loadsTemplate<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.TemplatePromptConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.TemplatePromptConfig & configs.LoaderConfig>>
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, PARENT_OUTPUT>;
@@ -258,7 +258,7 @@ function loadsTemplate<
 	PARENT_OUTPUT,
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'async-template-name', OUTPUT> {
 	return _createObjectStreamer(config, 'async-template-name', parent, false) as unknown as StreamObjectPromiseReturn<TConfig, 'async-template-name', OUTPUT>;
 }
@@ -285,7 +285,7 @@ function withScript<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.ScriptPromptConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.ScriptPromptConfig>>
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'async-script', OUTPUT, PARENT_OUTPUT>;
@@ -300,7 +300,7 @@ function withScript<
 	PARENT_OUTPUT,
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'async-script', OUTPUT> {
 	return _createObjectStreamer(config, 'async-script', parent, false) as unknown as StreamObjectPromiseReturn<TConfig, 'async-script', OUTPUT>;
 }
@@ -327,7 +327,7 @@ function loadsScript<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.ScriptPromptConfig & configs.LoaderConfig>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.ScriptPromptConfig & configs.LoaderConfig>>
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, PARENT_OUTPUT>;
@@ -342,7 +342,7 @@ function loadsScript<
 	PARENT_OUTPUT,
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'async-script-name', OUTPUT> {
 	return _createObjectStreamer(config, 'async-script-name', parent, false) as unknown as StreamObjectPromiseReturn<TConfig, 'async-script-name', OUTPUT>;
 }
@@ -370,7 +370,7 @@ function withFunction<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TFinalConfig,
 		configs.FunctionPromptConfig, PROMPT>,
-	parent: ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
+	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.FunctionPromptConfig>>,
 
 ): StreamObjectWithParentPromiseReturn<TConfig, TParentConfig, 'function', OUTPUT, PARENT_OUTPUT, PROMPT>;
@@ -386,7 +386,7 @@ function withFunction<
 	PROMPT extends types.PromptFunction = types.PromptFunction
 >(
 	config: TConfig,
-	parent?: ConfigProvider<TParentConfig>
+	parent?: configs.ConfigProvider<TParentConfig>
 ): StreamObjectPromiseReturn<TConfig, 'function', OUTPUT, PROMPT> {
 	return _createObjectStreamer(config, 'function', parent, false) as unknown as StreamObjectPromiseReturn<TConfig, 'function', OUTPUT, PROMPT>;
 }
@@ -400,7 +400,7 @@ function _createObjectStreamer<
 >(
 	config: TConfig,
 	promptType: types.PromptType,
-	parent?: ConfigProvider<configs.BaseConfig>,
+	parent?: configs.ConfigProvider<configs.BaseConfig>,
 	isTool = false,
 ): StreamObjectPromiseReturn<TConfig, 'async-template', OUTPUT, PROMPT> {
 
