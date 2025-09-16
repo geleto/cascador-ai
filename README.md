@@ -16,11 +16,11 @@ The core of Cascador-AI is a **data-flow execution model**. Instead of running l
 
 The library encourages a powerful separation between the *what* (the orchestration plan) and the *how* (the underlying tools and functions):
 
-*   **The Logic (The "What"):** This is the high-level plan defined in a renderer. It's a readable, self-contained script or template that orchestrates the workflow, defining the steps and data flow.
+*   **The Logic (The "What"):** This is the high-level plan defined in a components that act as orchestrators. It's a readable, self-contained script or template that orchestrates the workflow, defining the steps and data flow.
     *   *Examples:* A script that first generates a draft, then sends it for critique, and finally revises it based on feedback; a template that fetches user data and product recommendations in parallel to render a personalized welcome email.
 
 *   **The Capabilities (The "How"):** These are the concrete tools, APIs and data sources your logic uses to get the job done. You provide them in the `context` object, making them available to your scripts and templates. The engine automatically handles resolving promises, allowing you to focus on your workflow logic without async boilerplate.
-    *   *Examples:* Seamlessly access asynchronous data and functionality - from static values (`{ qualityThreshold: 8 }`) and dynamic JavaScript functions (`(name) => name.toUpperCase()`) to external API calls (`fetchWeatherAPI(location)`), database queries (`db.getUser(id)`), custom service integrations, and other `Cascador-AI` renderers (`generateDraft(topic)`).
+    *   *Examples:* Seamlessly access asynchronous data and functionality - from static values (`{ qualityThreshold: 8 }`) and dynamic JavaScript functions (`(name) => name.toUpperCase()`) to external API calls (`fetchWeatherAPI(location)`), database queries (`db.getUser(id)`), custom service integrations, and other `Cascador-AI` components (`generateDraft(topic)`).
 
 ### 🧩 Composable & Reusable Components
 
@@ -51,13 +51,14 @@ Cascador-AI is a new project and is evolving quickly! This is exciting, but it a
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Understanding the Cascador-AI API](#understanding-the-cascador-ai-api)
+- [The `prompt` Property: Your Universal Input](#the-prompt-property-your-universal-input)
 - [Configuration Management](#configuration-management)
-- [The Cascador Renderers](#the-cascador-renderers)
-- [Callable Render Objects](#callable-render-objects)
-- [Using Renderers as Tools](#using-renderers-as-tools)
+- [The Cascador Components](#the-cascador-components)
+- [Callable Component Objects](#callable-component-objects)
+- [Using Components as Tools](#using-components-as-tools)
 - [Template and Script Properties](#template-and-script-properties)
 - [Vercel AI Properties](#vercel-ai-properties)
-- [Using Renderers in Templates and Scripts](#using-renderers-in-templates-and-scripts)
+- [Using Components in Templates and Scripts](#using-components-in-templates-and-scripts)
 - [Choosing Your Orchestration Strategy: Scripts, Templates, Context Methods, and Tools](#choosing-your-orchestration-strategy-scripts-templates-context-methods-and-tools)
 - [Embedding Integration](#embedding-integration)
 - [RAG Integration](#rag-integration)
@@ -99,12 +100,12 @@ import { z } from 'zod';
 // Define a reusable base configuration
 const baseConfig = create.Config({ model: openai('gpt-4o'), temperature: 0.7, maxRetries: 3 });
 
-// A renderer to write drafts (inherits from baseConfig)
+// A component to write drafts (inherits from baseConfig)
 const draftGenerator = create.TextGenerator.withTemplate({
 	prompt: 'Write a short, engaging blog post about {{ topic }}.',
 }, baseConfig);
 
-// A renderer to critique drafts using a structured schema.
+// A component to critique drafts using a structured schema.
 const critiqueGenerator = create.ObjectGenerator.withTemplate({
 	schema: z.object({
 		score: z.number().describe('Quality score from 1-10.'),
@@ -113,7 +114,7 @@ const critiqueGenerator = create.ObjectGenerator.withTemplate({
 	prompt: 'Critique this blog post: {{ draft }}',
 }, baseConfig);
 
-// A renderer to rewrite a draft based on feedback
+// A component to rewrite a draft based on feedback
 const revisionGenerator = create.TextGenerator.withTemplate({
 	model: anthropic('claude-3-7-sonnet-latest'), //override the base model to use Claude Sonnet
 	prompt: 'Rewrite the following post based on these suggestions:\n\nPOST:\n{{ draft }}\n\nSUGGESTIONS:\n- {{ suggestions | join("\n- ") }}',
@@ -150,35 +151,35 @@ const contentAgent = create.Script({
 
 # Understanding the Cascador-AI API
 
-## Renderers: The Heart of Cascador-AI
+## Components: The Heart of Cascador-AI
 
-At the core of *Cascador-AI* are **renderers**—versatile objects that transform inputs into outputs. They are the building blocks for your workflows, designed to be both powerful and easy to compose. Every renderer is created using the `create` factory and can be called like a function.
+At the core of *Cascador-AI* are **components**—versatile objects that transform inputs into outputs. They are the building blocks for your workflows, designed to be both powerful and easy to compose. Every component is created using the `create` factory and can be called like a function. All components can be considered **renderers**, as they all produce an output (rendering text, data, or a stream). However, `Script` and `Function` components can also act as powerful **orchestrators**, defining and coordinating complex, multi-step workflows.
 
-In Cascador-AI, you build workflows by making a **renderer** using the `create` factory for a specific task, like `TextGenerator`. You provide a configuration object with essential settings like the `model` to use and the `prompt` to send. To reuse settings, simply create a `Config` object and pass it as a second argument to have your renderer inherit from it. Or you can inherit the configuration of a renderer from another renderer.
+In Cascador-AI, you build workflows by making a **component** using the `create` factory for a specific task, like `TextGenerator`. You provide a configuration object with essential settings like the `model` to use and the `prompt` to send. To reuse settings, simply create a `Config` object and pass it as a second argument to have your component inherit from it. Or you can inherit the configuration of a component from another component.
 
 ```typescript
 import { create } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
-// Create a simple renderer with an inline configuration
+// Create a simple component with an inline configuration
 const jokeGenerator = create.TextGenerator({
   model: openai('gpt-4o-mini'),
   prompt: 'Tell me a short, clean joke.',
 });
 ```
 
-A key feature is that **every renderer is a callable function**. This provides several powerful ways to use them:
+A key feature is that **every component is a callable function**. This provides several powerful ways to use them:
 
-1.  **With Pre-configured Input**: Call the renderer with no arguments (`await renderer()`) or just a context object (`await renderer({ user: 'Admin' })`) to use its pre-compiled prompt, script, or template for optimal performance.
-2.  **With One-off Input**: Call the renderer with new arguments (`await renderer(newInput, newContext)`) for dynamic, on-the-fly execution. Both arguments are optional. The behavior of `newInput` depends on how the renderer was created.
+1.  **With Pre-configured Input**: Call the component with no arguments (`await component()`) or just a context object (`await component({ user: 'Admin' })`) to use its pre-compiled prompt, script, or template for optimal performance.
+2.  **With One-off Input**: Call the component with new arguments (`await component(newInput, newContext)`) for dynamic, on-the-fly execution. Both arguments are optional. The behavior of `newInput` depends on how the component was created.
 
 ### The Default Behavior: Plain Text
 
-By default, LLM renderers (`TextGenerator`, `ObjectGenerator`, `TextStreamer`, `ObjectStreamer`) treat the `prompt` string as plain, unprocessed text.
+By default, LLM components (`TextGenerator`, `ObjectGenerator`, `TextStreamer`, `ObjectStreamer`) treat the `prompt` string as plain, unprocessed text.
 
 ```typescript
 // The prompt is treated as static text, with no template processing.
-const plainTextRenderer = create.TextGenerator({
+const plainTextComponent = create.TextGenerator({
     model: openai('gpt-4o-mini'),
     prompt: 'Write a poem about the sea.'
 });
@@ -186,16 +187,17 @@ const plainTextRenderer = create.TextGenerator({
 
 ### Adding Capabilities with Modifiers
 
-To add dynamic processing capabilities like generating prompts with templates or scripts, or creating a tool - you use explicit modifiers on the base factory function. These modifiers "enhance" the base renderer with specific capabilities.
+To add dynamic processing capabilities like generating prompts with templates or scripts, or creating a tool - you use explicit modifiers on the base factory function. These modifiers "enhance" the base component with specific capabilities.
 
 #### The `.with...` Family for Inline Content:
-These modifiers create a renderer that adds the capability to render the prompt by processing it as a template or script.
+These modifiers create a component that adds the capability to render the prompt by processing it as a template, script, or function.
 *   `default` with no modifier : the `prompt` property is a plain text.
 *   `.withTemplate(...)`: the `prompt` property is a template.
 *   `.withScript(...)`: the `prompt` property is a script
+*   `.withFunction(...)`: the `prompt` property is a Javascript function.
 
 #### The `.loads...` Family for External Content:
-These modifiers create a renderer designed to load its prompt or script from an external source via a `loader`.
+These modifiers create a component designed to load its prompt or script from an external source via a `loader`.
 
 A loader, provided in the configuration objects, can be any of the built-in loaders - like FileSystemLoader (for Node.js), WebLoader (for browsers), or your own custom implementation.
 
@@ -204,7 +206,7 @@ A loader, provided in the configuration objects, can be any of the built-in load
 *   `.loadsScript(...)`: Loads the `prompt` and treats it as a script.
 
 #### The `.asTool` Modifier: Instantly Create LLM-Callable Tools
-Turn non-streaming renderers into a powerful, model-driven tool by simply appending the `.asTool` modifier. This upgrades your renderer into a hybrid object: it remains a callable function for you to use directly in your code, while also becoming a fully-formed tool that an LLM can understand and decide to call.
+Turn non-streaming components into a powerful, model-driven tool by appending the `.asTool` modifier. This upgrades your component into a hybrid object: it remains a callable function for you to use directly in your code, while also becoming a fully-formed tool that an LLM can understand and decide to call.
 
 To make this happen, just add two properties to your configuration:
 *   `description`: A clear, natural language explanation of what the tool does. This is the LLM's guide.
@@ -212,8 +214,8 @@ To make this happen, just add two properties to your configuration:
 
 This modifier can be chained with any content loader, allowing you to create sophisticated tools from templates or scripts: `create.TextGenerator.withTemplate.asTool(...)`.
 
-Here's a quick overview of the primary renderers you'll use:
-*   [**`create.Config`**](#configuration-management): Not a renderer, but a factory for creating reusable configuration objects.
+Here's a quick overview of the primary components you'll use:
+*   [**`create.Config`**](#configuration-management): Not a component, but a factory for creating reusable configuration objects.
 *   [**`create.Template`**](#template): **For presentation-layer generation.** Processes a Cascada template to produce a final string output.
 *   [**`create.Script`**](#script): **For data-layer orchestration.** Executes a Cascada script.
 *   [**`create.Function`**](#function): **For wrapping standard JS logic.** Creates a callable function from an `execute` method, which can be exposed as a tool to an LLM.
@@ -222,30 +224,45 @@ Here's a quick overview of the primary renderers you'll use:
 
 ### Callable Interface:
 
-Every renderer can be invoked in two ways: with its built-in prompt if such was specified at creation time or with one-off inputs (prompt and/or context) provided with the call arguments.
+Every component can be invoked in two ways: with its built-in prompt if such was specified at creation time or with one-off inputs (prompt and/or context) provided with the call arguments.
 ```typescript
 // Created with a templating modifier
-const dynamicRenderer = create.TextGenerator.withTemplate({
+const dynamicComponent = create.TextGenerator.withTemplate({
     model: openai('gpt-4o'),
     prompt: 'Hello {{ name }}',
     context: { name: 'World' }
 });
 
 // 1. Using configured pre-compiled prompt and context
-const result = await dynamicRenderer();
+const result = await dynamicComponent();
 console.log(result.text); // "Hello World"
 
 // 2. With a one-off prompt and context
-// The one-off prompt is also processed as a template (since it was created as a template renderer)
-const result2 = await dynamicRenderer('Hi {{ user }}', { user: 'Alice' });
+// The one-off prompt is also processed as a template (since it was created as a template component)
+const result2 = await dynamicComponent('Hi {{ user }}', { user: 'Alice' });
 console.log(result2.text); // "Hi Alice"
 ```
 
 Template and script prompts defined at creation are pre-compiled for efficiency, while prompts provided at runtime (one-off prompts) are compiled each time they are used, offering flexibility for dynamic scenarios.
 
+## The `prompt` Property: Your Universal Input
+
+In Cascador-AI, the `prompt` property is the versatile heart of every LLM component. Its behavior is determined by the factory method you use to create the component. The modifier—like `.withTemplate` or `.withScript`—sets the "mode" for how the `prompt` content will be processed before being sent to the LLM.
+
+Here is a complete guide to its different modes:
+
+| Creation Method | `prompt` Property Content | Processing Behavior |
+| :--- | :--- | :--- |
+| `create.TextGenerator(...)` | A static `string` or `ModelMessage[]` array. | The content is sent **directly** to the Vercel AI SDK with no processing. The user's runtime input is appended as the final `user` message. |
+| `create.TextGenerator.withTemplate(...)` | A `string` containing a Cascada **template**. | The template is **rendered** into a final `string`, which becomes the LLM prompt. It only renders text and thus cannot produce a `ModelMessage[]` array. |
+| `create.TextGenerator.withScript(...)` | A `string` containing a Cascada **script**. | The script is **executed**. Its return value—which can be a `string` or a `ModelMessage[]` array—becomes the LLM prompt. |
+| `create.TextGenerator.withFunction(...)` | A synchronous or asynchronous JavaScript **function**. | The function is **executed**. Its return value—which can be a `string` or a `ModelMessage[]` array—becomes the LLM prompt. |
+
+By embracing this single-property pattern, you only need to remember one rule: **the factory modifier defines the `prompt`'s behavior.**
+
 ## Configuration Management
 
-Cascador-AI allows you to define shared configuration through `Config` objects that can be inherited by other renderers:
+Cascador-AI allows you to define shared configuration through `Config` objects that can be inherited by other components:
 
 ```typescript
 import { create } from 'cascador-ai';
@@ -260,18 +277,42 @@ const baseConfig = create.Config({
   }
 });
 
-// Create a renderer that inherits from base config
-const renderer = create.TextGenerator.withTemplate({
+// Create a component that inherits from base config
+const component = create.TextGenerator.withTemplate({
   prompt: 'Translate to {{ language }}: {{ text }}'
 }, baseConfig);
 
-// The renderer inherits model, temperature, and context from baseConfig
+// The component inherits model, temperature, and context from baseConfig
 ```
 ### Property Inheritance Explained
-Properties in *Cascador-AI* flow through a chain of configurations - starting from initial `Config` object (or multiple configs in a parent hierarchy), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ: scalar properties like `prompt` get overridden entirely, while objects like `filters` and `loader` merge their contents, preserving and combining values.
-For the `context` object a child renderer's context keeps all the parent root properties but overrides the ones with matching names
+Properties in *Cascador-AI* flow through a chain of configurations - starting from initial `Config` object (or multiple configs in a parent hierarchy), passing through parent renderers, and ending at the renderer you’re crafting. Each level can tweak or extend what came before, but the rules differ
+A component's final configuration is determined by a chain of parents, with the child's properties taking ultimate precedence. Here is a breakdown of the merging strategies for different property types:
 
-Here’s how it plays out:
+| Property Type | Properties | Merging Strategy |
+| :--- | :--- | :--- |
+| **Scalar Properties** | `model`, `prompt`, `template`, `script`, `temperature`, `maxTokens`, etc. | **Override**: The child's value completely replaces the parent's value. |
+| **Object Properties** | `context`, `filters`, `options` | **Shallow Merge**: The objects are merged. If a key exists in both the child and parent, the child's value for that key is used. |
+| **Loader Property** | `loader` | **Advanced Merging**: Child loaders are prepended to the parent's loader chain, and named `race()` groups are intelligently combined. |
+
+#### Detailed Merging Strategies
+
+1.  **Override (Scalar Properties)**
+    This is the simplest strategy. For any non-object property like `prompt` or `model`, the value defined in the child component is used, and the parent's value is ignored.
+
+2.  **Shallow Merge (Object Properties)**
+    For properties like `context` and `filters`, the keys and values are combined.
+    *   **`context`**: The child's `context` is merged on top of the parent's. Any properties unique to the parent are kept. If the same property key exists in both, the child's value wins.
+    *   **`filters`** and **`options`**: These follow the same merging logic as `context`.
+
+3.  **Advanced Merging (`loader`)**
+    The `loader` property has a sophisticated merging strategy to provide maximum flexibility:
+    *   **Default Behavior (Prepending)**: By default, a child's loaders are placed *before* the parent's loaders in the final chain. This ensures the child's resources are found first, with the parent's serving as a fallback.
+    *   **Named `race()` Group Merging**: If both the parent and child define loaders within a `race()` group of the same name (e.g., `race(..., 'cdn')`), the loaders from both are combined into a single, larger race group. This allows a child to *add* to a parent's concurrent loading strategy rather than replacing it.
+    *   **Deduplication**: Cascador-AI automatically removes duplicate loader instances from the final chain to ensure efficiency.
+
+#### Example in Action
+
+Here’s how these rules play out in practice:
 
 ```typescript
 const rootConfig = create.Config({
@@ -281,37 +322,43 @@ const rootConfig = create.Config({
 });
 
 const midConfig = create.Config({
-  prompt: 'Mid {{ var }}',
-  context: { var: 'mid' }, // Overrides 'var', keeps 'theme'
-  filters: { lowercase: (s) => s.toLowerCase() } // Merges with uppercase
+  prompt: 'Mid {{ var }}', // Overrides root prompt
+  context: { var: 'mid' }, // Overrides 'var', keeps 'theme' from root
+  filters: { lowercase: (s) => s.toLowerCase() } // Merges with uppercase filter from root
 }, rootConfig);
 // Resulting context: { var: 'mid', theme: 'dark' }
 
-const parentRenderer = create.TextGenerator.withTemplate({
-  prompt: 'Parent {{ var }}',
-  context: { user: 'guest' }, // Adds 'user', keeps 'var' and 'theme'
+const parentComponent = create.TextGenerator.withTemplate({
+  prompt: 'Parent {{ var }}', // Overrides mid prompt
+  context: { user: 'guest' }, // Adds 'user', keeps 'var' and 'theme' from mid
 }, midConfig);
 // Resulting context: { var: 'mid', theme: 'dark', user: 'guest' }
 
-const childRenderer = create.TextGenerator.withTemplate({
-  prompt: 'Child {{ var }} {{ user }}', // Overrides prompt
-}, parentRenderer);
-// Resulting context: { var: 'mid', theme: 'dark', user: 'guest' }
+const childComponent = create.TextGenerator.withTemplate({
+  prompt: 'Child {{ var }} {{ user }}', // Overrides parent prompt
+}, parentComponent);
+// Final context: { var: 'mid', theme: 'dark', user: 'guest' }
 
 (async () => {
-  console.log((await childRenderer()).text); // "Child mid guest"
-  // context: { var: 'mid', theme: 'dark', user: 'guest' }
-  // filters: { uppercase, lowercase }
+  console.log((await childComponent()).text); // "Child mid guest"
+  // Final filters: { uppercase, lowercase }
 })();
 ```
 
-## The Cascador Renderers
+### Inspecting the Final Configuration
+The rules for how properties are inherited and merged (e.g., context and filters merge, prompt overrides) are powerful but complex. To see the result of all inherited and merged properties, you can access the read-only `.config` property on any component instance. This is an invaluable tool for debugging complex configurations.
+```typescript
+console.log(childComponent.config);
+// Outputs the fully resolved configuration object
+```
+
+## The Cascador Components
 
 ### Your Toolkit for Every Task
 
-*Cascador-AI* offers a suite of renderers, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating or streaming text and data. The LLM renderers (Generate/Stream Object/Text), built on the Vercel AI SDK, share a common foundation where each LLM renderer has a corresponding Vercel AI SDK Core function.
+*Cascador-AI* offers a suite of components, each tailored to a specific job - whether it’s executing scripts, rendering templates, generating or streaming text and data. The LLM components (Generate/Stream Object/Text), built on the Vercel AI SDK, share a common foundation where each LLM component has a corresponding Vercel AI SDK Core function.
 
-Let's explore each renderer in detail.
+Let's explore each component in detail.
 
 ### Template
 
@@ -322,7 +369,7 @@ Let's explore each renderer in detail.
     ```typescript
     import { create } from 'cascador-ai';
 
-    const renderer = create.Template({
+    const component = create.Template({
       template: 'Hi {{ name }}! Today is {{ currentDay }}.',
       context: { name: 'User' }
     });
@@ -331,7 +378,7 @@ Let's explore each renderer in detail.
     ```typescript
     import { create, FileSystemLoader } from 'cascador-ai';
 
-    const fileRenderer = create.Template.loadsTemplate({
+    const fileComponent = create.Template.loadsTemplate({
       loader: new FileSystemLoader('./templates'),
       template: 'welcome_email.njk', // This is the filename
       context: { name: 'User' }
@@ -342,20 +389,20 @@ Let's explore each renderer in detail.
 You can call any `Template` with a new template and context.
 *   **With pre-configured input**:
     ```typescript
-    const result = await renderer({ currentDay: 'Monday' }); // "Hi User! Today is Monday."
+    const result = await component({ currentDay: 'Monday' }); // "Hi User! Today is Monday."
     ```
 *   **With a one-off template string**:
     ```typescript
-    const oneOffResult = await renderer('A new template for {{ name }}', { name: 'Alice' }); // "A new template for Alice"
+    const oneOffResult = await component('A new template for {{ name }}', { name: 'Alice' }); // "A new template for Alice"
     ```
 *   **With a one-off template file** (if created with `.loadsTemplate`):
     ```typescript
-    const otherFileResult = await fileRenderer('goodbye_email.njk'); // Loads and renders a different file
+    const otherFileResult = await fileComponent('goodbye_email.njk'); // Loads and renders a different file
     ```
 **Use it for**: Generating HTML, dynamic reports, email templates, or any task needing flexible, non-LLM rendering where the final output is a string.
 
 #### Using as a Tool (`.asTool`)
-You can expose a `Template` renderer as a tool for an LLM to call. This is useful when you want the LLM to be able to generate a formatted string based on structured input.
+You can expose a `Template` component as a tool for an LLM to call. This is useful when you want the LLM to be able to generate a formatted string based on structured input.
 ```typescript
 const reportTool = create.Template.asTool({
   description: 'Generates a formatted user summary string.',
@@ -452,10 +499,10 @@ const userOnboardingTool = create.Script.asTool({
 
 ### TextGenerator
 
-**What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). It can operate on a single `prompt` or a full conversational `messages` history. The `prompt` for the LLM can be provided as static text, or generated dynamically via a template or a script. This renderer is ideal for use cases where you need the complete text before proceeding, such as summarizing a document or calling tools.
+**What it does**: Generates text via LLMs using Vercel’s [`generateText` function](https://sdk.vercel.ai/docs/reference/ai-sdk-core/generate-text). It can operate on a single `prompt` or a full conversational `messages` history. The `prompt` for the LLM can be provided as static text, or generated dynamically via a template or a script. This component is ideal for use cases where you need the complete text before proceeding, such as summarizing a document or calling tools.
 
 #### How to Create It
-*   **Default (Plain Text)**: The `prompt` is a static string with no processing. You can also provide a `ModelMessage[]` array in the `prompt` property to define a multi-message prompt, which is possible only for text-only renderers, not as input to those created with `.withTemplate` or `.withScript`.
+*   **Default (Plain Text)**: The `prompt` is a static string with no processing. You can also provide a `ModelMessage[]` array in the `prompt` property to define a multi-message prompt, which is possible only for text-only components, not as input to those created with `.withTemplate` or `.withScript`.
     ```typescript
     const staticGenerator = create.TextGenerator({ model: openai('gpt-4o'), prompt: 'Summarize the concept of photosynthesis.' });
     ```
@@ -505,7 +552,7 @@ When you `await` a `TextGenerator` call, it returns a promise that resolves to a
 *   **`usage`**: Token usage information for the generation.
 *   **`response`**: The raw response object, which contains:
     *   **`messages`**: An array of the new messages from the current turn (the user prompt message and the assistant's reply).
-    *   **`messageHistory`**: The complete, updated message history, ready to be passed to the next conversational turn. It excludes static messages from the renderer's configuration.
+    *   **`messageHistory`**: The complete, updated message history, ready to be passed to the next conversational turn. It excludes static messages from the component's configuration.
 
 ***
 
@@ -513,7 +560,7 @@ When you `await` a `TextGenerator` call, it returns a promise that resolves to a
 
 **What it does**: Streams LLM text in real time using Vercel’s [`streamText` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-text). It shares the same creation patterns and message handling capabilities as `TextGenerator`, making it ideal for interactive applications like chatbots.
 
-> **Note**: Streaming renderers like `TextStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
+> **Note**: Streaming components like `TextStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
 
 #### How to Create It
 `TextStreamer` is created with the same flexible modifiers as `TextGenerator`, allowing you to provide the prompt as static text, a `ModelMessage[]` array, or generate it dynamically from a template or script.
@@ -572,10 +619,10 @@ The result object also contains several promises that resolve **after** the stre
 *   **`usage`**: A promise that resolves to the final token usage.
 *   **`response`**: A promise that resolves to the raw response object, which contains:
     *   **`messages`**: An array of the new messages from the current turn (the user prompt message and the assistant's reply).
-    *   **`messageHistory`**: The complete, updated message history, ready to be passed to the next conversational turn. It excludes static messages from the renderer's configuration.
+    *   **`messageHistory`**: The complete, updated message history, ready to be passed to the next conversational turn. It excludes static messages from the component's configuration.
 
 **Callbacks for Fine-Grained Control:**
-You can provide callbacks in the renderer's configuration to handle events as they happen.
+You can provide callbacks in the component's configuration to handle events as they happen.
 *   **`onFinish`**: Called when the stream is complete, containing the final `text`, `usage`, and `response` (with `messages` and `messageHistory`).
 *   **`onError`**: Called if an error occurs during streaming.
 *   **`onChunk`**: Called for each individual chunk processed in the stream.
@@ -655,14 +702,14 @@ When you `await` an `ObjectGenerator` call, it returns a promise that resolves t
 *   **`usage`**: Token usage information.
 *   **`finishReason`**: The reason the model stopped generating.
 
-**Important Note**: Unlike `TextGenerator`, the return value for `ObjectGenerator` **does not** include `messages` or `messageHistory`. Its purpose is to produce a final, structured data object, not to continue a conversation.
+**Important Note**: Unlike `TextGenerator`, the return value for `ObjectGenerator` **does not** include `messages` or `messageHistory`. While you can provide a `messages` history to give the model context for its generation, its purpose is to produce a final, structured data object, not to continue a conversation.
 
 **Use it for**: Data extraction, structured responses, or enum-based classification. [See Vercel docs on object generation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-objects#generateobject) for return details.
 
 ### ObjectStreamer
 **What it does**: Streams structured data incrementally via Vercel’s [`streamObject` function](https://sdk.vercel.ai/docs/ai-sdk-core/stream-object). It follows the same creation and calling patterns as `TextGenerator`.
 
-> **Note**: Streaming renderers like `ObjectStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
+> **Note**: Streaming components like `ObjectStreamer` cannot be exposed as tools to an LLM, as the tool-use protocol requires a single, resolved response, not a stream.
 
 #### How to Create It
 Like `TextStreamer`, it can operate on a single `prompt` or be given a conversational history via the `messages` property, allowing for context-aware data streaming.
@@ -733,11 +780,11 @@ The result object also contains promises that resolve **after** the stream has f
 **Use it for**: Live dashboards, incremental JSON builds, or array streaming. [See Vercel docs on object streaming](https://sdk.vercel.ai/docs/ai-sdk-core/streaming-objects#streamobject) for streaming specifics.
 
 ### Function
-**What it does**: Wraps a standard JavaScript function into a callable renderer, allowing for input and output validation. This is the primary way to integrate custom, non-LLM logic into your workflows and expose it as a **Vercel AI SDK-compatible tool**.
+**What it does**: Wraps a standard JavaScript function into a callable component, allowing for input and output validation. This is the primary way to integrate custom, non-LLM logic into your workflows and expose it as a **Vercel AI SDK-compatible tool**.
 
 You can define the function's logic in two ways:
 
-1.  **As a Standard Callable Function**: The default `create.Function` returns a simple async function. This is useful for encapsulating logic to be used within the `context` of other renderers.
+1.  **As a Standard Callable Function**: The default `create.Function` returns a simple async function. This is useful for encapsulating logic to be used within the `context` of other components.
 
     ```typescript
     const toUpperCase = create.Function({
@@ -745,7 +792,7 @@ You can define the function's logic in two ways:
         schema: z.string(), // Validate the output is a string
         execute: async ({ text }) => text.toUpperCase()
     });
-    // Can now be used in another renderer's context:
+    // Can now be used in another component's context:
     // context: { toUpperCase }
     ```
 
@@ -761,21 +808,21 @@ You can define the function's logic in two ways:
     });
     ```
 
-## Using Renderers as Tools
-A powerful feature of Cascador-AI is the ability to expose almost any renderer as a tool that an LLM can decide to call. This allows the model to trigger complex, multi-step, or even other LLM-driven actions to fulfill a user's request.
+## Using Components as Tools
+A powerful feature of Cascador-AI is the ability to expose almost any component as a tool that an LLM can decide to call. This allows the model to trigger complex, multi-step, or even other LLM-driven actions to fulfill a user's request.
 
 **How it Works:**
-You can convert a renderer into a tool by appending the `.asTool` modifier to its factory call. This pattern applies to `TextGenerator`, `ObjectGenerator`, `Template`, `Script`, and `Function` renderers.
+You can convert a component into a tool by appending the `.asTool` modifier to its factory call. This pattern applies to `TextGenerator`, `ObjectGenerator`, `Template`, `Script`, and `Function` components.
 
 When using `.asTool`, you must provide two additional properties in the configuration:
 -   **`description`**: A string explaining what the tool does. The LLM uses this to decide when to call the tool.
 -   **`inputSchema`**: A Zod schema defining the arguments the tool accepts. This property is mandatory for tools.
 
 **Key Limitation:**
-Streaming renderers (`TextStreamer` and `ObjectStreamer`) **cannot** be used as tools. The Vercel AI SDK's tool-use protocol requires a single, resolved response (a `Promise`), not a real-time stream.
+Streaming components (`TextStreamer` and `ObjectStreamer`) **cannot** be used as tools. The Vercel AI SDK's tool-use protocol requires a single, resolved response (a `Promise`), not a real-time stream.
 
 **Accessing Tool Call Context:**
-When a tool is created from a template or script-based renderer, a special `_toolCallOptions` object is automatically injected into its `context`, providing metadata like the `toolCallId` and the `messages` history that triggered the call.
+When a tool is created from a template or script-based component, a special `_toolCallOptions` object is automatically injected into its `context`, providing metadata like the `toolCallId` and the `messages` history that triggered the call.
 
 The `_toolCallOptions` object contains:
 - **`toolCallId`**: `string` - The unique ID for this specific tool call. Useful for logging or streaming updates.
@@ -794,7 +841,7 @@ const loggingSummarizer = create.TextGenerator.withTemplate.asTool({
   `,
 });
 
-// To use the tool, provide it to an LLM renderer:
+// To use the tool, provide it to an LLM component:
 const agent = create.TextGenerator({
   model: openai('gpt-4o'),
   tools: { summarize: loggingSummarizer },
@@ -811,27 +858,27 @@ const agent = create.TextGenerator({
 
 ## Template and Script Properties
 
-For renderers created with `.withTemplate`, `.withScript`, or their `.loads...` variants, you can use a powerful set of properties to inject data, transform outputs, and manage dependencies. These properties are **only available** on renderers that use Cascada processing.
+For components created with `.withTemplate`, `.withScript`, or their `.loads...` variants, you can use a powerful set of properties to inject data, transform outputs, and manage dependencies. These properties are **only available** on components that use Cascada processing.
 
 ### prompt
-The same 'prompt' property that by default has the text-only prompt is now the heart of your renderer - the template or script that gets processed. Set it in the configuration object when creating the renderer.
+The same 'prompt' property that by default has the text-only prompt is now the heart of your component - the template or script that gets processed. Set it in the configuration object when creating the component.
 
 ### context
 Provides data and methods that can be accessed within templates and scripts. Both the data and method returns can be asynchronous (promises are automatically handled), keeping your logic clean and powerful.  Here’s what you can add to the `context` object:
 - **Static Values**: Simple strings, numbers, or objects (e.g., `'London'`, `42`, `{ key: 'value' }`).
 - **Synchronous Functions**: Basic logic or transformations (e.g., `(x) => x.toUpperCase()`).
 - **Asynchronous Functions**: API calls, database queries, or file reads (e.g., `async () => await fetch(...)`).
-- **Other Renderers**: Nest renderers for chained operations (e.g., a `TextGenerator` to translate text).
+- **Other Components**: Nest components for chained operations (e.g., a `TextGenerator` to translate text).
 - **Custom Integrations**: Anything callable - think service clients or utility libraries.
 
 Example:
 ```typescript
-const renderer = create.TextGenerator.withTemplate({
-  prompt: 'Weather in {{ city }}: {{ getWeather(city) }} - {{ (translator({ text: 'Updated' })).text }}',
+const component = create.TextGenerator.withTemplate({
+  prompt: 'Weather in {{ city }}: {{ getWeather(city) }} - {{ (translator({ text: "Updated" })).text }}',
   context: {
     city: 'London', // Static value
     getWeather: async (city) => (await fetch(`https://api.weather.com/${city}`)).json(), // Async function
-    translator: create.TextGenerator.withTemplate({ // Nested renderer
+    translator: create.TextGenerator.withTemplate({ // Nested component
       model: openai('gpt-4o'),
       prompt: 'Translate to Spanish: {{ text }}'
     })
@@ -845,7 +892,7 @@ Transform data on the fly with custom functions, sync or async, using the `|` op
 import { create } from 'cascador-ai';
 import translate from 'translate';
 
-const renderer = create.Template({
+const component = create.Template({
   filters: {
     translate: async (text, lang) => await translate(text, lang)
   },
@@ -856,7 +903,7 @@ const renderer = create.Template({
 });
 
 (async () => {
-  console.log(await renderer({ text: 'Hello world' }));
+  console.log(await component({ text: 'Hello world' }));
 })();
 ```
 
@@ -867,7 +914,7 @@ Provides a loader that retrieves templates or scripts by name from an external s
 import { create, FileSystemLoader } from 'cascador-ai';
 
 // Use the built-in FileSystemLoader to load from a local directory
-const renderer = create.Template.loadsTemplate({
+const component = create.Template.loadsTemplate({
   loader: new FileSystemLoader('./templates'),
   template: 'main.njk', // The filename to load
 });
@@ -965,7 +1012,7 @@ const generator = create.TextGenerator({
 ### options
 Fine-tune the Cascada engine with extras like `autoescape` or `trimBlocks`:
 ```typescript
-const renderer = create.Template({
+const component = create.Template({
   options: {
     autoescape: false,
     trimBlocks: true
@@ -977,12 +1024,12 @@ See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for m
 
 ## Vercel AI Properties
 
-*Cascador-AI* renderers inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all LLM renderer types and can be set in a base `Config` object, during renderer creation, or, where applicable overridden in runtime calls.
+*Cascador-AI* components inherit a robust set of properties from the [Vercel AI SDK](https://sdk.vercel.ai/), enabling fine-tuned control over language model behavior. These properties are available across all LLM component types and can be set in a base `Config` object, during component creation, or, where applicable overridden in runtime calls.
 
 ### model
 **Purpose**: Specifies the language model to use for generation.
 **Type**: Provider-specific model object (required).
-**Details**: Must be supplied via a provider helper (e.g., `openai()`, `anthropic()`). Mandatory in renderer or `Config`.
+**Details**: Must be supplied via a provider helper (e.g., `openai()`, `anthropic()`). Mandatory in component or `Config`.
 
 ### temperature
 **Purpose**: Adjusts the randomness of the model's output.
@@ -1013,14 +1060,14 @@ See [Nunjucks docs](https://mozilla.github.io/nunjucks/api.html#configure) for m
 import { openai } from '@ai-sdk/openai';
 import { create } from 'cascador-ai';
 
-const renderer = create.TextGenerator({
+const component = create.TextGenerator({
   model: openai('gpt-4o'),
   stop: ['###', '\n\n'], // Stops at triple hash or double newline
   prompt: 'List 3 facts about space:\n1.'
 });
 
 (async () => {
-  const { text } = await renderer();
+  const { text } = await component();
   console.log(text); // Stops early if "###" or "\n\n" appears
 })();
 ```
@@ -1060,9 +1107,9 @@ const weatherAgent = create.TextGenerator({
 **Purpose**: Limits the number of model-driven tool-calling steps in a single turn. Works with the `tools` property in `TextGenerator` and `TextStreamer`.
 **Type**: `number` (default: 1, optional).
 
-## Using Renderers in Templates and Scripts
+## Using Components in Templates and Scripts
 
-Renderers in *Cascador-AI* can be embedded within scripts or templates by adding them to the `context` object, enabling seamless task chaining and orchestration. This approach leverages the engine’s power to coordinate multiple renderers, execute them when their inputs are ready, and process their outputs dynamically.
+Components in *Cascador-AI* can be embedded within scripts or templates by adding them to the `context` object, enabling seamless task chaining and orchestration. This approach leverages the engine’s power to coordinate multiple components, execute them when their inputs are ready, and process their outputs dynamically.
 
 ### Example with `Script` for Data Orchestration
 
@@ -1105,13 +1152,13 @@ const mainOrchestrator = create.Script({
 Use `Template` when your primary goal is to generate a final string output, like an HTML page or a formatted report.
 
 ```typescript
-// ... (characterGenerator, storyRenderer, critiqueStreamer setup from previous examples) ...
+// ... (characterGenerator, storyComponent, critiqueStreamer setup from previous examples) ...
 
-// Orchestrating renderer for presentation
-const mainRenderer = create.Template({
+// Orchestrating component for presentation
+const mainComponent = create.Template({
   context: {
     characterGenerator,
-    storyRenderer,
+    storyComponent,
     critiqueStreamer,
     topic: 'a lost astronaut'
   },
@@ -1119,7 +1166,7 @@ const mainRenderer = create.Template({
     {% set character = (characterGenerator({ topic })).object %}
     Character: {{ character | json }}
 
-    {% set storyContent = (storyRenderer({ character, topic })).text %}
+    {% set storyContent = (storyComponent({ character, topic })).text %}
     Story: {{ storyContent }}
 
     Live Critique: {% set stream = (critiqueStreamer({ story: storyContent })).textStream %}
@@ -1128,7 +1175,7 @@ const mainRenderer = create.Template({
 });
 
 (async () => {
-  const result = await mainRenderer();
+  const result = await mainComponent();
   console.log(result); // Outputs a single formatted string
 })();
 ```
@@ -1136,18 +1183,18 @@ const mainRenderer = create.Template({
 ### Key Points
 - **Parallel Execution**: The critique stream runs after the story, which depends on the character, optimizing the dependency chain.
 - **Result Handling**: Access `.object` for structured data, `.text` for stories, and `.textStream` for live critiques.
-- **Dynamic Inputs**: Pass outputs (e.g., `character`) to subsequent renderers for cohesive workflows.
-- **Versatility**: Combine different renderer types - like `ObjectGenerator`, `TextGenerator`, and `TextStreamer` - to handle varied tasks in one workflow.
+- **Dynamic Inputs**: Pass outputs (e.g., `character`) to subsequent components for cohesive workflows.
+- **Versatility**: Combine different component types - like `ObjectGenerator`, `TextGenerator`, and `TextStreamer` - to handle varied tasks in one workflow.
 
 ## Conversational AI: Managing Message History
 
-For building multi-turn chatbots and conversational agents, *Cascador-AI* provides robust message handling capabilities, specifically for the `TextGenerator` and `TextStreamer` renderers.
+For building multi-turn chatbots and conversational agents, *Cascador-AI* provides robust message handling capabilities, specifically for the `TextGenerator` and `TextStreamer` components.
 
 ### The `messages` Property: Static vs. Dynamic History
 
 The `messages` property plays a dual role depending on where you define it:
 
-1.  **Static Configuration Messages**: When you set `messages` during renderer creation, it acts as a static "base layer" for every conversation. This is the ideal place for a `system` prompt, as it will be applied to every call without being part of the mutable chat history.
+1.  **Static Configuration Messages**: When you set `messages` during component creation, it acts as a static "base layer" for every conversation. This is the ideal place for a `system` prompt, as it will be applied to every call without being part of the mutable chat history.
 
     ```typescript
     // The system message is part of the static configuration
@@ -1173,7 +1220,7 @@ await chatAgent(newUserInput, chatHistory);
 To make chat loops easy, the response object from `TextGenerator` and `TextStreamer` separates the turn's new messages from the full, ready-to-use history.
 
 *   **`response.messages`**: The *delta* for the current turn. This includes the message generated from the input `prompt` and the `assistant`'s reply.
-*   **`response.messageHistory`**: The *complete* dynamic history (input messages + delta), **excluding** any static messages from the renderer's configuration. This is the state you use for the next API call.
+*   **`response.messageHistory`**: The *complete* dynamic history (input messages + delta), **excluding** any static messages from the component's configuration. This is the state you use for the next API call.
 
 | Property                  | Purpose                               | What it Contains                                                         | Primary Use Case                                |
 | ------------------------- | ------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------- |
@@ -1186,7 +1233,7 @@ To make chat loops easy, the response object from `TextGenerator` and `TextStrea
 You can achieve more complex message structures using these advanced patterns:
 
 **1. `prompt` as `ModelMessage[]`**
-For text-only renderers (those not created with `.withTemplate` or `.withScript`), you can provide an array of messages directly in the `prompt` property at configuration time. This is useful for defining few-shot examples or complex initial prompts. The user's input at runtime will be appended as the final `user` message.
+For text-only components (those not created with `.withTemplate` or `.withScript`), you can provide an array of messages directly in the `prompt` property at configuration time. This is useful for defining few-shot examples or complex initial prompts. The user's input at runtime will be appended as the final `user` message.
 ```typescript
 const fewShotAgent = create.TextGenerator({
   model: openai('gpt-4o'),
@@ -1199,7 +1246,7 @@ const fewShotAgent = create.TextGenerator({
 ```
 
 **2. Script Returning `ModelMessage[]`**
-For renderers created with `.withScript`, the script can return a `ModelMessage[]` array instead of a string. These messages will be **appended** to the history before the final call to the LLM. This allows for dynamic construction of few-shot examples based on context.
+For components created with `.withScript`, the script can return a `ModelMessage[]` array instead of a string. These messages will be **appended** to the history before the final call to the LLM. This allows for dynamic construction of few-shot examples based on context.
 ```typescript
 const dynamicFewShotAgent = create.TextGenerator.withScript({
     model: openai('gpt-4o'),
@@ -1280,7 +1327,7 @@ In *Cascador-AI*, you have several powerful mechanisms to build workflows. Choos
 **Use When:**
 -   **The output is data:** Your main goal is to create a complex object or array to be used by your application.
 -   **Complex logic is needed:** You need loops (`for`, `while`), conditionals (`if/else`), and variables to manage state across multiple async steps.
--   **Orchestrating multiple sources:** You are fetching data from several APIs, databases, and other renderers and need to combine them into a single, coherent object.
+-   **Orchestrating multiple sources:** You are fetching data from several APIs, databases, and other components and need to combine them into a single, coherent object.
 -   **Readability is key for complex flows:** The top-to-bottom, `await`-free syntax makes complex data dependencies easy to follow.
 
 -   **`Template`**: Use when the primary output is a rendered string (for instance an HTML or a Markdown). Ideal for the presentation layer.
@@ -1379,7 +1426,7 @@ const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
   embedModel: new OpenAIEmbedding({ model: 'text-embedding-3-small' })
 });
 
-// Answer generator renderer
+// Answer generator component
 const answerGenerator = create.TextGenerator.withTemplate({
   model: openai('gpt-4o'),
   prompt: 'Summarize the latest advancements in machine learning for cancer detection based on: {{ context }}'
@@ -1445,14 +1492,14 @@ const vectorIndex = await VectorStoreIndex.fromDocuments(docs, {
 
 ## Input and Output Validation with Zod
 
-Cascador-AI integrates with Zod to provide automatic, runtime validation for both the data you provide to renderers and the data they produce, ensuring type safety throughout your workflows.
+Cascador-AI integrates with Zod to provide automatic, runtime validation for both the data you provide to components and the data they produce, ensuring type safety throughout your workflows.
 
 ### Ensuring Type-Safe Inputs with `inputSchema`
 
-The `inputSchema` property validates the `context` data provided to a renderer before execution, catching errors early and ensuring your logic receives the correct data structure.
+The `inputSchema` property validates the `context` data provided to a component before execution, catching errors early and ensuring your logic receives the correct data structure.
 
--   **Applies to**: Any renderer that uses a `context` object (`Template`, `Script`, `Function`, and LLM renderers created with `.withTemplate` or `.withScript`).
--   **Usage**: Define the expected input data for a renderer using a Zod schema.
+-   **Applies to**: Any component that uses a `context` object (`Template`, `Script`, `Function`, and LLM components created with `.withTemplate` or `.withScript`).
+-   **Usage**: Define the expected input data for a component using a Zod schema.
 -   **Requirement**: This property is **mandatory** when creating a tool with `.asTool`, as it defines the tool's arguments for the LLM.
 
 ```typescript
@@ -1480,10 +1527,10 @@ await userProcessor({ context: { user_id: '123' } });
 
 ### Ensuring Type-Safe Outputs with `schema`
 
-The `schema` property validates the final output of a renderer, guaranteeing that the produced data conforms to a specific structure. This is crucial for building reliable, predictable data pipelines.
+The `schema` property validates the final output of a component, guaranteeing that the produced data conforms to a specific structure. This is crucial for building reliable, predictable data pipelines.
 
--   **Applies to**: Renderers that produce structured JSON data (`ObjectGenerator`, `ObjectStreamer`, `Script`, `Function`).
--   **Usage**: Provide a Zod schema in the configuration to validate the renderer's return value.
+-   **Applies to**: Components that produce structured JSON data (`ObjectGenerator`, `ObjectStreamer`, `Script`, `Function`).
+-   **Usage**: Provide a Zod schema in the configuration to validate the component's return value.
 -   **Benefit**: This is the core of reliable structured data generation, ensuring the final object is always valid and strongly-typed.
 
 ```typescript
@@ -1520,7 +1567,7 @@ import { create } from 'cascador-ai';
 import { openai } from '@ai-sdk/openai';
 
 // Error: Missing required model
-const noModelRenderer = create.TextGenerator({
+const noModelComponent = create.TextGenerator({
   prompt: 'Hello'
 }); // Type error: 'model' must be provided
 
@@ -1530,16 +1577,16 @@ const namedTemplate = create.TextGenerator.loadsTemplate({
 }); // Type error: 'loader' required for .loadsTemplate
 
 // Error: Mixing incompatible properties
-const invalidRenderer = create.TextGenerator({
+const invalidComponent = create.TextGenerator({
   model: openai('gpt-4o'),
-  filters: {} // Type error: Filters are only allowed on template/script renderers
+  filters: {} // Type error: Filters are only allowed on template/script components
 });
 ```
 
 ### Enforced Rules
-- **Model**: Must be set in renderer creation or a parent `Config`.
+- **Model**: Must be set in component creation or a parent `Config`.
 - **Loader**: Required for `.loadsTemplate`, `.loadsScript`, or `.loadsText`.
-- **Template/Script Properties**: `context`, `filters`, `loader`, and `options` are only allowed on renderers created with a Cascada modifier (`.withTemplate`, `.withScript`, or `.loads...`).
+- **Template/Script Properties**: `context`, `filters`, `loader`, and `options` are only allowed on components created with a Cascada modifier (`.withTemplate`, `.withScript`, or `.loads...`).
 
 This type safety ensures robust, predictable workflows with early error detection.
 
@@ -1548,7 +1595,7 @@ This type safety ensures robust, predictable workflows with early error detectio
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
 - **Chat functionality** via create.Chat
-- **First-Class Evaluators for Quality, Safety, and Testing**: Evaluator system to enhance AI reliability through three key use cases: building self-correcting workflows, implementing live production guardrails, and integrating validation into automated tests. Accessible via two flexible patterns: a composable create.Evaluator wrapper that transparently wraps any renderer—preserving its original call signature and return as well as an universal evaluator property that can be added to any renderer for simple, declarative quality control. The system will support fine-grained control over retries and an option to throw exceptions on failure for seamless CI/CD integration.
+- **First-Class Evaluators for Quality, Safety, and Testing**: Evaluator system to enhance AI reliability through three key use cases: building self-correcting workflows, implementing live production guardrails, and integrating validation into automated tests. Accessible via two flexible patterns: a composable create.Evaluator wrapper that transparently wraps any component—preserving its original call signature and return as well as an universal evaluator property that can be added to any component for simple, declarative quality control. The system will support fine-grained control over retries and an option to throw exceptions on failure for seamless CI/CD integration.
 - **OpenTelemetry/MLflow integration**: MLflow's tracing, which captures your app's entire execution, including prompts, retrievals, tool calls.
 - **Automated Prompt Optimization**: Go beyond manual prompt engineering with a built-in create.Optimizer. Inspired by frameworks like DSPy, this feature will allow you to attach an optimizer to any generator. It will use your existing Evaluator as a guide to programmatically test and evolve your prompts, automatically discovering the highest-performing version for your specific task. This creates a powerful feedback loop, using the same components that guard your production app to continuously improve its core logic with minimal effort.
 - **Execution Replay and Debugging**: A planned Cascada feature - creating an advanced logging system, via a dedicated output handler, to capture the entire execution trace. This will allow developers to replay and inspect the sequence of operations and variable states for complex debugging, and will integrate seamlessly with the Evaluator's trace history.

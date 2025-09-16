@@ -18,7 +18,8 @@ export type LLMCallSignature<
 	TConfig extends configs.BaseConfig, // & configs.OptionalPromptConfig,
 	TResult,
 	PType extends RequiredPromptType = RequiredPromptType,
-	PROMPT extends AnyPromptSource = string
+	PROMPT extends AnyPromptSource = string,
+//INPUT extends Record<string, any> = TConfig extends { inputSchema: SchemaType<any> } ? utils.InferParameters<TConfig['inputSchema']> : Record<string, any>,
 > = PType extends 'text' | 'text-name'
 	? (
 		// TConfig has no template, no context argument is needed
