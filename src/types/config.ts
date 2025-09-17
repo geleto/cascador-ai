@@ -280,6 +280,11 @@ export const FunctionConfigKeys: (keyof FunctionConfig<any, any>)[] = ['execute'
 export type FunctionToolConfig<INPUT extends Record<string, any>, OUTPUT> =
 	Tool<INPUT, OUTPUT> & BaseConfig
 
+// For the .run argument - disallow all properties that ...
+export type RunConfigDisallowedProperties =
+	| 'schema' | 'output' | 'enum' //... change the output type
+	| 'filters' | 'options' | 'loader'; ///... or are used to create the cascada environment
+
 //@todo - Check
 export type AnyConfig<
 	TOOLS extends ToolSet,
@@ -315,31 +320,3 @@ export type AnyConfig<
 	) & (LoaderConfig | {}))
 	| FunctionToolConfig<INPUT, OUTPUT>
 	| FunctionConfig<INPUT, OUTPUT>;
-
-/*export type AnyNoTemplateConfig<
-	TOOLS extends ToolSet,
-	INPUT extends Record<string, any>,
-	OUTPUT, //@out
-	ENUM extends string = never,
-	PROMPT extends AnyPrompt  = string
-> =
-	| GenerateTextConfig<TOOLS, INPUT, PROMPT>
-	| StreamTextConfig<TOOLS, INPUT, PROMPT>
-	| GenerateObjectObjectConfig<INPUT, OUTPUT, PROMPT>
-	| GenerateObjectArrayConfig<INPUT, OUTPUT, PROMPT>
-	| GenerateObjectEnumConfig<INPUT, ENUM, PROMPT>
-	| GenerateObjectNoSchemaConfig<INPUT, PROMPT>
-	| StreamObjectObjectConfig<INPUT, OUTPUT, PROMPT>
-	| StreamObjectArrayConfig<INPUT, OUTPUT, PROMPT>
-	| StreamObjectNoSchemaConfig<INPUT, PROMPT>;
-
-export type AnyConfig<
-	TOOLS extends ToolSet,
-	INPUT extends Record<string, any>,
-	OUTPUT, //@out
-	ENUM extends string = string,
-	PROMPT extends AnyPrompt  = string
-> =
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & { promptType: 'text' | undefined }) // text mode - no template props
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & TemplatePromptConfig & { promptType: 'template' | 'async-template' | 'template-name' | 'async-template-name' })
-	| (AnyNoTemplateConfig<TOOLS, INPUT, OUTPUT, ENUM, PROMPT> & ScriptPromptConfig & { promptType: 'script' | 'async-script' | 'script-name' | 'async-script-name' });*/

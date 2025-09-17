@@ -19,6 +19,8 @@ export type LLMCallSignature<
 	TResult,
 	PType extends RequiredPromptType = RequiredPromptType,
 	PROMPT extends AnyPromptSource = string,
+	TConfigShape = Record<string, any>, //temporary default value
+	TAllowedConfigShape = Omit<Partial<TConfigShape>, configs.RunConfigDisallowedProperties>
 //INPUT extends Record<string, any> = TConfig extends { inputSchema: SchemaType<any> } ? utils.InferParameters<TConfig['inputSchema']> : Record<string, any>,
 > = PType extends 'text' | 'text-name'
 	? (
@@ -31,6 +33,7 @@ export type LLMCallSignature<
 			(messages?: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
+			run(config: TAllowedConfigShape): utils.EnsurePromise<TResult>;
 		}
 		: {
 			// Required a prompt or messages
@@ -38,6 +41,7 @@ export type LLMCallSignature<
 			(messages: ModelMessage[]): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
+			run(config: TAllowedConfigShape): utils.EnsurePromise<TResult>;
 		}
 	)
 	: PType extends 'function'
@@ -48,6 +52,7 @@ export type LLMCallSignature<
 			(context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
+			run(config: TAllowedConfigShape): utils.EnsurePromise<TResult>;
 		}
 	)
 	: (
@@ -61,6 +66,7 @@ export type LLMCallSignature<
 			(context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
+			run(config: TAllowedConfigShape): utils.EnsurePromise<TResult>;
 		}
 		: {
 			// Requires a prompt, optional messages, and optional context
@@ -68,6 +74,7 @@ export type LLMCallSignature<
 			(prompt: PROMPT, context?: Context): utils.EnsurePromise<TResult>;
 			config: TConfig;
 			type: string;
+			run(config: TAllowedConfigShape): utils.EnsurePromise<TResult>;
 		}
 	);
 
