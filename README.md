@@ -1594,14 +1594,11 @@ This type safety ensures robust, predictable workflows with early error detectio
 
 *Cascador-AI* is evolving to enhance its capabilities and robustness. Here are the key features planned for future releases:
 
-- **Chat functionality** via create.Chat
-- **First-Class Evaluators for Quality, Safety, and Testing**: Evaluator system to enhance AI reliability through three key use cases: building self-correcting workflows, implementing live production guardrails, and integrating validation into automated tests. Accessible via two flexible patterns: a composable create.Evaluator wrapper that transparently wraps any component—preserving its original call signature and return as well as an universal evaluator property that can be added to any component for simple, declarative quality control. The system will support fine-grained control over retries and an option to throw exceptions on failure for seamless CI/CD integration.
 - **OpenTelemetry/MLflow integration**: MLflow's tracing, which captures your app's entire execution, including prompts, retrievals, tool calls.
 - **Automated Prompt Optimization**: Go beyond manual prompt engineering with a built-in create.Optimizer. Inspired by frameworks like DSPy, this feature will allow you to attach an optimizer to any generator. It will use your existing Evaluator as a guide to programmatically test and evolve your prompts, automatically discovering the highest-performing version for your specific task. This creates a powerful feedback loop, using the same components that guard your production app to continuously improve its core logic with minimal effort.
 - **Execution Replay and Debugging**: A planned Cascada feature - creating an advanced logging system, via a dedicated output handler, to capture the entire execution trace. This will allow developers to replay and inspect the sequence of operations and variable states for complex debugging, and will integrate seamlessly with the Evaluator's trace history.
-- **Optional native JS/TS scripts and templates** to be used instead of Cascada, e.g. 'prompt' and 'script' properties can be a JS/TS function.
 - **Image Generation**: Add support for generating images from prompts using models like DALL-E.
-- **Versioned Templates**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management. Choose different versions depending on the model or validate old and new prompts during tests.
-- **Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not practical. Useful for previews.
+- **Versioned Templates and Scripts**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management. Choose different versions depending on the model or validate old and new prompts during tests.
+- **Streaming Text/Data Output Support** - for Template and Script components, depends on the cascada-engine adding support for this.
+- **Text/Data Output Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not always practical. Useful for previews.
 - **Instructions on integrating memory**: Provide clear patterns and examples for integrating long-term memory.
-- **Simplified loader wrapper**: replace the more complex nunjucks loaders with simple function or interface.
