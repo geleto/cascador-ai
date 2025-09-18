@@ -20,6 +20,7 @@ export function processConfig<T extends Partial<configs.LoaderConfig> & Record<s
  * Merge two partial LLM configs into a single object.
  * The return type is exactly the union of P & C (with child overriding parent).
  * @todo - more universal merge handling (give it a list)
+ * @todo - swap parent and child parameters?
  */
 export function mergeConfigs<
 	TChild extends Record<string, any>,

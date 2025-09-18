@@ -68,6 +68,7 @@ export type ScriptCallSignature<
 	INPUT extends Record<string, any>,
 	OUTPUT
 > =
+	// context is optional (todo - make it required if config has inputSchema and no script)
 	TConfig extends { script: string }
 	? {
 		// TConfig has a script, so the script argument is optional.

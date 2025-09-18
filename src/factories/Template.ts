@@ -11,17 +11,18 @@ export type TemplateCallSignature<
 	TConfig extends configs.TemplateConfig<INPUT>,
 	INPUT extends Record<string, any>//only INPUT, the output is string
 > =
+	// context is optional (todo - make it required if config has inputSchema and no template)
 	TConfig extends { template: string }
 	? {
-		//TConfig has template, no template argument is needed
+		//TConfig has template, prompt argument is optional
 		(promptOrContext?: INPUT | string): Promise<string>;//one optional argument, template or context
-		(prompt?: string, context?: INPUT): Promise<string>;//two arguments, template and context
+		(prompt?: string, context?: INPUT): Promise<string>;//two optional arguments, template and context
 		config: TConfig;
 		type: string;
 	}
 	: {
-		//TConfig has no template, template argument is needed
-		(prompt: string, context?: INPUT): Promise<string>;//template is a must, context is optional
+		//TConfig has no template, prompt argument is needed
+		(prompt: string, context?: INPUT): Promise<string>;
 		config: TConfig;
 		type: string;
 	};
