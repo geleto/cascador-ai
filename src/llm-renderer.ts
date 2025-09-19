@@ -156,7 +156,11 @@ export function _createLLMRenderer<
 		(vercelFunc as unknown) === generateObject || (vercelFunc as unknown) === streamObject;
 
 	let call;
-	//let run;
+	let run: (
+		configArg: Partial<configs.BaseConfig> & { messages?: ModelMessage[], prompt?: string, context?: Context },
+		calledFromCall: boolean
+	) => TFunctionResult | Promise<TFunctionResult>;
+
 	if (config.promptType !== 'text' && config.promptType !== 'text-name' && config.promptType !== undefined) {
 		// Dynamic Path - use Template/Script/Function to render the prompt
 		//let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any> | FunctionCallSignature<any, any, any>;
@@ -193,7 +197,7 @@ export function _createLLMRenderer<
 		} else {
 			throw new Error(`Unhandled prompt type: ${config.promptType}`);
 		}
-		const run = async (
+		run = async (
 			configArg: Partial<configs.BaseConfig> & { messages?: ModelMessage[], prompt?: string, context?: Context },
 			calledFromCall = false
 		): Promise<TFunctionResult> => {
@@ -285,7 +289,7 @@ export function _createLLMRenderer<
 		};
 	} else {
 		// Static Path - vanilla text prompt,promptType is 'text' or undefined
-		const run = (
+		run = (
 			configArg: Partial<configs.BaseConfig> & { messages?: ModelMessage[], prompt?: string, context?: Context },
 			calledFromCall = false
 		): TFunctionResult => {
@@ -342,7 +346,7 @@ export function _createLLMRenderer<
 				...(prompt !== undefined && { prompt }),
 				...(messages !== undefined && { messages }),
 			};
-			return run(callConfig, true);
+			return run(callConfig, true) as TFunctionResult;
 		};
 		if (config.promptType === 'text-name') {
 			// wrap the call in a promise that waits for the prompt to be loaded
@@ -355,30 +359,32 @@ export function _createLLMRenderer<
 			}
 
 			let loadedPrompt: Promise<string> | string | undefined = config.prompt ? loadString(config.prompt, loaderConfig.loader as (ILoaderAny | ILoaderAny[])) : undefined;
-			let messages: ModelMessage[] | undefined = config.messages;
-
-			const syncCall = call;
-			call = async (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): Promise<TFunctionResult> => {
+			//const messages: ModelMessage[] | undefined = config.messages;
+			const syncRun = run;
+			run = async (
+				configArg: Partial<configs.BaseConfig> & { messages?: ModelMessage[], prompt?: string, context?: Context, loader?: ILoaderAny | ILoaderAny[] },
+				calledFromCall = false
+			): Promise<TFunctionResult> => {
+				//let prompt: string | undefined;
 				let prompt: string | undefined;
 				try {
-					if (promptOrMessages && typeof promptOrMessages === 'string') {
-						prompt = await loadString(promptOrMessages, loaderConfig.loader as (ILoaderAny | ILoaderAny[]));
-						messages = maybeMessages;
+					if (configArg.prompt && typeof configArg.prompt === 'string') {
+						// a new prompt to load
+						prompt = await loadString(configArg.prompt, loaderConfig.loader as (ILoaderAny | ILoaderAny[]));
+						// messages = maybeMessages;
 					} else if (loadedPrompt) {
+						// a prompt load has started at creation time
 						if (typeof loadedPrompt === 'string') {
+							//prompt was resoved in a previous run
 							prompt = loadedPrompt;
 						} else {
 							// Cache the resolved promise to avoid re-awaiting
 							prompt = await loadedPrompt;
 							loadedPrompt = prompt; // Store resolved value for future calls
 						}
-						if (promptOrMessages) {
-							messages = promptOrMessages as ModelMessage[];
-						} else {
-							messages = maybeMessages;
-						}
+						//messages = configArg.messages;
 					} else {
-						throw new Error('No prompt provided. Either configure a prompt in the config or provide one at call time.');
+						throw new Error('No prompt provided. Either configure a prompt in the config or provide one when calling run().');
 					}
 				} catch (error) {
 					if (error instanceof Error && error.message.includes('not found')) {
@@ -386,14 +392,15 @@ export function _createLLMRenderer<
 					}
 					throw error;
 				}
-				return syncCall(prompt, messages);
-			}
+				//todo - skip messages property if no messages in configArg
+				return syncRun({ ...configArg, prompt }, calledFromCall);
+			};
 		}
 	}
 	// Get the function name and capitalize it to create the type
 	const functionName = vercelFunc.name;
 	const type = functionName.charAt(0).toUpperCase() + functionName.slice(1);
 
-	const callSignature = Object.assign(call, { config, type, run: call });// fake run
+	const callSignature = Object.assign(call, { config, type, run });
 	return callSignature as LLMCallSignature<TConfig, TFunctionResult, PT, AnyPromptSource, configs.BaseConfig>;
 }
