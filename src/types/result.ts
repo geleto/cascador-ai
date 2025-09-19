@@ -61,7 +61,7 @@ export type StreamObjectNoSchemaResult = StreamObjectResult<JSONValue, JSONValue
 
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
-export interface RendererTool<INPUT, OUTPUT> {
+export interface ComponentTool<INPUT, OUTPUT> {
 	description?: string;
 	inputSchema: SchemaType<INPUT>;
 	execute: (args: INPUT, options: ToolCallOptions) => PromiseLike<OUTPUT>;

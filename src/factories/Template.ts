@@ -152,7 +152,7 @@ function withTemplateAsTool<
 	config: TConfig & ValidateTemplateConfig<
 		TConfig, TConfig, configs.TemplateToolConfig<INPUT>
 	>
-): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, string>;
+): TemplateCallSignature<TConfig, INPUT> & results.ComponentTool<INPUT, string>;
 
 function withTemplateAsTool<
 	TConfig extends Partial<configs.TemplateToolConfig<INPUT>>,
@@ -164,7 +164,7 @@ function withTemplateAsTool<
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT>>>
-): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.ComponentTool<FINAL_INPUT, string>;
 
 function withTemplateAsTool(
 	config: Partial<configs.TemplateToolConfig<any>>,
@@ -181,7 +181,7 @@ function loadsTemplateAsTool<
 	config: TConfig & ValidateTemplateConfig<
 		TConfig, TConfig, configs.TemplateToolConfig<INPUT> & configs.LoaderConfig
 	>
-): TemplateCallSignature<TConfig, INPUT> & results.RendererTool<INPUT, string>;
+): TemplateCallSignature<TConfig, INPUT> & results.ComponentTool<INPUT, string>;
 
 // Overload 2: With a parent config
 function loadsTemplateAsTool<
@@ -194,7 +194,7 @@ function loadsTemplateAsTool<
 >(
 	config: TConfig & ValidateTemplateConfig<TConfig, TFinalConfig, configs.TemplateToolConfig<INPUT> & configs.LoaderConfig>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTemplateParentConfig<TParentConfig, configs.TemplateToolConfig<PARENT_INPUT> & configs.LoaderConfig>>
-): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.ComponentTool<FINAL_INPUT, string>;
 
 // Implementation
 function loadsTemplateAsTool(
@@ -215,20 +215,20 @@ function _createTemplateAsTool<
 	config: Partial<TConfig>,
 	promptType: TemplatePromptType,
 	parent?: configs.ConfigProvider<TParentConfig>,
-): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string> {
+): TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.ComponentTool<FINAL_INPUT, string> {
 	const renderer = _createTemplate(config, promptType, parent, true) as unknown as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT>;
 
-	const toolRenderer = renderer as unknown as results.RendererTool<FINAL_INPUT, string> & { config: { description?: string, inputSchema: SchemaType<FINAL_INPUT> } };
-	toolRenderer.description = renderer.config.description;
-	toolRenderer.inputSchema = renderer.config.inputSchema as unknown as SchemaType<FINAL_INPUT>;
-	toolRenderer.type = 'function';
+	const toolComponent = renderer as unknown as results.ComponentTool<FINAL_INPUT, string> & { config: { description?: string, inputSchema: SchemaType<FINAL_INPUT> } };
+	toolComponent.description = renderer.config.description;
+	toolComponent.inputSchema = renderer.config.inputSchema as unknown as SchemaType<FINAL_INPUT>;
+	toolComponent.type = 'function';
 
-	toolRenderer.execute = async (args: FINAL_INPUT, options: ToolCallOptions): Promise<string> => {
+	toolComponent.execute = async (args: FINAL_INPUT, options: ToolCallOptions): Promise<string> => {
 		const contextWithToolOptions = { ...args, _toolCallOptions: options };
 		return await (renderer as unknown as (context: FINAL_INPUT & { _toolCallOptions: ToolCallOptions }) => Promise<string>)(contextWithToolOptions);
 	};
 
-	return renderer as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.RendererTool<FINAL_INPUT, string>;
+	return renderer as TemplateCallSignatureWithParent<TConfig, TParentConfig, INPUT, PARENT_INPUT> & results.ComponentTool<FINAL_INPUT, string>;
 }
 
 // Internal common creator for template renderer

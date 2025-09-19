@@ -6,7 +6,7 @@ import {
 	// The augment functions are tested through the public API, so direct import is not needed.
 	// augmentGenerateText,
 	// augmentStreamText,
-} from '../src/llm-renderer';
+} from '../src/llm-component';
 import { ModelMessage } from 'ai';
 import { expect } from 'chai';
 import { timeout } from './common';

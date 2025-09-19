@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import * as types from '../types/types';
 
-import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
+import { LLMCallSignature, _createLLMComponent } from "../llm-component";
 import { mergeConfigs, processConfig } from "../config-utils";
 import { validateObjectLLMConfig } from "../validate";
 
@@ -190,7 +190,7 @@ function withTextAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM, PROMPT> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM, PROMPT> & results.ComponentTool<INPUT, OUTPUT>;
 
 function withTextAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -214,7 +214,7 @@ function withTextAsTool<
 		configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>,
 
 ): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text',
-	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+	OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 //Implementation
 function withTextAsTool<
@@ -229,12 +229,12 @@ function withTextAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'text',
 		parent as configs.ConfigProvider<GenerateObjectConfig<never, OUTPUT, ENUM> & configs.OptionalPromptConfig>
-	) as unknown as GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'text', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 function loadsText<
@@ -297,7 +297,7 @@ function loadsTextAsTool<
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
 ): GenerateObjectReturn<TConfig, 'text-name', OUTPUT, ENUM, PROMPT>
-	& results.RendererTool<INPUT, OUTPUT>;
+	& results.ComponentTool<INPUT, OUTPUT>;
 
 function loadsTextAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -320,7 +320,7 @@ function loadsTextAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>,
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'text-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 //Implementation
 function loadsTextAsTool<
@@ -338,12 +338,12 @@ function loadsTextAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'text-name', FINAL_OUTPUT, FINAL_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT> {
+): GenerateObjectReturn<TConfig, 'text-name', FINAL_OUTPUT, FINAL_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'text-name',
 		parent as configs.ConfigProvider<GenerateObjectConfig<PARENT_INPUT, PARENT_OUTPUT, PARENT_ENUM> & configs.OptionalPromptConfig>
-	) as unknown as GenerateObjectReturn<TConfig, 'text-name', FINAL_OUTPUT, FINAL_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'text-name', FINAL_OUTPUT, FINAL_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 }
 
 function withTemplate<
@@ -400,7 +400,7 @@ function withTemplateAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 
 function withTemplateAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
@@ -421,7 +421,7 @@ function withTemplateAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.TemplatePromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function withTemplateAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM>> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
@@ -435,12 +435,12 @@ function withTemplateAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'async-template',
 		parent
-	) as unknown as GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 function loadsTemplate<
@@ -498,7 +498,7 @@ function loadsTemplateAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 
 function loadsTemplateAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -520,7 +520,7 @@ function loadsTemplateAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-template-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsTemplateAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -534,12 +534,12 @@ function loadsTemplateAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'async-template-name',
-		parent as configs.ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>>
-	) as unknown as GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+		parent as configs.ConfigProvider<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>>
+	) as unknown as GenerateObjectReturn<TConfig, 'async-template-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 function withScript<
@@ -597,7 +597,7 @@ function withScriptAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 
 function withScriptAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -619,7 +619,7 @@ function withScriptAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.ScriptPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function withScriptAsTool<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
@@ -633,12 +633,12 @@ function withScriptAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'async-script',
 		parent
-	) as unknown as GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'async-script', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 function loadsScript<
@@ -696,7 +696,7 @@ function loadsScriptAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 
 function loadsScriptAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -718,7 +718,7 @@ function loadsScriptAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'async-script-name', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function loadsScriptAsTool<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, OUTPUT>,
@@ -732,12 +732,12 @@ function loadsScriptAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'async-script-name',
 		parent
-	) as unknown as GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.RendererTool<INPUT, OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'async-script-name', OUTPUT, ENUM> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 function withFunction<
@@ -798,7 +798,7 @@ function withFunctionAsTool<
 >(
 	config: TConfig & ValidateObjectConfig<TConfig, TConfig,
 		configs.FunctionPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
-): GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.RendererTool<INPUT, OUTPUT>;
+): GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.ComponentTool<INPUT, OUTPUT>;
 
 function withFunctionAsTool<
 	TConfig extends Partial<GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, OUTPUT>>,
@@ -821,7 +821,7 @@ function withFunctionAsTool<
 	parent: configs.ConfigProvider<TParentConfig & ValidateObjectParentConfig<TParentConfig, TFinalConfig,
 		configs.FunctionPromptConfig & configs.ToolConfig<PARENT_INPUT, PARENT_OUTPUT>>>
 
-): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'function', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.RendererTool<FINAL_INPUT, FINAL_OUTPUT>;
+): GenerateObjectWithParentReturn<TConfig, TParentConfig, 'function', OUTPUT, ENUM, PARENT_OUTPUT, PARENT_ENUM, PROMPT> & results.ComponentTool<FINAL_INPUT, FINAL_OUTPUT>;
 
 function withFunctionAsTool<
 	TConfig extends GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, OUTPUT>,
@@ -836,12 +836,12 @@ function withFunctionAsTool<
 >(
 	config: TConfig,
 	parent?: configs.ConfigProvider<TParentConfig>
-): GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.ComponentTool<INPUT, OUTPUT> {
 	return _createObjectGeneratorAsTool(
-		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.OptionalPromptConfig & results.RendererTool<INPUT, OUTPUT>,
+		config as GenerateObjectConfig<INPUT, OUTPUT, ENUM, PROMPT> & configs.OptionalPromptConfig & results.ComponentTool<INPUT, OUTPUT>,
 		'async-script',
 		parent
-	) as unknown as GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.RendererTool<INPUT, OUTPUT>;
+	) as unknown as GenerateObjectReturn<TConfig, 'function', OUTPUT, ENUM, PROMPT> & results.ComponentTool<INPUT, OUTPUT>;
 }
 
 //common function for the specialized from/loads Template/Script/Text
@@ -873,7 +873,7 @@ function _createObjectGenerator<
 		console.log('[DEBUG] _ObjectGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return _createLLMRenderer(
+	return _createLLMComponent(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: types.SchemaType<any> },
 		generateObject as (config: configs.OptionalPromptConfig) => any
 	) as unknown as GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM, PROMPT>;
@@ -889,10 +889,10 @@ function _createObjectGeneratorAsTool<
 	config: TConfig & { description?: string; inputSchema: types.SchemaType<INPUT> },
 	promptType: types.PromptType,
 	parent?: configs.ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>,
-): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM, PROMPT> & results.RendererTool<INPUT, OUTPUT> {
+): GenerateObjectReturn<TConfig, 'async-template', OUTPUT, ENUM, PROMPT> & results.ComponentTool<INPUT, OUTPUT> {
 
 	const renderer = _createObjectGenerator(config, promptType, parent, true) as unknown as
-		results.RendererTool<INPUT, OUTPUT> & { config: TConfig };
+		results.ComponentTool<INPUT, OUTPUT> & { config: TConfig };
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema!;
 	renderer.type = 'function';//Overrides our type, maybe we shall rename our type to something else

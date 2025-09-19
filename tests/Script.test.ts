@@ -158,7 +158,7 @@ describe('create.Script', function () {
 
 	// --- STREAMING AND INTEROP ---
 
-	describe('Stream and Renderer Interoperability', () => {
+	describe('Stream and Component Interoperability', () => {
 		it('reads a stream from TextStreamer and collects text using @text', async () => {
 			const textStreamer = create.TextStreamer({
 				model, temperature,

@@ -113,7 +113,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('Text Mode Renderers', () => {
+		describe('Text Mode Components', () => {
 			it('should use call-time messages over configured messages', async () => {
 				const generator = create.TextGenerator({
 					model,
@@ -137,7 +137,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('Template & Script Mode Renderers', () => {
+		describe('Template & Script Mode Components', () => {
 			it('should append a rendered template string as a user message and augment the result', async () => {
 				const generator = create.TextGenerator.withTemplate({
 					model,
@@ -535,7 +535,7 @@ describe('Messages, Conversation & Integration', function () {
 			});
 		});
 
-		describe('Cross-Renderer Conversation Chaining', () => {
+		describe('Cross-Component Conversation Chaining', () => {
 			it('should pass conversation history from a TextGenerator to an ObjectGenerator', async () => {
 				const chatAgent = create.TextGenerator({
 					model,

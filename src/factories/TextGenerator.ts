@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import * as types from '../types/types';
 
-import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
+import { LLMCallSignature, _createLLMComponent } from "../llm-component";
 import { mergeConfigs, processConfig } from "../config-utils";
 import { validateTextLLMConfig } from "../validate";
 
@@ -111,7 +111,7 @@ function withTextAsTool<
 	TConfigShape extends CommonConfig = CommonConfig & configs.ToolConfig<Record<string, any>, string>
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT, TConfigShape> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'text', PROMPT, TConfigShape> & results.ComponentTool<INPUT, string>;
 
 function withTextAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.ToolConfig<INPUT, string>>,
@@ -127,7 +127,7 @@ function withTextAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.ToolConfig<INPUT, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT, PROMPT> & configs.ToolConfig<PARENT_INPUT, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', PROMPT, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text', PROMPT, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 // Implementation
 function withTextAsTool(config: any, parent?: configs.ConfigProvider<any>) {
@@ -168,7 +168,7 @@ function loadsTextAsTool<
 	TConfigShape extends CommonConfig = CommonConfig & configs.LoaderConfig & configs.ToolConfig<Record<string, any>, string>
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT, TConfigShape> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'text-name', PROMPT, TConfigShape> & results.ComponentTool<INPUT, string>;
 
 function loadsTextAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>,
@@ -184,7 +184,7 @@ function loadsTextAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.LoaderConfig & configs.ToolConfig<PARENT_INPUT, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', PROMPT, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'text-name', PROMPT, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 //Implementation
 function loadsTextAsTool(config: any, parent?: configs.ConfigProvider<any>) {
@@ -227,7 +227,7 @@ function withTemplateAsTool<
 	INPUT extends Record<string, any>,
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'async-template', string, CommonConfig & configs.TemplatePromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'async-template', string, CommonConfig & configs.TemplatePromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.ComponentTool<INPUT, string>;
 
 function withTemplateAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.ToolConfig<INPUT, string>>,
@@ -242,7 +242,7 @@ function withTemplateAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.ToolConfig<any, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.TemplatePromptConfig & configs.ToolConfig<any, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template', string, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template', string, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 function withTemplateAsTool(
 	config: any,
@@ -282,7 +282,7 @@ function loadsTemplateAsTool<
 	INPUT extends Record<string, any>
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'async-template-name', string, CommonConfig & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<Record<string, any>, string>> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'async-template-name', string, CommonConfig & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<Record<string, any>, string>> & results.ComponentTool<INPUT, string>;
 
 function loadsTemplateAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>,
@@ -297,7 +297,7 @@ function loadsTemplateAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.TemplatePromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name', string, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-template-name', string, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 function loadsTemplateAsTool(
 	config: any,
@@ -337,7 +337,7 @@ function withScriptAsTool<
 	INPUT extends Record<string, any>
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'async-script', string, CommonConfig & configs.ScriptPromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'async-script', string, CommonConfig & configs.ScriptPromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.ComponentTool<INPUT, string>;
 
 function withScriptAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.ToolConfig<INPUT, string>>,
@@ -352,7 +352,7 @@ function withScriptAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.ToolConfig<any, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.ScriptPromptConfig & configs.ToolConfig<any, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script', string, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script', string, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 function withScriptAsTool(config: any, parent?: configs.ConfigProvider<any>) {
 	return _createTextGeneratorAsTool(config, 'async-script', parent);
@@ -390,7 +390,7 @@ function loadsScriptAsTool<
 	INPUT extends Record<string, any>
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'async-script-name', string, CommonConfig & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<Record<string, any>, string>> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'async-script-name', string, CommonConfig & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<Record<string, any>, string>> & results.ComponentTool<INPUT, string>;
 
 function loadsScriptAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<INPUT, string>>,
@@ -405,7 +405,7 @@ function loadsScriptAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig, configs.GenerateTextConfig<TOOLS, INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<PARENT_TOOLS, PARENT_INPUT> & configs.ScriptPromptConfig & configs.LoaderConfig & configs.ToolConfig<any, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name', string, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'async-script-name', string, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 function loadsScriptAsTool(config: any, parent?: configs.ConfigProvider<any>) {
 	return _createTextGeneratorAsTool(config, 'async-script-name', parent);
@@ -449,7 +449,7 @@ function withFunctionAsTool<
 >(
 	config: TConfig & ValidateTextConfig<TConfig, TConfig,
 		configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, string>>
-): GenerateTextReturn<TConfig, TOOLS, 'function', PROMPT, CommonConfig & configs.FunctionPromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.RendererTool<INPUT, string>;
+): GenerateTextReturn<TConfig, TOOLS, 'function', PROMPT, CommonConfig & configs.FunctionPromptConfig & configs.ToolConfig<Record<string, any>, string>> & results.ComponentTool<INPUT, string>;
 
 function withFunctionAsTool<
 	TConfig extends Partial<configs.GenerateTextConfig<TOOLS, INPUT, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<INPUT, string>>,
@@ -466,7 +466,7 @@ function withFunctionAsTool<
 	config: TConfig & ValidateTextConfig<TConfig, TFinalConfig,
 		configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<any, string>>,
 	parent: configs.ConfigProvider<TParentConfig & ValidateTextParentConfig<TParentConfig, configs.GenerateTextConfig<any, any, PROMPT> & configs.FunctionPromptConfig & configs.ToolConfig<any, string>>>
-): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'function', PROMPT, TConfigShape> & results.RendererTool<FINAL_INPUT, string>;
+): GenerateTextWithParentReturn<TConfig, TParentConfig, TOOLS, PARENT_TOOLS, 'function', PROMPT, TConfigShape> & results.ComponentTool<FINAL_INPUT, string>;
 
 function withFunctionAsTool(config: any, parent?: configs.ConfigProvider<any>) {
 	return _createTextGeneratorAsTool(config, 'function', parent);
@@ -491,7 +491,7 @@ function _createTextGenerator<
 		console.log('[DEBUG] _TextGenerator created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return _createLLMRenderer(
+	return _createLLMComponent(
 		merged as configs.GenerateTextConfig<ToolSet, Record<string, any>> & configs.OptionalPromptConfig,
 		generateText
 	) as unknown as GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig>;
@@ -505,10 +505,10 @@ function _createTextGeneratorAsTool<
 	config: TConfig & { description?: string },
 	promptType: types.RequiredPromptType,
 	parent?: configs.ConfigProvider<configs.BaseConfig & configs.OptionalPromptConfig>
-): GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig> & results.RendererTool<INPUT, string> {
+): GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig> & results.ComponentTool<INPUT, string> {
 
 	const renderer = _createTextGenerator(config as any, promptType, parent, true) as unknown as
-		GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig> & results.RendererTool<INPUT, string> & { config: TConfig };
+		GenerateTextReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig> & results.ComponentTool<INPUT, string> & { config: TConfig };
 	renderer.description = renderer.config.description;
 	renderer.inputSchema = renderer.config.inputSchema;
 	renderer.type = 'function'; // Overrides our type, maybe we shall rename our type to something else

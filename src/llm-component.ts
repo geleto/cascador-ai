@@ -1,6 +1,6 @@
 import { Context, ScriptPromptType, TemplatePromptType } from './types/types';
 import * as configs from './types/config';
-import { validateLLMRendererCall } from './validate';
+import { validateLLMComponentCall } from './validate';
 import * as utils from './types/utils';
 import { _createTemplate, TemplateCallSignature } from './factories/Template';
 import { _createScript, ScriptCallSignature } from './factories/Script';
@@ -134,8 +134,8 @@ function copyConfigProperties(config: Record<string, any>, keys: readonly string
 	return dst;
 }
 
-//@todo - the promptRenderer shall use a precompiled template/script when created with a template/script promptType
-export function _createLLMRenderer<
+//@todo - the promptComponent shall use a precompiled template/script when created with a template/script promptType
+export function _createLLMComponent<
 	TConfig extends configs.OptionalPromptConfig & Partial<TFunctionConfig> & { context?: Context }
 	& { debug?: boolean, model: LanguageModel, prompt?: string, messages?: ModelMessage[] }, // extends Partial<OptionalTemplatePromptConfig & GenerateTextConfig<TOOLS, OUTPUT>>,
 	TFunctionConfig extends TConfig & { model: LanguageModel }, //@todo - rename to TVercelConfig
@@ -147,7 +147,7 @@ export function _createLLMRenderer<
 ): LLMCallSignature<TConfig, TFunctionResult, PT, AnyPromptSource, configs.BaseConfig> {
 	// Debug output if config.debug is true
 	if (config.debug) {
-		console.log('[DEBUG] LLMRenderer created with config:', JSON.stringify(config, null, 2));
+		console.log('[DEBUG] LLMComponent created with config:', JSON.stringify(config, null, 2));
 	}
 
 	// The Vercel AI SDK functions for text and object generation accept a 'messages' array as input
@@ -165,11 +165,11 @@ export function _createLLMRenderer<
 		// Dynamic Path - use Template/Script/Function to render the prompt
 		//let renderer: TemplateCallSignature<any, any> | ScriptCallSignature<any, any, any> | FunctionCallSignature<any, any, any>;
 		type ScriptAndFunctionOutput = string | ModelMessage[];
-		type FunctionRenderer = FunctionCallSignature<configs.FunctionConfig<any, ScriptAndFunctionOutput> & { execute: (context: Context) => Promise<ScriptAndFunctionOutput> }, any, ScriptAndFunctionOutput>;
-		type ScriptRenderer = ScriptCallSignature<configs.ScriptConfig<any, ScriptAndFunctionOutput> & { script: string }, any, ScriptAndFunctionOutput>;
-		type TemplateRenderer = TemplateCallSignature<configs.TemplateConfig<any> & { template: string }, any>;
+		type FunctionComponent = FunctionCallSignature<configs.FunctionConfig<any, ScriptAndFunctionOutput> & { execute: (context: Context) => Promise<ScriptAndFunctionOutput> }, any, ScriptAndFunctionOutput>;
+		type ScriptComponent = ScriptCallSignature<configs.ScriptConfig<any, ScriptAndFunctionOutput> & { script: string }, any, ScriptAndFunctionOutput>;
+		type TemplateComponent = TemplateCallSignature<configs.TemplateConfig<any> & { template: string }, any>;
 
-		let renderer: TemplateRenderer | ScriptRenderer | FunctionRenderer;
+		let renderer: TemplateComponent | ScriptComponent | FunctionComponent;
 		const isTemplatePrompt = config.promptType === 'template' || config.promptType === 'template-name' || config.promptType === 'async-template' || config.promptType === 'async-template-name';
 		const isScriptPrompt = config.promptType === 'script' || config.promptType === 'script-name' || config.promptType === 'async-script' || config.promptType === 'async-script-name';
 		const isFunctionPrompt = config.promptType === 'function';
@@ -179,7 +179,7 @@ export function _createLLMRenderer<
 				...copyConfigProperties(config, configs.TemplateConfigKeys),
 				template: config.prompt
 			};
-			renderer = _createTemplate(templateConfig, config.promptType as TemplatePromptType) as TemplateRenderer;
+			renderer = _createTemplate(templateConfig, config.promptType as TemplatePromptType) as TemplateComponent;
 		} else if (isScriptPrompt) {
 			// The LLM renderer's 'prompt' becomes the 'script' for the Script factory.
 			const scriptConfig = {
@@ -187,13 +187,13 @@ export function _createLLMRenderer<
 				script: config.prompt,
 				schema: PromptStringOrMessagesSchema
 			}
-			renderer = _createScript(scriptConfig, config.promptType as ScriptPromptType) as ScriptRenderer;
+			renderer = _createScript(scriptConfig, config.promptType as ScriptPromptType) as ScriptComponent;
 		} else if (isFunctionPrompt) {
 			const functionConfig = {
 				...copyConfigProperties(config, configs.FunctionConfigKeys),
 				execute: config.prompt as (context: Context) => Promise<string | ModelMessage[]>
 			};
-			renderer = _createFunction(functionConfig as configs.FunctionConfig<any, any>) as FunctionRenderer;
+			renderer = _createFunction(functionConfig as configs.FunctionConfig<any, any>) as FunctionComponent;
 		} else {
 			throw new Error(`Unhandled prompt type: ${config.promptType}`);
 		}
@@ -209,21 +209,21 @@ export function _createLLMRenderer<
 				if (config.debug) {
 					console.log(`[DEBUG] LLM ${config.promptType!} run() called with:`, { configArg });
 				}
-				validateLLMRendererCall(config, config.promptType!, undefined);
+				validateLLMComponentCall(config, config.promptType!, undefined);
 			}
 
 			// Render the prompt
 			let renderedPrompt: string | ModelMessage[];
 			if (configArg.prompt && !isFunctionPrompt) {
 				//re-compile with the new prompt
-				renderedPrompt = await (renderer as TemplateRenderer | ScriptRenderer)(configArg.prompt, runConfig.context) as string | ModelMessage[];
+				renderedPrompt = await (renderer as TemplateComponent | ScriptComponent)(configArg.prompt, runConfig.context) as string | ModelMessage[];
 			} else {
 				// the renderer has precompiled script/template or is a function, just give it the context
 				renderedPrompt = await renderer(runConfig.context) as string | ModelMessage[];
 			}
 
 			if (runConfig.debug) {
-				console.log('[DEBUG] LLMRenderer.run executed with:', { configArg, renderedPrompt });
+				console.log('[DEBUG] LLMComponent.run executed with:', { configArg, renderedPrompt });
 			}
 
 			// Directly translate the original `processMessages` check.
@@ -277,7 +277,7 @@ export function _createLLMRenderer<
 			if (config.debug) {
 				console.log(`[DEBUG] LLM ${config.promptType!} caller called with:`, { promptOrMessageOrContext, messagesOrContext, maybeContext });
 			}
-			validateLLMRendererCall(config, config.promptType!, promptOrMessageOrContext, messagesOrContext, maybeContext);
+			validateLLMComponentCall(config, config.promptType!, promptOrMessageOrContext, messagesOrContext, maybeContext);
 
 			const { prompt, messages, context } = extractCallArguments(promptOrMessageOrContext, messagesOrContext, maybeContext);
 			const callConfig = {
@@ -297,7 +297,7 @@ export function _createLLMRenderer<
 				if (config.debug) {
 					console.log(`[DEBUG] LLM ${config.promptType!} run() called with:`, { configArg });
 				}
-				validateLLMRendererCall(config, config.promptType ?? 'text', undefined);
+				validateLLMComponentCall(config, config.promptType ?? 'text', undefined);
 			}
 			const runConfig = mergeConfigs(config, configArg) as TFunctionConfig;
 			if (processMessages &&
@@ -337,9 +337,9 @@ export function _createLLMRenderer<
 		};
 		call = (promptOrMessages?: string | ModelMessage[], maybeMessages?: ModelMessage[]): TFunctionResult => {
 			if (config.debug) {
-				console.log('[DEBUG] createLLMRenderer - text path called with:', { promptOrMessages, maybeMessages });
+				console.log('[DEBUG] createLLMComponent - text path called with:', { promptOrMessages, maybeMessages });
 			}
-			validateLLMRendererCall(config, config.promptType ?? 'text', promptOrMessages, maybeMessages);
+			validateLLMComponentCall(config, config.promptType ?? 'text', promptOrMessages, maybeMessages);
 
 			const { prompt, messages } = extractCallArguments(promptOrMessages, maybeMessages);
 			const callConfig = {

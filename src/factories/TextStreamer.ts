@@ -5,7 +5,7 @@ import * as configs from '../types/config';
 import * as utils from '../types/utils';
 import * as types from '../types/types';
 
-import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
+import { LLMCallSignature, _createLLMComponent } from "../llm-component";
 import { mergeConfigs, processConfig } from "../config-utils";
 import { validateTextLLMConfig } from "../validate";
 
@@ -308,7 +308,7 @@ function _createTextStreamer<
 		console.log('[DEBUG] _TextStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return _createLLMRenderer(
+	return _createLLMComponent(
 		merged as configs.StreamTextConfig<ToolSet, Record<string, any>> & configs.OptionalPromptConfig,
 		streamText
 	) as unknown as StreamTextPromiseReturn<TConfig, TOOLS, types.RequiredPromptType, string, CommonConfig>;

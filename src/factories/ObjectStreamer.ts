@@ -7,7 +7,7 @@ import * as types from '../types/types';
 
 import { ValidateObjectConfig, ValidateObjectParentConfig } from "./ObjectGenerator";
 
-import { LLMCallSignature, _createLLMRenderer } from "../llm-renderer";
+import { LLMCallSignature, _createLLMComponent } from "../llm-component";
 import { mergeConfigs, processConfig } from "../config-utils";
 import { validateObjectLLMConfig } from "../validate";
 
@@ -419,7 +419,7 @@ function _createObjectStreamer<
 		console.log('[DEBUG] _ObjectStreamer created with config:', JSON.stringify(merged, null, 2));
 	}
 
-	return _createLLMRenderer(
+	return _createLLMComponent(
 		merged as configs.OptionalPromptConfig & { model: LanguageModel, prompt: string, schema: types.SchemaType<any> },
 		streamObject as (config: configs.OptionalPromptConfig) => any
 	) as unknown as StreamObjectPromiseReturn<TConfig, 'async-template', OUTPUT, PROMPT>;

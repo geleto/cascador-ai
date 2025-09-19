@@ -51,7 +51,7 @@ describe('asTool', function () {
 					// Missing inputSchema
 				})).to.throw(
 					ConfigError,
-					'\'inputSchema\' is a required property when creating a renderer as a tool'
+					'\'inputSchema\' is a required property when creating a component as a tool'
 				);
 			});
 		});
@@ -155,7 +155,7 @@ describe('asTool', function () {
 		// 			inputSchema: z.string() // Not z.object
 		// 		})).to.throw(
 		// 			ConfigError,
-		// 			'For Template renderers, \'inputSchema\' must be a Zod object schema'
+		// 			'For Template components, \'inputSchema\' must be a Zod object schema'
 		// 		);
 		// 	});
 		// });
@@ -242,7 +242,7 @@ describe('asTool', function () {
 
 
 
-			it('should propagate errors from parent renderer', async () => {
+			it('should propagate errors from parent component', async () => {
 				const tool = create.Script.asTool({
 					context: {
 						async failingFunction() {
@@ -408,7 +408,7 @@ describe('asTool', function () {
 			});
 
 			it('should work with ObjectGenerator.withScript', async () => {
-				// This parent renderer uses a script to process input before calling the LLM
+				// This parent component uses a script to process input before calling the LLM
 				const tool = create.ObjectGenerator.withScript.asTool({
 					model,
 					temperature,

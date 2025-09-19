@@ -2,7 +2,7 @@ import { ModelMessage } from "ai";
 import { z, ZodError } from 'zod';
 import * as types from './types/types';
 import * as configs from './types/config';
-import { extractCallArguments } from './llm-renderer';
+import { extractCallArguments } from './llm-component';
 import { ModelMessageSchema } from "./types/schemas";
 
 export class ConfigError extends Error {
@@ -103,7 +103,7 @@ export function validateAnyConfig(config?: Partial<configs.AnyConfig<any, any, a
  * Validates configurations for TextGenerator and TextStreamer.
  * @param config The configuration object.
  * @param promptType The explicit promptType from the factory.
- * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isTool A flag indicating if the component is being created as a tool.
  */
 export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType?: types.PromptType, isTool = false): void {
 	universalSanityChecks(config);
@@ -111,7 +111,7 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
 	// For template/script-based prompt types, disallow messages array as prompt
 	if (promptType?.includes('template') || promptType?.includes('script')) {
 		if (Array.isArray(config.prompt)) {
-			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
+			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based components. The 'prompt' must be a string containing the template or script.");
 		}
 	} else if (promptType?.includes('function')) {
 		if (typeof config.prompt !== 'function') {
@@ -136,7 +136,7 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
 	}
 	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a renderer as a tool.");
+		throw new ConfigError("'inputSchema' is a required property when creating a component as a tool.");
 	}
 }
 
@@ -144,15 +144,15 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
  * Validates configurations for ObjectGenerator and ObjectStreamer.
  * @param config The configuration object.
  * @param promptType The explicit promptType from the factory.
- * @param isTool A flag indicating if the renderer is being created as a tool.
- * @param isStreamer A flag indicating if the renderer is a streamer.
+ * @param isTool A flag indicating if the component is being created as a tool.
+ * @param isStreamer A flag indicating if the component is a streamer.
  */
 export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, promptType?: types.PromptType, isTool = false, isStreamer = false): void {
 	universalSanityChecks(config);
 	// For template/script-based prompt types, disallow messages array as prompt
 	if (promptType?.includes('template') || promptType?.includes('script')) {
 		if (Array.isArray(config.prompt)) {
-			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based renderers. The 'prompt' must be a string containing the template or script.");
+			throw new ConfigError("A 'prompt' with a message array is not allowed for template or script-based components. The 'prompt' must be a string containing the template or script.");
 		}
 	} else if (promptType?.includes('function')) {
 		if (typeof config.prompt !== 'function') {
@@ -176,7 +176,7 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 	}
 
 	if ('tools' in config) {
-		throw new ConfigError(`Object renderers do not support "tools" property.`);
+		throw new ConfigError(`Object components do not support "tools" property.`);
 	}
 
 	switch (output) {
@@ -204,7 +204,7 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
 	}
 	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a renderer as a tool.");
+		throw new ConfigError("'inputSchema' is a required property when creating a component as a tool.");
 	}
 }
 
@@ -212,7 +212,7 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
  * Validates configurations for `create.Template`.
  * @param config The configuration object.
  * @param templateType The explicit templateType from the factory.
- * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isTool A flag indicating if the component is being created as a tool.
  */
 export function validateTemplateConfig(config: Partial<configs.TemplateConfig<any>>, templateType?: types.TemplatePromptType, isTool = false): void {
 	universalSanityChecks(config);
@@ -225,7 +225,7 @@ export function validateTemplateConfig(config: Partial<configs.TemplateConfig<an
 	}
 
 	if ('inputSchema' in config && config.inputSchema && !(config.inputSchema instanceof z.ZodObject)) {
-		throw new ConfigError("For Template renderers, 'inputSchema' must be a Zod object schema (z.object).");
+		throw new ConfigError("For Template components, 'inputSchema' must be a Zod object schema (z.object).");
 	}
 
 	const isLoaded = templateType?.endsWith('-name') ?? false;
@@ -250,7 +250,7 @@ export function validateTemplateConfig(config: Partial<configs.TemplateConfig<an
  * Validates configurations for `create.Script`.
  * @param config The configuration object.
  * @param scriptType The explicit scriptType from the factory.
- * @param isTool A flag indicating if the renderer is being created as a tool.
+ * @param isTool A flag indicating if the component is being created as a tool.
  */
 export function validateScriptConfig(config: Partial<configs.ScriptConfig<any, any>>, scriptType?: types.ScriptPromptType, isTool = false): void {
 	universalSanityChecks(config);
@@ -263,7 +263,7 @@ export function validateScriptConfig(config: Partial<configs.ScriptConfig<any, a
 	}
 
 	if ('inputSchema' in config && config.inputSchema && !(config.inputSchema instanceof z.ZodObject)) {
-		throw new ConfigError("For Script renderers, 'inputSchema' must be a Zod object schema (z.object).");
+		throw new ConfigError("For Script components, 'inputSchema' must be a Zod object schema (z.object).");
 	}
 
 	const isLoaded = scriptType?.endsWith('-name') ?? false;
@@ -305,7 +305,7 @@ export function validateFunctionConfig(config: Record<string, any>, isTool = fal
 
 // --- Invocation Validators (for Call Time) ---
 
-export function validateLLMRendererCall(
+export function validateLLMComponentCall(
 	config: Partial<configs.AnyConfig<any, any, any, any>>, promptType: types.PromptType,
 	...args: [string | undefined | ModelMessage[] | types.Context, (ModelMessage[] | types.Context)?, types.Context?]
 ): void {
@@ -339,7 +339,7 @@ export function validateLLMRendererCall(
 		if (!hasPromptString && !hasPromptMessages && !hasMessages) {
 			throw new ConfigError("Either 'prompt' (string or messages array) or 'messages' must be provided in the config or at call time.");
 		}
-		if (callArgs.context) throw new ConfigError("A 'context' object cannot be provided when using a 'text' or 'text-name' renderer.");
+		if (callArgs.context) throw new ConfigError("A 'context' object cannot be provided when using a 'text' or 'text-name' component.");
 	}
 }
 

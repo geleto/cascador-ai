@@ -76,12 +76,12 @@ describe.skip('Loader Integration Tests (Race & Merge)', function () {
 		});
 
 		it('1.3: Mixed sequential and raced loaders should respect sequential precedence', async () => {
-			const scriptRenderer = create.Script.loadsScript({
+			const scriptComponent = create.Script.loadsScript({
 				// The mediumLoader is first in the sequential chain and will succeed.
 				loader: [mediumLoader, race([slowLoader, fastLoader])],
 				script: 'template.txt', // Using a template file as script content for simplicity
 			});
-			const result = await scriptRenderer();
+			const result = await scriptComponent();
 			// The race group is never reached.
 			expect(result).to.equal(templateContentMedium);
 		});
@@ -207,8 +207,8 @@ describe.skip('Loader Integration Tests (Race & Merge)', function () {
 		});
 	});
 
-	describe('Category 5: Real-World Renderer Integration', () => {
-		it('5.1: Renderer-to-renderer inheritance should merge race groups correctly', async () => {
+	describe('Category 5: Real-World Component Integration', () => {
+		it('5.1: Component-to-renderer inheritance should merge race groups correctly', async () => {
 			const baseGenerator = create.TextGenerator.loadsTemplate({
 				model,
 				temperature,

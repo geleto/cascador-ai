@@ -19,12 +19,12 @@ export { z } from 'zod';
 
 // --- Configuration Types ---
 export type {
-	// Standalone Renderer Configs
+	// Standalone Component Configs
 	TemplateConfig, // Correctly exporting the main TemplateConfig
 	ScriptConfig,
 	FunctionConfig,
 	FunctionToolConfig,
-	// LLM Renderer Configs
+	// LLM Component Configs
 	GenerateTextConfig,
 	StreamTextConfig,
 	GenerateObjectObjectConfig,
@@ -34,7 +34,7 @@ export type {
 	StreamObjectObjectConfig,
 	StreamObjectArrayConfig,
 	StreamObjectNoSchemaConfig,
-	// Prompt-specific Configs for LLM Renderers
+	// Prompt-specific Configs for LLM Components
 	TemplatePromptConfig,
 	ScriptPromptConfig,
 	FunctionPromptConfig,
