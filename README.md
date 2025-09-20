@@ -984,7 +984,7 @@ Of course. Here is the updated **Custom Loaders** section with more detailed exp
 
 *   **Declarative Loader Concurrency with `race()`**:
 
-By default, child loaders are placed before parent loaders to create a sequential fallback chain. The `race()` function inverts this by running multiple loaders concurrently—the first to successfully find a resource wins.
+By default, child loaders are placed before parent loaders to create a sequential fallback chain. The `race()` function provides a more efficient alternative by running multiple loaders concurrently. Its key advantage is speed: the entire group resolves as soon as any loader finds the resource, without waiting for slower loaders (like a network request) to time out or fail. This makes `race()` beneficial even if only one loader in the group is expected to succeed, as it eliminates unnecessary delays from the others.
 
 When you give `race()` a name (e.g., `race(..., 'cdn')`), you create a **named race group**. All loaders in groups with the same name across parent and child configurations are automatically merged into a single, combined race. This allows a child to add loaders to a parent's concurrent loading strategy instead of simply prepending to it.
 
