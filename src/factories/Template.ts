@@ -65,6 +65,8 @@ type ValidateTemplateConfig<
 	& (TShape extends configs.LoaderConfig ? { loader: any } : {}) // loader is required for loadsTemplate
 	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	& (TShape extends configs.ToolConfig<any, any> ? { inputSchema: SchemaType<any> } : {}) // inputSchema is required for asTool
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	& (TShape extends configs.ToolConfig<any, any> ? { template: any } : {})
 > =
 	// GATEKEEPER: Check for excess or missing properties
 	// 1. Check for excess properties in TConfig that are not in TShape

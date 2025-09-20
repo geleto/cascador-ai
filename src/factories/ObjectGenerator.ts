@@ -106,7 +106,8 @@ export type ValidateObjectConfig<
 	TShape = GetObjectGeneratordShape<TFinalConfig> & TShapeExtras,
 	TRequiredShape =
 	& (TShapeExtras extends { inputSchema: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { inputSchema: any } : GetObjectGeneratorRequiredShape<TFinalConfig>)
-	& (TShapeExtras extends { loader: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { loader: any } : GetObjectGeneratorRequiredShape<TFinalConfig>),
+	& (TShapeExtras extends { loader: any } ? GetObjectGeneratorRequiredShape<TFinalConfig> & { loader: any } : GetObjectGeneratorRequiredShape<TFinalConfig>)
+	& (TShape extends configs.ToolConfig<any, any> ? { prompt: any, model: LanguageModel } : { model: LanguageModel })//@todo - messages instead of prompt?
 > =
 	// Reusable for object streamer
 	// 1. Check for excess properties in TConfig based on the final merged config's own `output` mode.

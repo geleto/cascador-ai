@@ -135,8 +135,13 @@ export function validateTextLLMConfig(config: Partial<AnyTextConfig>, promptType
 	if (isLoaded && !('loader' in config)) {
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
 	}
-	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a component as a tool.");
+	if (isTool) {
+		if (!('inputSchema' in config)) {
+			throw new ConfigError("'inputSchema' is a required property when creating a TextGenerator as a tool.");
+		}
+		if (!('prompt' in config)) {
+			throw new ConfigError("'prompt' is a required property when creating a TextGenerator as a tool.");
+		}
 	}
 }
 
@@ -179,6 +184,15 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 		throw new ConfigError(`Object components do not support "tools" property.`);
 	}
 
+	if (isTool) {
+		if (!('inputSchema' in config)) {
+			throw new ConfigError("'inputSchema' is a required property when creating a ObjectGenerator as a tool.");
+		}
+		if (!('prompt' in config)) {
+			throw new ConfigError("'prompt' is a required property when creating a ObjectGenerator as a tool.");
+		}
+	}
+
 	switch (output) {
 		case 'object':
 		case 'array':
@@ -202,9 +216,6 @@ export function validateObjectLLMConfig(config: Partial<AnyObjectConfig>, prompt
 	const isLoaded = promptType?.endsWith('-name') ?? false;
 	if (isLoaded && !('loader' in config)) {
 		throw new ConfigError("A 'loader' is required for this operation (e.g., for loads...() or *-name prompt types).");
-	}
-	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a component as a tool.");
 	}
 }
 
@@ -241,8 +252,13 @@ export function validateTemplateConfig(config: Partial<configs.TemplateConfig<an
 		}
 	}
 
-	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a template as a tool.");
+	if (isTool) {
+		if (!('inputSchema' in config)) {
+			throw new ConfigError("'inputSchema' is a required property when creating a Template as a tool.");
+		}
+		if (!('template' in config)) {
+			throw new ConfigError("'template' is a required property when creating a Template as a tool.");
+		}
 	}
 }
 
@@ -279,8 +295,13 @@ export function validateScriptConfig(config: Partial<configs.ScriptConfig<any, a
 		}
 	}
 
-	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a script as a tool.");
+	if (isTool) {
+		if (!('inputSchema' in config)) {
+			throw new ConfigError("'inputSchema' is a required property when creating a Script as a tool.");
+		}
+		if (!('script' in config)) {
+			throw new ConfigError("'script' is a required property when creating a Script as a tool.");
+		}
 	}
 }
 
@@ -299,7 +320,7 @@ export function validateFunctionConfig(config: Record<string, any>, isTool = fal
 		if (prop in config) throw new ConfigError(`Property '${prop}' is not applicable for a Function configuration.`);
 	}
 	if (isTool && !('inputSchema' in config)) {
-		throw new ConfigError("'inputSchema' is a required property when creating a function as a tool.");
+		throw new ConfigError("'inputSchema' is a required property when creating a Function as a tool.");
 	}
 }
 

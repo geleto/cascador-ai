@@ -48,7 +48,8 @@ type ValidateTextConfig<
 	TShape extends configs.GenerateTextConfig<any, any, any>,
 	TRequired =
 	& (TShape extends { inputSchema: any } ? { inputSchema: any, model: LanguageModel } : { model: LanguageModel })
-	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel }),
+	& (TShape extends { loader: any } ? { loader: any, model: LanguageModel } : { model: LanguageModel })
+	& (TShape extends configs.ToolConfig<any, any> ? { prompt: any, model: LanguageModel } : { model: LanguageModel })//@todo - messages instead of prompt?
 > =
 	// GATEKEEPER: Check for excess or missing properties
 	// 1. Check for excess properties in TConfig that are not in TShape
