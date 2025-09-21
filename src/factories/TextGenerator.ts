@@ -19,7 +19,6 @@ type GenerateTextReturn<
 	TOOLS extends ToolSet,
 	PType extends types.RequiredPromptType,
 	PROMPT extends types.AnyPromptSource,
-	//temp default value
 	TConfigShape extends CommonConfig,
 > = LLMCallSignature<TConfig, Promise<results.GenerateTextResultAugmented<TOOLS>>, PType, PROMPT, TConfigShape>;
 
