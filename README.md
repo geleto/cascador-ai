@@ -153,7 +153,16 @@ const contentAgent = create.Script({
 
 ## Components: The Heart of Cascador-AI
 
-At the core of *Cascador-AI* are **components**—versatile objects that transform inputs into outputs. They are the building blocks for your workflows, designed to be both powerful and easy to compose. Every component is created using the `create` factory and can be called like a function. All components can be considered **renderers**, as they all produce an output (rendering text, data, or a stream). However, `Script` and `Function` components can also act as powerful **orchestrators**, defining and coordinating complex, multi-step workflows.
+At the core of *Cascador-AI* are **components** - versatile objects that transform inputs into outputs. They are the building blocks for your workflows, designed to be both powerful and easy to compose. Every component is created using the `create` factory and offers two ways to be invoked: a standard function call `()` for most use cases, and an advanced `.run()` method for runtime overrides.
+
+```typescript
+const result = await component({ topic: 'AI' });                    // Standard call
+const result = await component.run({ context: { topic: 'AI' }, temperature: 0.9 }); // Advanced override
+```
+
+The standard call can only set optional arguments for `prompt`, `context`, and `messages` - which covers the majority of use cases. The `.run()` method allows you to override any LLM parameter for advanced scenarios.
+
+All components can be considered **renderers**, as they all produce an output (rendering text, data, or a stream). However, `Script` and `Function` components can also act as powerful **orchestrators**, defining and coordinating complex, multi-step workflows.
 
 In Cascador-AI, you build workflows by making a **component** using the `create` factory for a specific task, like `TextGenerator`. You provide a configuration object with essential settings like the `model` to use and the `prompt` to send. To reuse settings, simply create a `Config` object and pass it as a second argument to have your component inherit from it. Or you can inherit the configuration of a component from another component.
 
@@ -222,9 +231,13 @@ Here's a quick overview of the primary components you'll use:
 *   [**`create.TextGenerator` / `create.TextStreamer`**](#textgenerator): **For LLM-based text generation.** Generates or streams unstructured text.
 *   [**`create.ObjectGenerator` / `create.ObjectStreamer`**](#objectgenerator): **For structured data from an LLM.** Generates or streams structured JSON objects.
 
-### Callable Interface:
+### Callable Component Objects
 
-Every component can be invoked in two ways: with its built-in prompt if such was specified at creation time or with one-off inputs (prompt and/or context) provided with the call arguments.
+Every component can be invoked in two primary ways: the standard `()` call for most use cases, and the `.run()` method for advanced runtime overrides.
+
+#### The Standard `()` Call
+This is the most common and straightforward way to use a component. You can invoke it with optional arguments for `prompt`and `context` - which covers the majority of use cases. You can invoke it with a new prompt and/or context, or with no arguments to use its pre-configured settings. For conversational components (`TextGenerator` and `TextStreamer`), you can also pass a `messages` array to manage the chat history. See the [Conversational AI](#conversational-ai-managing-message-history) section for a detailed guide.
+
 ```typescript
 // Created with a templating modifier
 const dynamicComponent = create.TextGenerator.withTemplate({
@@ -238,12 +251,60 @@ const result = await dynamicComponent();
 console.log(result.text); // "Hello World"
 
 // 2. With a one-off prompt and context
-// The one-off prompt is also processed as a template (since it was created as a template component)
+// The one-off prompt is also processed as a template
 const result2 = await dynamicComponent('Hi {{ user }}', { user: 'Alice' });
 console.log(result2.text); // "Hi Alice"
 ```
 
-Template and script prompts defined at creation are pre-compiled for efficiency, while prompts provided at runtime (one-off prompts) are compiled each time they are used, offering flexibility for dynamic scenarios.
+Template and script prompts defined at creation are pre-compiled for efficiency, while prompts provided at runtime are compiled on-the-fly, offering flexibility for dynamic scenarios.
+
+#### Advanced Overrides with the `.run()` Method
+For advanced scenarios where you need to temporarily adjust LLM parameters for a single call without creating a new component, Cascador-AI provides the `.run()` method.
+
+This method is available specifically on **LLM components** (`TextGenerator`, `TextStreamer`, `ObjectGenerator`, and `ObjectStreamer`). It accepts a single configuration object where you can override properties like `model`, `temperature`, `maxTokens`, or even provide a different set of `tools`.
+
+**Overridable Properties**
+You can temporarily change any standard Vercel AI SDK property, such as:
+*   `model`
+*   `temperature`
+*   `maxTokens`
+*   `maxSteps`
+*   `tools`
+*   `prompt`
+*   `messages`
+*   `context`
+
+**Immutable Properties**
+Properties that are fundamental to the component's setup, compilation, or return type are locked in at creation and cannot be overridden. This includes:
+*   `schema`
+*   `output` (for `ObjectGenerator`/`Streamer`)
+*   `enum` (for `ObjectGenerator`)
+*   `filters`
+*   `options`
+*   `loader`
+
+**Example:**
+
+```typescript
+const storyWriter = create.TextGenerator.withTemplate({
+  model: openai('gpt-4o-mini'),
+  temperature: 0.5, // Default setting for balanced output
+  prompt: 'Write a short story about {{ topic }}.'
+});
+
+// Standard call with default temperature
+const standardStory = await storyWriter({ topic: 'a friendly robot' });
+
+// Use .run() to override the temperature for a more creative, one-off story
+const creativeStory = await storyWriter.run({
+  prompt: 'Write a very creative story about {{ topic }}.',
+  context: { topic: 'a mischievous dragon' },
+  temperature: 0.9, // Overridden for this call only
+  maxTokens: 50,
+});
+```
+
+Use the standard `()` call for simplicity in most cases. Use `.run()` when you need control over LLM parameters for specific invocations.
 
 ## The `prompt` Property: Your Universal Input
 
