@@ -27,7 +27,7 @@ export class RaceLoader implements LoaderInterface {
 
 	constructor(loaders: ILoaderAny[], groupName: string) {
 		// This check is correct and more robust than optional chaining here.
-		if (!groupName?.trim()) {
+		if (!groupName.trim()) {
 			throw new Error('RaceLoader groupName must be a non-empty string.');
 		}
 		this.loaders = loaders;
