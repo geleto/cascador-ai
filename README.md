@@ -1662,4 +1662,4 @@ This type safety ensures robust, predictable workflows with early error detectio
 - **Versioned Templates and Scripts**: Enable loading versioned prompts with a loader that wraps unversioned loaders for better template management. Choose different versions depending on the model or validate old and new prompts during tests.
 - **Streaming Text/Data Output Support** - for Template and Script components, depends on the cascada-engine adding support for this.
 - **Text/Data Output Snapshot Support**: Request the template engine to return a snapshot of the currently rendered data. Due to the non-sequential nature of the rendering - regular streaming is not always practical. Useful for previews.
-- **Instructions on integrating memory**: Provide clear patterns and examples for integrating long-term memory.
+- **More Integration Instructions**: Provide clear patterns and examples for integrating long-term memory, human-in-the-loop, etc...
