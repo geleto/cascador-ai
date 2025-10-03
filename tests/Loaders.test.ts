@@ -51,8 +51,8 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 
 	// --- Test Scenarios ---
 
-	describe('Category 1: Single Configuration (No Inheritance)', () => {
-		it('1.1: Named race groups should merge and the fastest loader should win', async () => {
+	describe('Single Configuration (No Inheritance)', () => {
+		it('Named race groups should merge and the fastest loader should win', async () => {
 			const renderer = create.Template.loadsTemplate({
 				loader: [
 					race([slowLoader], 'templates'), // This one is slower
@@ -64,7 +64,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(result).to.equal('Template result: fast');
 		});
 
-		it('1.2: Anonymous race groups should remain separate and execute sequentially', async () => {
+		it('Anonymous race groups should remain separate and execute sequentially', async () => {
 			const renderer = create.Template.loadsTemplate({
 				// The first loader in the chain is the slow one, but it will succeed.
 				loader: [race([slowLoader]), race([fastLoader])],
@@ -75,7 +75,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(result).to.equal('Template result: slow');
 		});
 
-		it('1.3: Mixed sequential and raced loaders should respect sequential precedence', async () => {
+		it('Mixed sequential and raced loaders should respect sequential precedence', async () => {
 			const templateComponent = create.Template.loadsTemplate({
 				// The mediumLoader is first in the sequential chain and will succeed.
 				loader: [mediumLoader, race([slowLoader, fastLoader])],
@@ -87,8 +87,8 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 		});
 	});
 
-	describe('Category 2: Single-Level Inheritance (Parent/Child)', () => {
-		it('2.1: Child should add to a parent race group, and the fastest loader should win', async () => {
+	describe('Single-Level Inheritance (Parent/Child)', () => {
+		it('Child should add to a parent race group, and the fastest loader should win', async () => {
 			const baseConfig = create.Config({
 				loader: [race([slowLoader], 'templates')],
 			});
@@ -108,7 +108,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(text).to.equal(llmExpectedFast);
 		});
 
-		it('2.2: Child sequential loaders should have precedence over parent sequential loaders', async () => {
+		it('Child sequential loaders should have precedence over parent sequential loaders', async () => {
 			const baseConfig = create.Config({
 				loader: [slowLoader], // Parent loader
 			});
@@ -129,8 +129,8 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 		});
 	});
 
-	describe('Category 3: Concurrency and Failure Modes', () => {
-		it('3.1a: [RACE] The fastest loader in a race group should win', async () => {
+	describe('Concurrency and Failure Modes', () => {
+		it('[RACE] The fastest loader in a race group should win', async () => {
 			const streamer = create.TextStreamer.loadsTemplate({
 				model,
 				temperature,
@@ -142,7 +142,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(streamedText).to.equal(llmExpectedFast);
 		});
 
-		it('3.1b: [SEQUENTIAL] The first successful loader in a sequential chain should win', async () => {
+		it('[SEQUENTIAL] The first successful loader in a sequential chain should win', async () => {
 			const streamer = create.TextStreamer.loadsTemplate({
 				model,
 				temperature,
@@ -156,7 +156,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(streamedText).to.equal(llmExpectedSlow);
 		});
 
-		it('3.2: A race group should succeed even if one loader fails', async () => {
+		it('A race group should succeed even if one loader fails', async () => {
 			const generator = create.ObjectGenerator.loadsTemplate({
 				model,
 				temperature,
@@ -168,7 +168,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(object.result).to.equal(llmExpectedMedium);
 		});
 
-		it('3.3: A race group should fail if all its loaders fail', async () => {
+		it('A race group should fail if all its loaders fail', async () => {
 			const renderer = create.Template.loadsTemplate({
 				loader: [race([failingLoader], 'templates')],
 				template: 'template.txt',
@@ -177,8 +177,8 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 		});
 	});
 
-	describe('Category 4: Multi-Level Inheritance (Grandparent/Parent/Child)', () => {
-		it('4.1: Loaders from all 3 levels should be merged and raced, with the fastest winning', async () => {
+	describe('Multi-Level Inheritance (Grandparent/Parent/Child)', () => {
+		it('Loaders from all 3 levels should be merged and raced, with the fastest winning', async () => {
 			// 1. Grandparent has the slowest loader
 			const grandparentConfig = create.Config({
 				loader: [race([slowLoader], 'templates')],
@@ -207,8 +207,8 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 		});
 	});
 
-	describe('Category 5: Real-World Component Integration', () => {
-		it('5.1: Component-to-renderer inheritance should merge race groups correctly', async () => {
+	describe('Real-World Component Integration', () => {
+		it('Component-to-renderer inheritance should merge race groups correctly', async () => {
 			const baseGenerator = create.TextGenerator.loadsTemplate({
 				model,
 				temperature,
@@ -228,7 +228,7 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 			expect(text).to.equal(llmExpectedFast);
 		});
 
-		it('5.2: A script should correctly use a generator with raced loaders from its context', async () => {
+		it('A script should correctly use a generator with raced loaders from its context', async () => {
 			const summaryGenerator = create.TextGenerator.loadsTemplate({
 				model,
 				temperature,
