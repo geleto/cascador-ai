@@ -43,7 +43,11 @@ export class RaceLoader implements LoaderInterface {
 		}
 
 		// Kick off all loads immediately.
-		const rawPromises = this.loaders.map(loader => (loader as LoaderInterface).load(name));
+		const rawPromises = this.loaders.map(loader => {
+			const result = (loader as LoaderInterface).load(name);
+			// Handle both sync and async loaders by wrapping sync results in Promise.resolve()
+			return Promise.resolve(result);
+		});
 
 		// REVERT: Use a discriminated union for the Settled type. It is more type-safe
 		// and idiomatic, allowing TypeScript to perform powerful type narrowing.
@@ -51,7 +55,7 @@ export class RaceLoader implements LoaderInterface {
 			| { i: number; status: 'fulfilled'; value: LoaderSource | string | null }
 			| { i: number; status: 'rejected'; reason: unknown };
 
-		const pending: Promise<Settled>[] = (rawPromises as Promise<LoaderSource | string | null>[]).map((p, i: number) =>
+		const pending: Promise<Settled>[] = (rawPromises).map((p, i: number) =>
 			p.then(
 				v => ({ i, status: 'fulfilled', value: v } as const),
 				(e: unknown) => ({ i, status: 'rejected', reason: e } as const)
