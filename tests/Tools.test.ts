@@ -51,7 +51,7 @@ describe('asTool', function () {
 					// Missing inputSchema
 				})).to.throw(
 					ConfigError,
-					'\'inputSchema\' is a required property when creating a component as a tool'
+					'\'inputSchema\' is a required property when creating a TextGenerator as a tool'
 				);
 			});
 		});

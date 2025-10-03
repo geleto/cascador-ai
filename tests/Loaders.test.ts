@@ -76,12 +76,12 @@ describe('Loader Integration Tests (Race & Merge)', function () {
 		});
 
 		it('1.3: Mixed sequential and raced loaders should respect sequential precedence', async () => {
-			const scriptComponent = create.Script.loadsScript({
+			const templateComponent = create.Template.loadsTemplate({
 				// The mediumLoader is first in the sequential chain and will succeed.
 				loader: [mediumLoader, race([slowLoader, fastLoader])],
-				script: 'template.txt', // Using a template file as script content for simplicity
+				template: 'template.txt',
 			});
-			const result = await scriptComponent({ source: 'medium' });
+			const result = await templateComponent({ source: 'medium' });
 			// The race group is never reached.
 			expect(result).to.equal('Template result: medium');
 		});

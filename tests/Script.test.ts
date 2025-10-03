@@ -321,7 +321,12 @@ describe('create.Script', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate an array with these exact two objects in it: {"id": 1}, {"id": 2}. The array size must be 2 and the order of the two object should be as listed, do not create an array with just one item in it',
+				prompt: `Generate a JSON array following these strict requirements:
+					1. Array must contain exactly 2 objects
+					2. First object: {"id": 1}
+					3. Second object: {"id": 2}
+					4. No missing objects allowed
+					Expected output: [{"id": 1}, {"id": 2}]`,
 			});
 			const { elementStream } = await objectStreamer();
 			const result: { id: number }[] = [];
@@ -336,7 +341,12 @@ describe('create.Script', function () {
 				model, temperature,
 				output: 'array',
 				schema: z.object({ id: z.number() }),
-				prompt: 'Generate an array with these exact two objects in it: {"id": 1} and {"id": 2}. Make sure the array size is exactly 2, do not create an array with just one item in it',
+				prompt: `Generate a JSON array following these strict requirements:
+					1. Array must contain exactly 2 objects
+					2. First object: {"id": 1}
+					3. Second object: {"id": 2}
+					4. No missing objects allowed
+					Expected output: [{"id": 1}, {"id": 2}]`,
 			});
 			const scriptRunner = create.Script({
 				context: { streamer: objectStreamer },
