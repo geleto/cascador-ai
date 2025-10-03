@@ -1,9 +1,8 @@
 import 'dotenv/config';
 //do not import anything from the compiled cascador-ai in the unit tests
 import { expect } from 'chai';
-import { mergeLoaders, processLoaders, race, MergedGroup, MERGED_GROUP_TAG } from '../src/loaders';
+import { mergeLoaders, processLoaders, race, RaceLoader, MERGED_GROUP_TAG } from '../src/loaders';
 import { timeout, StringLoader } from './common';
-import { LoaderInterface, LoaderSource } from 'cascada-engine';
 
 describe('Race & Merge Loaders - Unit Tests', function () {
 	this.timeout(timeout); // Increase timeout for tests that call the real API
@@ -185,9 +184,11 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			expect(merged).to.have.length(1);
 			expect(merged[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
 
-			// Verify the merged group contains the original loader (which should contain all 3)
-			const mergedGroup = merged[0] as unknown as MergedGroup;
-			expect(mergedGroup.originalLoader).to.not.equal(undefined);
+			// Verify the merged group is a proper RaceLoader
+			const raceLoader = merged[0] as unknown as RaceLoader;
+			expect(raceLoader).to.not.equal(undefined);
+			expect(raceLoader).to.have.property(MERGED_GROUP_TAG, true);
+			expect(raceLoader.loaders).to.be.an('array');
 		});
 
 		it('should test if race groups actually race (concurrent execution)', () => {
@@ -224,11 +225,11 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			expect(merged[0]).to.have.property(Symbol.for('cascador-ai.mergedGroup'), true);
 
 			// Test that the merged loader can actually load content
-			const mergedGroup = merged[0] as unknown as MergedGroup;
-			const result = await (mergedGroup.originalLoader as LoaderInterface).load('template');
+			const raceLoader = merged[0] as unknown as RaceLoader;
+			const result = await raceLoader.load('template');
 			expect(result).to.be.an('object');
 			expect(result).to.have.property('src');
-			const resultSrc = (result as LoaderSource).src;
+			const resultSrc = result!.src;
 			expect(resultSrc).to.be.oneOf(['Fast response', 'Slow response']);
 		});
 
@@ -248,13 +249,13 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			expect(merged).to.have.length(1);
 
 			// Test the actual racing behavior
-			const mergedGroup = merged[0] as unknown as MergedGroup;
-			const result = await (mergedGroup.originalLoader as LoaderInterface).load('template');
+			const raceLoader = merged[0] as unknown as RaceLoader;
+			const result = await raceLoader.load('template');
 
 			// The race should return the working loader's result (first-to-succeed strategy)
 			expect(result).to.be.an('object');
 			expect(result).to.have.property('src');
-			const resultSrc = (result as LoaderSource).src;
+			const resultSrc = result!.src;
 			expect(resultSrc).to.equal('Working response');
 		});
 
@@ -274,9 +275,9 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			expect(merged).to.have.length(1);
 
 			// Test that the race group fails when all loaders fail
-			const mergedGroup = merged[0] as unknown as MergedGroup;
+			const raceLoader = merged[0] as unknown as RaceLoader;
 			try {
-				await (mergedGroup.originalLoader as LoaderInterface).load('template');
+				await raceLoader.load('template');
 				// If we get here, the test should fail because all loaders should fail
 				expect.fail('Expected race group to fail when all loaders fail');
 			} catch (error) {
@@ -297,9 +298,9 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			} else {
 				// If they are merged, they should fail when trying to load
 				expect(merged).to.have.length(1);
-				const mergedGroup = merged[0] as unknown as MergedGroup;
+				const raceLoader = merged[0] as unknown as RaceLoader;
 				try {
-					await (mergedGroup.originalLoader as LoaderInterface).load('template');
+					await raceLoader.load('template');
 					// If we get here, the test should fail because empty race groups should fail
 					expect.fail('Expected empty race group to fail when trying to load');
 				} catch (error) {
@@ -522,14 +523,14 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 
 			// Measure racing performance
 			const startTime = Date.now();
-			const mergedGroup = merged[0] as unknown as MergedGroup;
-			const result = await (mergedGroup.originalLoader as LoaderInterface).load('template');
+			const raceLoader = merged[0] as unknown as RaceLoader;
+			const result = await raceLoader.load('template');
 			const raceTime = Date.now() - startTime;
 
 			// Verify result
 			expect(result).to.be.an('object');
 			expect(result).to.have.property('src');
-			const resultSrc = (result as LoaderSource).src;
+			const resultSrc = result!.src;
 			expect(resultSrc).to.be.oneOf(['Response 1', 'Response 2']);
 
 			// Racing should be fast (StringLoader is synchronous, so this tests structure)
@@ -551,20 +552,20 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			const merged = mergeLoaders([], [raceGroup]);
 
 			// Test loading different templates
-			const mergedGroup = merged[0] as unknown as MergedGroup;
+			const raceLoader = merged[0] as unknown as RaceLoader;
 
-			const result1 = await (mergedGroup.originalLoader as LoaderInterface).load('template1');
-			const result2 = await (mergedGroup.originalLoader as LoaderInterface).load('template2');
+			const result1 = await raceLoader.load('template1');
+			const result2 = await raceLoader.load('template2');
 
 			// Verify results
 			expect(result1).to.be.an('object');
 			expect(result1).to.have.property('src');
-			const result1Src = (result1 as LoaderSource).src;
+			const result1Src = result1!.src;
 			expect(result1Src).to.be.oneOf(['Content 1', 'Alternative 1']);
 
 			expect(result2).to.be.an('object');
 			expect(result2).to.have.property('src');
-			const result2Src = (result2 as LoaderSource).src;
+			const result2Src = result2!.src;
 			expect(result2Src).to.be.oneOf(['Content 2', 'Alternative 2']);
 		});
 
@@ -587,13 +588,13 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			expect(merged).to.have.length(1);
 
 			// Test that the merged group contains both loaders
-			const mergedGroup = merged[0] as unknown as MergedGroup;
-			const result = await (mergedGroup.originalLoader as LoaderInterface).load('template');
+			const raceLoader = merged[0] as unknown as RaceLoader;
+			const result = await raceLoader.load('template');
 
 			// Should return one of the contents (racing behavior)
 			expect(result).to.be.an('object');
 			expect(result).to.have.property('src');
-			const resultSrc = (result as LoaderSource).src;
+			const resultSrc = result!.src;
 			expect(resultSrc).to.be.oneOf(['Parent content', 'Child content']);
 		});
 	});
@@ -735,12 +736,8 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 		it('should handle merged groups in single array', () => {
 			const loader1 = new StringLoader();
 			const loader2 = new StringLoader();
-			const mergedGroup: MergedGroup = {
-				[MERGED_GROUP_TAG]: true,
-				groupName: 'existingGroup',
-				originalLoader: loader2
-			};
-			const loaders = [loader1, mergedGroup];
+			const raceLoader = new RaceLoader([loader2], 'existingGroup');
+			const loaders = [loader1, raceLoader];
 
 			const result = processLoaders(loaders);
 
@@ -753,17 +750,9 @@ describe('Race & Merge Loaders - Unit Tests', function () {
 			const loader1 = new StringLoader();
 			const loader2 = new StringLoader();
 			const loader3 = new StringLoader();
-			const mergedGroup1: MergedGroup = {
-				[MERGED_GROUP_TAG]: true,
-				groupName: 'existingGroup',
-				originalLoader: loader1
-			};
-			const mergedGroup2: MergedGroup = {
-				[MERGED_GROUP_TAG]: true,
-				groupName: 'existingGroup',
-				originalLoader: loader2
-			};
-			const loaders = [mergedGroup1, mergedGroup2, loader3];
+			const raceLoader1 = new RaceLoader([loader1], 'existingGroup');
+			const raceLoader2 = new RaceLoader([loader2], 'existingGroup');
+			const loaders = [raceLoader1, raceLoader2, loader3];
 
 			const result = processLoaders(loaders);
 
