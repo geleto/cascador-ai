@@ -2,7 +2,7 @@ import { ModelMessage, Schema, StreamObjectOnFinishCallback, StreamTextOnFinishC
 import { z } from 'zod';
 import { InferParameters } from './utils';
 import { ILoaderAny } from 'cascada-engine';
-import { RaceGroup, MergedGroup } from '../loaders';
+import { RaceGroup, RaceLoader } from '../loaders';
 
 // Template types
 export type Context = Record<string, any>;
@@ -42,5 +42,5 @@ export type EmptyObject = Record<string, never>;
 export type CascadaFilters = Record<string, (input: any, ...args: any[]) => any>;
 
 export type CascadaLoaders = ILoaderAny | ILoaderAny[];
-export type CascadorAILoaders = ILoaderAny | RaceGroup | MergedGroup | (ILoaderAny | RaceGroup | MergedGroup)[];
+export type CascadorAILoaders = ILoaderAny | RaceGroup | RaceLoader | (ILoaderAny | RaceGroup | RaceLoader)[];
 

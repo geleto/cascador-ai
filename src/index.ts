@@ -81,4 +81,4 @@ export { ConfigError } from './validate';
 
 
 // --- Public Utilities & Associated Types ---
-export { race, type RaceGroup, type MergedGroup } from './loaders';
+export { race, type RaceGroup, type RaceLoader } from './loaders';

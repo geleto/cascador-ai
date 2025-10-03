@@ -3,7 +3,7 @@ import { Override } from './types/utils';
 import * as configs from './types/config';
 import * as types from './types/types';
 import { ToolSet } from 'ai';
-import { mergeLoaders, processLoaders, RaceGroup, MergedGroup } from './loaders';
+import { mergeLoaders, processLoaders, RaceGroup, RaceLoader } from './loaders';
 import { ILoaderAny } from 'cascada-engine';
 
 export function processConfig<T extends Partial<configs.LoaderConfig> & Record<string, any>>(
@@ -58,13 +58,13 @@ export function mergeConfigs<
 		? Array.isArray(parentConfig.loader)
 			? parentConfig.loader
 			: [parentConfig.loader]
-		: []) as (ILoaderAny | RaceGroup | MergedGroup)[] : undefined;
+		: []) as (ILoaderAny | RaceGroup | RaceLoader)[] : undefined;
 
 	const childLoaders = ('loader' in childConfig) ? (childConfig.loader
 		? Array.isArray(childConfig.loader)
 			? childConfig.loader
 			: [childConfig.loader]
-		: []) as (ILoaderAny | RaceGroup | MergedGroup)[] : undefined;
+		: []) as (ILoaderAny | RaceGroup | RaceLoader)[] : undefined;
 
 	if (parentLoaders && childLoaders) {
 		merged.loader = mergeLoaders(parentLoaders, childLoaders);
